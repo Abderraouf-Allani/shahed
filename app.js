@@ -58,6 +58,33 @@
     });
   }
 
+  function mergeSeedTag(seed) {
+    if (!seed || !seed.tags || !seed.tags.length) return;
+    var seedTagId = seed.tags[0].id;
+    if (tagState.byId[seedTagId]) return;
+    seed.categories.forEach(function (c) {
+      if (!tagState.byCatId[c.id]) {
+        tagState.categories.push(c);
+        tagState.byCatId[c.id] = c;
+      }
+    });
+    seed.tags.forEach(function (t) {
+      if (!tagState.byId[t.id]) {
+        tagState.tags.push(t);
+        tagState.byId[t.id] = t;
+      }
+    });
+    Object.keys(seed.verses || {}).forEach(function (key) {
+      var ids = seed.verses[key] || [];
+      var cur = tagState.verses[key] || [];
+      ids.forEach(function (id) {
+        if (cur.indexOf(id) === -1) cur.push(id);
+      });
+      if (cur.length) tagState.verses[key] = cur;
+    });
+    saveTags();
+  }
+
   function loadTags() {
     var raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS.tags)); } catch (e) { raw = null; }
@@ -948,10 +975,12 @@
   function loadData() {
     return Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }),
-      fetch('data/quran.json').then(function (r) { return r.json(); })
+      fetch('data/quran.json').then(function (r) { return r.json(); }),
+      fetch('data/dawaa.json').then(function (r) { return r.json(); })
     ]).then(function (res) {
       state.surahs = res[0];
       state.quran = res[1];
+      mergeSeedTag(res[2]);
     });
   }
 
