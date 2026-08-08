@@ -46,6 +46,7 @@
 
   var tagState = loadTags();
   var showTags = localStorage.getItem(LS.showTags) !== '0';
+  var sessionTagFilter = null;
 
   function newId(prefix) {
     return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
@@ -134,9 +135,19 @@
     return ids.map(function (id) { return tagState.byId[id]; }).filter(Boolean);
   }
 
+  function filterVisibleTags(tags) {
+    if (sessionTagFilter === null) return tags;
+    return tags.filter(function (t) { return sessionTagFilter.indexOf(t.id) !== -1; });
+  }
+
   function setShowTags(v) {
     showTags = v;
     localStorage.setItem(LS.showTags, v ? '1' : '0');
+  }
+
+  function toggleTagFilterMenu(btn) {
+    if (tagFilterMenu) { closeTagFilterMenu(); return; }
+    openTagFilterMenu(btn);
   }
 
   function toggleTagOnVerse(surah, ayah, tagId) {
@@ -388,17 +399,132 @@
 
   window.addEventListener('scroll', function () {
     if (tagMenu && tagMenu._anchor) positionTagMenu(tagMenu, tagMenu._anchor);
+    if (tagFilterMenu && tagFilterMenu._anchor) positionTagMenu(tagFilterMenu, tagFilterMenu._anchor);
   }, true);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeTagMenu();
+    if (e.key === 'Escape') { closeTagMenu(); closeTagFilterMenu(); }
   });
+
+  /* ---------- session tag filter menu ---------- */
+
+  var tagFilterMenu = null;
+
+  function openTagFilterMenu(anchor) {
+    closeTagFilterMenu();
+    var menu = document.createElement('div');
+    menu.className = 'tag-menu tag-filter-menu';
+    menu._anchor = anchor;
+
+    var active = sessionTagFilter || [];
+    var rows = '';
+    tagState.categories.forEach(function (c) {
+      var catTags = tagState.tags.filter(function (t) { return t.categoryId === c.id; });
+      if (!catTags.length) return;
+      var visible = 0;
+      catTags.forEach(function (t) {
+        if (!sessionTagFilter || active.indexOf(t.id) !== -1) visible++;
+      });
+      var catCls = visible === catTags.length ? ' checked' : (visible > 0 ? ' checked data-indet' : '');
+      rows += '<div class="tag-menu-cat-group">'
+        + '<div class="tag-menu-cat">'
+        + '<label class="tag-menu-cat-check"><input type="checkbox" data-catid="' + c.id + '"' + catCls + '></label>'
+        + '<span class="cat-arrow">&#9662;</span>'
+        + '<span class="cat-dot" style="background:' + c.color + '"></span>'
+        + esc(c.name)
+        + '</div>'
+        + '<div class="tag-menu-cat-body">';
+      catTags.forEach(function (t) {
+        var on = !sessionTagFilter || active.indexOf(t.id) !== -1;
+        rows += '<label class="tag-menu-row">'
+          + '<input type="checkbox" data-tagid="' + t.id + '"' + (on ? ' checked' : '') + '>'
+          + tagChip(t)
+          + '</label>';
+      });
+      rows += '</div></div>';
+    });
+    if (!rows) rows = '<div class="tag-menu-empty">لا توجد وسوم بعد</div>';
+
+    menu.innerHTML =
+      '<div class="tag-menu-title">عرض الوسوم في هذه الجلسة</div>'
+      + '<div class="tag-menu-list">' + rows + '</div>'
+      + '<button type="button" class="tag-menu-close">تم</button>';
+
+    document.body.appendChild(menu);
+    positionTagMenu(menu, anchor);
+    tagFilterMenu = menu;
+
+    menu.querySelectorAll('input[data-indet]').forEach(function (cb) { cb.indeterminate = true; });
+
+    menu.querySelectorAll('.tag-menu-cat').forEach(function (cat) {
+      cat.addEventListener('click', function (e) {
+        if (e.target.closest('input')) return;
+        cat.closest('.tag-menu-cat-group').classList.toggle('collapsed');
+      });
+    });
+
+    menu.querySelectorAll('input[data-catid]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        applyCategoryFilter(menu, cb);
+      });
+    });
+    menu.querySelectorAll('input[data-tagid]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        updateSessionTagFilter(menu);
+        syncCategoryStates(menu);
+        refreshAllVerseDecorations();
+      });
+    });
+    menu.querySelector('.tag-menu-close').addEventListener('click', closeTagFilterMenu);
+  }
+
+  function applyCategoryFilter(menu, catCb) {
+    var ids = tagState.tags.filter(function (t) { return t.categoryId === catCb.dataset.catid; })
+      .map(function (t) { return t.id; });
+    menu.querySelectorAll('input[data-tagid]').forEach(function (cb) {
+      if (ids.indexOf(cb.dataset.tagid) !== -1) {
+        cb.checked = catCb.checked;
+        cb.indeterminate = false;
+      }
+    });
+    updateSessionTagFilter(menu);
+    syncCategoryStates(menu);
+    refreshAllVerseDecorations();
+  }
+
+  function syncCategoryStates(menu) {
+    menu.querySelectorAll('input[data-catid]').forEach(function (catCb) {
+      var ids = tagState.tags.filter(function (t) { return t.categoryId === catCb.dataset.catid; })
+        .map(function (t) { return t.id; });
+      var on = 0;
+      menu.querySelectorAll('input[data-tagid]').forEach(function (cb) {
+        if (ids.indexOf(cb.dataset.tagid) !== -1 && cb.checked) on++;
+      });
+      catCb.checked = on > 0;
+      catCb.indeterminate = on > 0 && on < ids.length;
+    });
+  }
+
+  function updateSessionTagFilter(menu) {
+    var boxes = menu.querySelectorAll('input[data-tagid]');
+    var checked = [];
+    boxes.forEach(function (cb) { if (cb.checked) checked.push(cb.dataset.tagid); });
+    sessionTagFilter = checked.length === boxes.length ? null : checked;
+  }
+
+  function closeTagFilterMenu() {
+    if (tagFilterMenu) { tagFilterMenu.remove(); tagFilterMenu = null; }
+  }
+
+  document.addEventListener('click', function (e) {
+    if (tagFilterMenu && !tagFilterMenu.contains(e.target) && !e.target.closest('#tagFilterToggle')) closeTagFilterMenu();
+  }, true);
 
   /* ---------- verse decorations ---------- */
 
   function refreshVerseDecorations(surah, ayah) {
     var el = document.getElementById('ayah-' + surah + '-' + ayah);
     if (!el) return;
-    var tags = getVerseTags(surah, ayah);
+    var tags = filterVisibleTags(getVerseTags(surah, ayah));
     el.classList.toggle('tagged', showTags && tags.length > 0);
     if (showTags && tags.length) {
       el.style.setProperty('--tagbg', tags[0].color + '26');
@@ -427,7 +553,7 @@
   }
 
   function renderVerse(q, surah, ayah, text) {
-    var tags = getVerseTags(surah, ayah);
+    var tags = filterVisibleTags(getVerseTags(surah, ayah));
     var cls = 'verse' + (showTags && tags.length ? ' tagged' : '');
     var style = '';
     if (showTags && tags.length) style = ' style="--tagbg:' + tags[0].color + '26"';
@@ -557,6 +683,7 @@
 
     html += '<div class="reader-options">';
     html += '<button type="button" class="pill" id="tagsToggle">' + (showTags ? 'إخفاء الوسوم' : 'إظهار الوسوم') + '</button>';
+    if (showTags) html += '<button type="button" class="pill" id="tagFilterToggle">تصفية الوسوم</button>';
     html += '</div>';
 
     if (q.bismillah) {
@@ -593,7 +720,27 @@
     document.getElementById('tagsToggle').addEventListener('click', function () {
       setShowTags(!showTags);
       document.getElementById('tagsToggle').textContent = showTags ? 'إخفاء الوسوم' : 'إظهار الوسوم';
+      var filterBtn = document.getElementById('tagFilterToggle');
+      if (showTags) {
+        if (!filterBtn) {
+          filterBtn = document.createElement('button');
+          filterBtn.type = 'button';
+          filterBtn.className = 'pill';
+          filterBtn.id = 'tagFilterToggle';
+          filterBtn.textContent = 'تصفية الوسوم';
+          filterBtn.addEventListener('click', function () { toggleTagFilterMenu(this); });
+          document.getElementById('tagsToggle').insertAdjacentElement('afterend', filterBtn);
+        }
+      } else {
+        closeTagFilterMenu();
+        if (filterBtn) filterBtn.remove();
+      }
       refreshAllVerseDecorations();
+    });
+
+    var filterToggleBtn = document.getElementById('tagFilterToggle');
+    if (filterToggleBtn) filterToggleBtn.addEventListener('click', function () {
+      toggleTagFilterMenu(this);
     });
 
     document.getElementById('mushaf').addEventListener('click', function (e) {
