@@ -463,18 +463,23 @@ html.dark .icon-moon { display: block; }
 .tag-menu-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 210px; overflow-y: auto; margin-bottom: 0.6rem; }
 .tag-menu-cat-group { margin-bottom: 0.15rem; }
 .tag-menu-cat {
-  display: flex; align-items: center; gap: 0.4rem;
+  display: flex; align-items: center; gap: 0.3rem;
   font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-  margin: 0.2rem 0 0.1rem; padding-top: 0.25rem; cursor: pointer;
-  user-select: none;
+  margin: 0.2rem 0 0.1rem; padding: 0.25rem 0.3rem 0.15rem; cursor: pointer;
+  border-radius: 6px; user-select: none;
 }
+.tag-menu-cat:hover { background: var(--surface-2); }
 .tag-menu-cat-group:first-child .tag-menu-cat { margin-top: 0; }
 .tag-menu-cat-check { display: flex; align-items: center; }
 .tag-menu-cat-check input { accent-color: var(--accent); width: 1em; height: 1em; margin: 0; cursor: pointer; }
 .tag-menu-cat .cat-arrow {
-  font-size: 0.55rem; color: var(--text-muted);
-  transition: transform 0.15s ease;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.25rem; height: 1.25rem; flex-shrink: 0;
+  font-size: 0.8rem; line-height: 1; color: var(--text-muted);
+  border-radius: 4px; cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
+.tag-menu-cat .cat-arrow:hover { background: var(--surface-3, rgba(0,0,0,0.06)); }
 .tag-menu-cat-group.collapsed .cat-arrow { transform: rotate(-90deg); }
 .tag-menu-cat-group.collapsed .tag-menu-cat-body { display: none; }
 .tag-menu-cat-body { display: flex; flex-direction: column; gap: 0.3rem; }
