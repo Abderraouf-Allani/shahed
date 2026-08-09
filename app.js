@@ -314,6 +314,10 @@
 
     menu.innerHTML =
       '<div class="tag-menu-title">وسم الآية ' + toAr(ayah) + ' من ' + esc(surahName) + '</div>'
+      + '<div class="tag-menu-search">'
+      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>'
+      + '<input type="search" class="tag-menu-filter-input" placeholder="ابحث عن وسم…" autocomplete="off">'
+      + '</div>'
       + '<div class="tag-menu-list">' + rows + '</div>'
       + '<form class="tag-new">'
       + '<div class="tag-new-row"><input type="text" placeholder="وسم جديد…" maxlength="40" autocomplete="off">'
@@ -328,6 +332,10 @@
     positionTagMenu(menu, anchor);
 
     tagMenu = menu;
+
+    menu.querySelector('.tag-menu-filter-input').addEventListener('input', function () {
+      filterTagMenuRows(menu, this.value);
+    });
 
     menu.querySelectorAll('.tag-menu-row input').forEach(function (cb) {
       cb.addEventListener('change', function () {
@@ -364,7 +372,30 @@
     });
 
     menu.querySelector('.tag-menu-close').addEventListener('click', closeTagMenu);
-    menu.querySelector('.tag-new input').focus();
+    menu.querySelector('.tag-menu-filter-input').focus();
+  }
+
+  function filterTagMenuRows(menu, query) {
+    var q = norm(query);
+    var list = menu.querySelector('.tag-menu-list');
+    var visibleRows = 0;
+    list.querySelectorAll('.tag-menu-row').forEach(function (el) {
+      var name = el.querySelector('.tag-chip').textContent;
+      var show = !q || norm(name).indexOf(q) !== -1;
+      el.style.display = show ? '' : 'none';
+      if (show) visibleRows++;
+    });
+    list.querySelectorAll('.tag-menu-cat').forEach(function (cat) {
+      var any = false;
+      var next = cat.nextElementSibling;
+      while (next && !next.classList.contains('tag-menu-cat')) {
+        if (next.style.display !== 'none') any = true;
+        next = next.nextElementSibling;
+      }
+      cat.style.display = any ? '' : 'none';
+    });
+    var empty = list.querySelector('.tag-menu-empty');
+    if (empty) empty.style.display = visibleRows ? 'none' : '';
   }
 
   function tagMenuRow(t, currentIds) {

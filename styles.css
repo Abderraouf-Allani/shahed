@@ -460,6 +460,20 @@ html.dark .icon-moon { display: block; }
   font-size: 0.95rem;
 }
 .tag-menu-title { font-weight: 700; margin-bottom: 0.5rem; color: var(--accent); font-size: 0.9rem; }
+.tag-menu-search {
+  display: flex; align-items: center; gap: 0.4rem;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2);
+  padding: 0.35rem 0.55rem; margin-bottom: 0.5rem;
+  color: var(--text-muted);
+}
+.tag-menu-search:focus-within { border-color: var(--accent); }
+.tag-menu-search input {
+  flex: 1; min-width: 0; border: none; outline: none;
+  background: transparent; color: var(--text);
+  font: inherit; font-size: 0.85rem;
+}
+.tag-menu-search input::placeholder { color: var(--text-muted); }
 .tag-menu-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 210px; overflow-y: auto; margin-bottom: 0.6rem; }
 .tag-menu-cat-group { margin-bottom: 0.15rem; }
 .tag-menu-cat {
