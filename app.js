@@ -556,12 +556,6 @@
     var el = document.getElementById('ayah-' + surah + '-' + ayah);
     if (!el) return;
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
-    el.classList.toggle('tagged', showTags && tags.length > 0);
-    if (showTags && tags.length) {
-      el.style.setProperty('--tagbg', tags[0].color + '26');
-    } else {
-      el.style.removeProperty('--tagbg');
-    }
     var chipsEl = el.querySelector('.verse-chips');
     if (showTags && tags.length) {
       if (!chipsEl) {
@@ -590,11 +584,8 @@
 
   function renderVerse(q, surah, ayah, text) {
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
-    var cls = 'verse' + (showTags && tags.length ? ' tagged' : '');
-    var style = '';
-    if (showTags && tags.length) style = ' style="--tagbg:' + tags[0].color + '26"';
     var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(tagChip).join('') + '</span>' : '';
-    return '<span class="' + cls + '"' + style + ' id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
+    return '<span class="verse" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
       + '<span class="verse-text">' + esc(text) + '</span>'
       + '<button type="button" class="tag-btn" data-surah="' + surah + '" data-ayah="' + ayah + '" title="وسم هذه الآية" aria-label="وسم هذه الآية">' + TAG_ICON + '</button>'
       + chips

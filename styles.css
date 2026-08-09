@@ -389,8 +389,6 @@ html.dark .icon-moon { display: block; }
 
 .verse { position: relative; }
 
-.verse.tagged { background: var(--tagbg, transparent); border-radius: 6px; }
-
 .tag-btn {
   display: inline-flex;
   align-items: center;
