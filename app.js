@@ -816,8 +816,55 @@
     });
 
     document.getElementById('tagArea').addEventListener('click', handleTagAreaClick);
+    document.getElementById('tagArea').addEventListener('dragstart', handleTagDragStart);
+    document.getElementById('tagArea').addEventListener('dragover', handleTagDragOver);
+    document.getElementById('tagArea').addEventListener('dragleave', handleTagDragLeave);
+    document.getElementById('tagArea').addEventListener('drop', handleTagDrop);
+    document.getElementById('tagArea').addEventListener('dragend', handleTagDragEnd);
 
     renderTagArea();
+  }
+
+  var dragTagId = null;
+
+  function handleTagDragStart(e) {
+    var chip = e.target.closest('.tag-chip-btn');
+    if (!chip || e.target.closest('.tag-edit') || e.target.closest('.tag-delete')) return;
+    dragTagId = chip.dataset.tagid;
+    chip.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragTagId);
+  }
+
+  function handleTagDragOver(e) {
+    var catTags = e.target.closest('.cat-tags');
+    if (!catTags || !dragTagId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    catTags.classList.add('drag-over');
+  }
+
+  function handleTagDragLeave(e) {
+    var catTags = e.target.closest('.cat-tags');
+    if (catTags && !catTags.contains(e.relatedTarget)) catTags.classList.remove('drag-over');
+  }
+
+  function handleTagDrop(e) {
+    e.preventDefault();
+    var catTags = e.target.closest('.cat-tags');
+    if (!catTags || !dragTagId) return;
+    var targetCatId = catTags.dataset.catid || '';
+    var t = tagState.byId[dragTagId];
+    if (t && t.categoryId !== targetCatId) updateTag(dragTagId, { categoryId: targetCatId });
+    dragTagId = null;
+    renderTagArea();
+  }
+
+  function handleTagDragEnd(e) {
+    var chip = e.target.closest('.tag-chip-btn');
+    if (chip) chip.classList.remove('dragging');
+    appEl.querySelectorAll('.cat-tags.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
+    dragTagId = null;
   }
 
   function colorSwatches(current) {
@@ -862,7 +909,7 @@
 
   function renderTagChipBtn(t) {
     var sel = state.selectedTagId === t.id ? ' selected' : '';
-    return '<span class="tag-chip-btn' + sel + '" data-tagid="' + t.id + '">'
+    return '<span class="tag-chip-btn' + sel + '" draggable="true" data-tagid="' + t.id + '">'
       + tagChip(t) + ' <b>' + toAr(tagCount(t.id)) + '</b>'
       + '<button type="button" class="tag-edit" data-tagid="' + t.id + '" title="تعديل الوسم">✎</button>'
       + '<button type="button" class="tag-delete" data-tagid="' + t.id + '" title="حذف الوسم">✕</button>'
@@ -913,7 +960,7 @@
       html += '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>';
       html += '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
       html += '</div>';
-      html += '<div class="cat-tags">' + catTags.map(renderTagChipBtn).join('') + '</div>';
+      html += '<div class="cat-tags" data-catid="' + c.id + '">' + catTags.map(renderTagChipBtn).join('') + '</div>';
       html += '</div>';
     });
 
@@ -922,7 +969,7 @@
       showSections = true;
       html += '<div class="cat-block">';
       html += '<div class="cat-head"><span class="cat-dot" style="background:var(--text-muted)"></span><span class="cat-name">بدون تصنيف</span><b class="cat-count">' + toAr(uncat.length) + '</b></div>';
-      html += '<div class="cat-tags">' + uncat.map(renderTagChipBtn).join('') + '</div>';
+      html += '<div class="cat-tags" data-catid="">' + uncat.map(renderTagChipBtn).join('') + '</div>';
       html += '</div>';
     }
 
