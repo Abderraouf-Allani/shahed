@@ -613,7 +613,7 @@ html.dark .icon-moon { display: block; }
 .cat-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
 .cat-name { font-weight: 700; color: var(--text); font-size: 0.95rem; }
 .cat-count { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-.cat-edit, .cat-del {
+.cat-edit, .cat-del, .cat-tag-add {
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -623,11 +623,22 @@ html.dark .icon-moon { display: block; }
   border-radius: 50%;
   line-height: 1;
 }
-.cat-edit { margin-inline-start: auto; }
+.cat-tag-add { margin-inline-start: auto; font-size: 1rem; }
+.cat-tag-add:hover { color: var(--accent); }
 .cat-edit:hover { color: var(--accent); }
 .cat-del:hover { color: #c0392b; }
 .cat-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .cat-block .cat-tags:empty { min-height: 2.2rem; }
+
+.tag-new-inline {
+  margin-top: 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 0.6rem 0.7rem;
+}
+.tag-new-inline .edit-name { margin-bottom: 0.6rem; }
+.tag-new-inline .edit-colors { margin-bottom: 0.6rem; }
 .tag-chip-btn[draggable="true"] { cursor: grab; }
 .tag-chip-btn[draggable="true"]:active { cursor: grabbing; }
 .tag-chip-btn.dragging { opacity: 0.45; }

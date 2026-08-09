@@ -187,6 +187,19 @@
     return cat;
   }
 
+  function createTag(name, color, categoryId) {
+    var tag = {
+      id: newId('t'),
+      name: name,
+      color: color || TAG_COLORS[tagState.tags.length % TAG_COLORS.length],
+      categoryId: categoryId || (tagState.categories[0] ? tagState.categories[0].id : '')
+    };
+    tagState.tags.push(tag);
+    tagState.byId[tag.id] = tag;
+    saveTags();
+    return tag;
+  }
+
   function updateCategory(catId, patch) {
     var c = tagState.byCatId[catId];
     if (!c) return;
@@ -357,16 +370,8 @@
         return;
       }
       var catSel = menu.querySelector('.tag-new-cat');
-      var tag = {
-        id: newId('t'),
-        name: name,
-        color: TAG_COLORS[tagState.tags.length % TAG_COLORS.length],
-        categoryId: catSel.value
-      };
-      tagState.tags.push(tag);
-      tagState.byId[tag.id] = tag;
+      var tag = createTag(name, null, catSel.value);
       toggleTagOnVerse(surah, ayah, tag.id);
-      saveTags();
       refreshVerseDecorations(surah, ayah);
       openTagMenu(surah, ayah, anchor);
     });
@@ -975,9 +980,7 @@
     html += '<div class="cat-toolbar"><button type="button" class="cat-add">+ تصنيف جديد</button></div>';
 
     if (!tagState.tags.length) {
-      html += '<div class="empty-state">لا توجد وسوم بعد.<br>افتح أي سورة واضغط على أيقونة الوسم بجانب أي آية لإضافتها.</div>';
-      area.innerHTML = html;
-      return;
+      html += '<div class="empty-state">لا توجد وسوم بعد.<br>افتح أي سورة واضغط على أيقونة الوسم بجانب أي آية لإضافتها، أو أضف وسماً جديداً داخل أي تصنيف أدناه.</div>';
     }
 
     var showSections = false;
@@ -992,10 +995,20 @@
       html += '<span class="cat-dot" style="background:' + c.color + '"></span>';
       html += '<span class="cat-name">' + esc(c.name) + '</span>';
       html += '<b class="cat-count">' + toAr(catTags.length) + '</b>';
+      html += '<button type="button" class="cat-tag-add" data-catid="' + c.id + '" title="إضافة وسم">+</button>';
       html += '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>';
       html += '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
       html += '</div>';
       html += '<div class="cat-tags">' + catTags.map(renderTagChipBtn).join('') + '</div>';
+      if (state.edit && state.edit.type === 'newtag' && state.edit.catId === c.id) {
+        html += '<div class="tag-new-inline">'
+          + '<input type="text" class="edit-name tag-new-name" placeholder="اسم الوسم الجديد…" maxlength="40">'
+          + '<div class="edit-colors">' + colorSwatches(TAG_COLORS[0]) + '</div>'
+          + '<div class="edit-actions">'
+          + '<button type="button" class="edit-save" data-type="newtag" data-catid="' + c.id + '">إضافة</button>'
+          + '<button type="button" class="edit-cancel">إلغاء</button>'
+          + '</div></div>';
+      }
       html += '</div>';
     });
 
@@ -1031,19 +1044,24 @@
     }
 
     area.innerHTML = html;
+
+    if (state.edit && state.edit.type === 'newtag') {
+      var newName = area.querySelector('.tag-new-inline .edit-name');
+      if (newName) newName.focus();
+    }
   }
 
   function handleTagAreaClick(e) {
     var swatch = e.target.closest('.swatch');
     if (swatch) {
-      var panel = swatch.closest('.edit-panel');
+      var panel = swatch.closest('.edit-panel, .tag-new-inline');
       panel.querySelectorAll('.swatch').forEach(function (s) { s.classList.toggle('on', s === swatch); });
       return;
     }
 
     var editSave = e.target.closest('.edit-save');
     if (editSave) {
-      var panel = editSave.closest('.edit-panel');
+      var panel = editSave.closest('.edit-panel, .tag-new-inline');
       var name = panel.querySelector('.edit-name').value.trim();
       var colorEl = panel.querySelector('.swatch.on');
       var color = colorEl ? colorEl.dataset.color : TAG_COLORS[0];
@@ -1053,6 +1071,8 @@
         if (name) { createCategory(name, color); state.selectedTagId = null; }
       } else if (type === 'cat') {
         if (name) updateCategory(id, { name: name, color: color });
+      } else if (type === 'newtag') {
+        if (name) { createTag(name, color, editSave.dataset.catid); state.selectedTagId = null; }
       } else if (type === 'tag') {
         var catId = panel.querySelector('.edit-cat').value;
         if (name) updateTag(id, { name: name, color: color, categoryId: catId });
@@ -1072,6 +1092,13 @@
     var catAdd = e.target.closest('.cat-add');
     if (catAdd) {
       state.edit = { type: 'newcat' };
+      renderTagArea();
+      return;
+    }
+
+    var catTagAdd = e.target.closest('.cat-tag-add');
+    if (catTagAdd) {
+      state.edit = { type: 'newtag', catId: catTagAdd.dataset.catid };
       renderTagArea();
       return;
     }
