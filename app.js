@@ -536,7 +536,12 @@
       if (!chipsEl) {
         chipsEl = document.createElement('span');
         chipsEl.className = 'verse-chips';
-        el.appendChild(chipsEl);
+        var numEl = el.querySelector('.ayah-num');
+        if (numEl) {
+          el.insertBefore(chipsEl, numEl);
+        } else {
+          el.appendChild(chipsEl);
+        }
       }
       chipsEl.innerHTML = tags.map(tagChip).join('');
     } else if (chipsEl) {
