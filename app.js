@@ -816,11 +816,6 @@
     });
 
     document.getElementById('tagArea').addEventListener('click', handleTagAreaClick);
-    document.getElementById('tagArea').addEventListener('dragstart', handleTagDragStart);
-    document.getElementById('tagArea').addEventListener('dragover', handleTagDragOver);
-    document.getElementById('tagArea').addEventListener('dragleave', handleTagDragLeave);
-    document.getElementById('tagArea').addEventListener('drop', handleTagDrop);
-    document.getElementById('tagArea').addEventListener('dragend', handleTagDragEnd);
 
     renderTagArea();
   }
@@ -844,6 +839,7 @@
   }
 
   function updateDragAutoScroll(clientY) {
+    if (!dragTagId) { stopDragAutoScroll(); return; }
     var edge = 70;
     var dir = 0;
     if (clientY < edge) dir = -1;
@@ -899,6 +895,12 @@
     appEl.querySelectorAll('.cat-block.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
     dragTagId = null;
   }
+
+  document.addEventListener('dragstart', handleTagDragStart);
+  document.addEventListener('dragover', handleTagDragOver);
+  document.addEventListener('dragleave', handleTagDragLeave);
+  document.addEventListener('drop', handleTagDrop);
+  document.addEventListener('dragend', handleTagDragEnd);
 
   function colorSwatches(current) {
     return TAG_COLORS.map(function (c) {
