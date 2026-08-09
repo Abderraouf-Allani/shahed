@@ -453,9 +453,24 @@ html.dark .icon-moon { display: block; }
 .reader-options {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 1.2rem;
+  flex-wrap: wrap;
 }
+
+.surah-search { flex: 1 1 260px; max-width: 420px; }
+.surah-search-count {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.verse-hidden { display: none !important; }
 
 .flash { animation: ayahFlash 2s ease; }
 @keyframes ayahFlash {

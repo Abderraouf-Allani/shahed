@@ -37,10 +37,35 @@
     quran: null,
     fontPx: parseInt(localStorage.getItem(LS.fontSize), 10) || 32,
     query: '',
+    ayahQuery: '',
+    surahQuery: '',
     tagQuery: '',
     selectedTagId: null,
     edit: null
   };
+
+  var normVersesCache = null;
+
+  function normAyahText(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[\u064B-\u0652\u0670\u06D6-\u06ED\u0640\u0653\u0654\u0655]/g, '')
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ؤ/g, 'و')
+      .replace(/[\u0621\u0626]/g, '')
+      .replace(/[ى\u06D2]/g, 'ي')
+      .replace(/\s+/g, ' ');
+  }
+
+  function normAllVerses() {
+    if (!normVersesCache) {
+      normVersesCache = state.quran.map(function (ch) {
+        return ch.verses.map(normAyahText);
+      });
+    }
+    return normVersesCache;
+  }
 
   /* ---------- tags store (localStorage) ---------- */
 
@@ -611,6 +636,23 @@
     }
   }
 
+  function applySurahAyahFilter() {
+    var nq = normAyahText(state.surahQuery).trim();
+    var els = appEl.querySelectorAll('.verse[data-ayah]');
+    var nv = state.quran ? normAllVerses() : null;
+    var shown = 0;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var surah = +el.dataset.surah;
+      var ayah = +el.dataset.ayah;
+      var hit = !nq || (nv && nv[surah - 1] && nv[surah - 1][ayah - 1].indexOf(nq) !== -1);
+      el.classList.toggle('verse-hidden', !hit);
+      if (hit) shown++;
+    }
+    var countEl = document.getElementById('surahSearchCount');
+    if (countEl) countEl.textContent = nq ? toAr(shown) + ' من ' + toAr(els.length) : '';
+  }
+
   function renderVerse(q, surah, ayah, text) {
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
     var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(tagChip).join('') + '</span>' : '';
@@ -638,6 +680,14 @@
     html += '<span class="index-stats" id="indexStats"></span>';
     html += '</div>';
 
+    html += '<div class="index-toolbar">';
+    html += '<div class="search-box">';
+    html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += '<input type="search" id="ayahSearch" placeholder="ابحث في آيات القرآن…" value="' + esc(state.ayahQuery) + '">';
+    html += '</div>';
+    html += '<span class="index-stats" id="ayahStats"></span>';
+    html += '</div>';
+
     if (lastSurah) {
       html += '<a class="continue-banner" href="#/surah/' + last + '">';
       html += '<strong>متابعة القراءة:</strong> ' + esc(lastSurah.nameAr) + ' — <em>' + esc(lastSurah.nameEn) + '</em>';
@@ -645,6 +695,7 @@
     }
 
     html += '<div class="surah-grid" id="surahGrid"></div>';
+    html += '<div id="ayahResults"></div>';
     appEl.innerHTML = html;
 
     var input = document.getElementById('surahSearch');
@@ -653,6 +704,58 @@
       updateGrid();
     });
     updateGrid();
+
+    var ayahInput = document.getElementById('ayahSearch');
+    ayahInput.addEventListener('input', function () {
+      state.ayahQuery = ayahInput.value;
+      renderAyahResults();
+    });
+    renderAyahResults();
+  }
+
+  function searchAyahs(q) {
+    var nq = normAyahText(q).trim();
+    if (!nq || !state.quran) return [];
+    var nv = normAllVerses();
+    var out = [];
+    state.quran.forEach(function (ch, si) {
+      ch.verses.forEach(function (text, vi) {
+        if (nv[si][vi].indexOf(nq) !== -1) {
+          out.push({ surah: si + 1, ayah: vi + 1, text: text });
+        }
+      });
+    });
+    return out;
+  }
+
+  function renderAyahResults() {
+    var box = document.getElementById('ayahResults');
+    var stats = document.getElementById('ayahStats');
+    if (!box) return;
+    var nq = norm(state.ayahQuery).trim();
+    if (!nq) {
+      box.innerHTML = '';
+      if (stats) stats.textContent = '';
+      return;
+    }
+    var list = searchAyahs(state.ayahQuery);
+    if (stats) stats.textContent = toAr(list.length) + ' آية';
+    var html = '';
+    html += '<h2 class="section-title">نتائج البحث في الآيات — ' + toAr(list.length) + '</h2>';
+    if (list.length) {
+      html += '<div class="tayah-list">';
+      var shown = list.length > 200 ? 200 : list.length;
+      for (var i = 0; i < shown; i++) {
+        html += renderAyahCard(list[i]);
+      }
+      html += '</div>';
+      if (list.length > 200) {
+        html += '<div class="hint-box">يوجد ' + toAr(list.length - 200) + ' نتيجة أخرى. قم بتضييق البحث.</div>';
+      }
+    } else {
+      html += '<div class="empty-state">لا توجد آيات مطابقة لبحثك</div>';
+    }
+    box.innerHTML = html;
   }
 
   function filterSurahs(q) {
@@ -738,6 +841,11 @@
     html += '</div>';
 
     html += '<div class="reader-options">';
+    html += '<div class="search-box surah-search">';
+    html += '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += '<input type="search" id="surahAyahSearch" placeholder="ابحث في الآيات…" value="' + esc(state.surahQuery) + '">';
+    html += '<span class="surah-search-count" id="surahSearchCount"></span>';
+    html += '</div>';
     html += '<button type="button" class="pill" id="tagsToggle">' + (showTags ? 'إخفاء الوسوم' : 'إظهار الوسوم') + '</button>';
     if (showTags) html += '<button type="button" class="pill" id="tagFilterToggle">تصفية الوسوم</button>';
     html += '</div>';
@@ -803,6 +911,15 @@
       var btn = e.target.closest('.tag-btn');
       if (btn) openTagMenu(+btn.dataset.surah, +btn.dataset.ayah, btn);
     });
+
+    var ayahSearch = document.getElementById('surahAyahSearch');
+    if (ayahSearch) {
+      ayahSearch.addEventListener('input', function () {
+        state.surahQuery = ayahSearch.value;
+        applySurahAyahFilter();
+      });
+    }
+    applySurahAyahFilter();
 
     document.getElementById('shareBtn').addEventListener('click', function () {
       var txt = q.verses.map(function (v, i) { return v + ' ' + toAr(i + 1); }).join(' ');
