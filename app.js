@@ -680,12 +680,15 @@
     html += '<span class="index-stats" id="indexStats"></span>';
     html += '</div>';
 
+    html += '<div class="ayah-search-wrap">';
     html += '<div class="index-toolbar">';
     html += '<div class="search-box">';
     html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
     html += '<input type="search" id="ayahSearch" placeholder="ابحث في آيات القرآن…" value="' + esc(state.ayahQuery) + '">';
     html += '</div>';
     html += '<span class="index-stats" id="ayahStats"></span>';
+    html += '</div>';
+    html += '<div id="ayahResults" class="ayah-results-popup"></div>';
     html += '</div>';
 
     if (lastSurah) {
@@ -695,7 +698,6 @@
     }
 
     html += '<div class="surah-grid" id="surahGrid"></div>';
-    html += '<div id="ayahResults"></div>';
     appEl.innerHTML = html;
 
     var input = document.getElementById('surahSearch');
@@ -710,6 +712,16 @@
       state.ayahQuery = ayahInput.value;
       renderAyahResults();
     });
+
+    document.getElementById('ayahResults').addEventListener('click', function (e) {
+      if (e.target.closest('.ayah-results-close')) {
+        state.ayahQuery = '';
+        ayahInput.value = '';
+        renderAyahResults();
+        ayahInput.focus();
+      }
+    });
+
     renderAyahResults();
   }
 
@@ -732,7 +744,7 @@
     var box = document.getElementById('ayahResults');
     var stats = document.getElementById('ayahStats');
     if (!box) return;
-    var nq = norm(state.ayahQuery).trim();
+    var nq = normAyahText(state.ayahQuery).trim();
     if (!nq) {
       box.innerHTML = '';
       if (stats) stats.textContent = '';
@@ -741,14 +753,17 @@
     var list = searchAyahs(state.ayahQuery);
     if (stats) stats.textContent = toAr(list.length) + ' آية';
     var html = '';
-    html += '<h2 class="section-title">نتائج البحث في الآيات — ' + toAr(list.length) + '</h2>';
+    html += '<div class="ayah-results-head">'
+      + '<span>نتائج البحث في الآيات — ' + toAr(list.length) + '</span>'
+      + '<button type="button" class="ayah-results-close" title="إغلاق" aria-label="إغلاق">✕</button>'
+      + '</div>';
     if (list.length) {
-      html += '<div class="tayah-list">';
+      html += '<div class="ayah-results-body"><div class="tayah-list">';
       var shown = list.length > 200 ? 200 : list.length;
       for (var i = 0; i < shown; i++) {
         html += renderAyahCard(list[i]);
       }
-      html += '</div>';
+      html += '</div></div>';
       if (list.length > 200) {
         html += '<div class="hint-box">يوجد ' + toAr(list.length - 200) + ' نتيجة أخرى. قم بتضييق البحث.</div>';
       }
