@@ -627,15 +627,14 @@ html.dark .icon-moon { display: block; }
 .cat-edit:hover { color: var(--accent); }
 .cat-del:hover { color: #c0392b; }
 .cat-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cat-block .cat-tags:empty { min-height: 2.2rem; }
 .tag-chip-btn[draggable="true"] { cursor: grab; }
 .tag-chip-btn[draggable="true"]:active { cursor: grabbing; }
 .tag-chip-btn.dragging { opacity: 0.45; }
-.cat-tags.drag-over {
+.cat-block.drag-over {
   outline: 2px dashed var(--accent);
+  outline-offset: 2px;
   background: var(--accent-soft);
-  border-radius: 10px;
-  padding: 0.3rem;
-  margin: -0.3rem;
 }
 
 .edit-panel {

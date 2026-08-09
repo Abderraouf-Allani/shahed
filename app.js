@@ -837,23 +837,23 @@
   }
 
   function handleTagDragOver(e) {
-    var catTags = e.target.closest('.cat-tags');
-    if (!catTags || !dragTagId) return;
+    var block = e.target.closest('.cat-block');
+    if (!block || !dragTagId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    catTags.classList.add('drag-over');
+    block.classList.add('drag-over');
   }
 
   function handleTagDragLeave(e) {
-    var catTags = e.target.closest('.cat-tags');
-    if (catTags && !catTags.contains(e.relatedTarget)) catTags.classList.remove('drag-over');
+    var block = e.target.closest('.cat-block');
+    if (block && !block.contains(e.relatedTarget)) block.classList.remove('drag-over');
   }
 
   function handleTagDrop(e) {
     e.preventDefault();
-    var catTags = e.target.closest('.cat-tags');
-    if (!catTags || !dragTagId) return;
-    var targetCatId = catTags.dataset.catid || '';
+    var block = e.target.closest('.cat-block');
+    if (!block || !dragTagId) return;
+    var targetCatId = block.dataset.catid || '';
     var t = tagState.byId[dragTagId];
     if (t && t.categoryId !== targetCatId) updateTag(dragTagId, { categoryId: targetCatId });
     dragTagId = null;
@@ -863,7 +863,7 @@
   function handleTagDragEnd(e) {
     var chip = e.target.closest('.tag-chip-btn');
     if (chip) chip.classList.remove('dragging');
-    appEl.querySelectorAll('.cat-tags.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
+    appEl.querySelectorAll('.cat-block.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
     dragTagId = null;
   }
 
@@ -952,7 +952,7 @@
       var catTags = tagState.tags.filter(function (t) { return t.categoryId === c.id && matches(t); });
       if (nq && !catTags.length) return;
       showSections = true;
-      html += '<div class="cat-block">';
+      html += '<div class="cat-block" data-catid="' + c.id + '">';
       html += '<div class="cat-head">';
       html += '<span class="cat-dot" style="background:' + c.color + '"></span>';
       html += '<span class="cat-name">' + esc(c.name) + '</span>';
@@ -960,16 +960,16 @@
       html += '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>';
       html += '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
       html += '</div>';
-      html += '<div class="cat-tags" data-catid="' + c.id + '">' + catTags.map(renderTagChipBtn).join('') + '</div>';
+      html += '<div class="cat-tags">' + catTags.map(renderTagChipBtn).join('') + '</div>';
       html += '</div>';
     });
 
     var uncat = tagState.tags.filter(function (t) { return !tagState.byCatId[t.categoryId] && matches(t); });
     if (uncat.length || (!nq && tagState.tags.some(function (t) { return !tagState.byCatId[t.categoryId]; }))) {
       showSections = true;
-      html += '<div class="cat-block">';
+      html += '<div class="cat-block" data-catid="">';
       html += '<div class="cat-head"><span class="cat-dot" style="background:var(--text-muted)"></span><span class="cat-name">بدون تصنيف</span><b class="cat-count">' + toAr(uncat.length) + '</b></div>';
-      html += '<div class="cat-tags" data-catid="">' + uncat.map(renderTagChipBtn).join('') + '</div>';
+      html += '<div class="cat-tags">' + uncat.map(renderTagChipBtn).join('') + '</div>';
       html += '</div>';
     }
 
