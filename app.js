@@ -305,21 +305,37 @@
     var menu = document.createElement('div');
     menu.className = 'tag-menu';
 
+    var byName = function (a, b) { return norm(a.name).localeCompare(norm(b.name), 'ar'); };
+
     var rows = '';
-    tagState.categories.forEach(function (c) {
-      var catTags = tagState.tags.filter(function (t) { return t.categoryId === c.id; });
+    tagState.categories.slice().sort(byName).forEach(function (c) {
+      var catTags = tagState.tags.filter(function (t) { return t.categoryId === c.id; }).sort(byName);
       if (!catTags.length) return;
-      rows += '<div class="tag-menu-cat"><span class="cat-dot" style="background:' + c.color + '"></span>' + esc(c.name) + '</div>';
+      rows += '<div class="tag-menu-cat-group">'
+        + '<div class="tag-menu-cat">'
+        + '<span class="cat-arrow">&#9662;</span>'
+        + '<span class="cat-dot" style="background:' + c.color + '"></span>'
+        + esc(c.name)
+        + '</div>'
+        + '<div class="tag-menu-cat-body">';
       catTags.forEach(function (t) {
         rows += tagMenuRow(t, currentIds);
       });
+      rows += '</div></div>';
     });
-    var uncat = tagState.tags.filter(function (t) { return !tagState.byCatId[t.categoryId]; });
+    var uncat = tagState.tags.filter(function (t) { return !tagState.byCatId[t.categoryId]; }).sort(byName);
     if (uncat.length) {
-      rows += '<div class="tag-menu-cat"><span class="cat-dot" style="background:var(--text-muted)"></span>بدون تصنيف</div>';
+      rows += '<div class="tag-menu-cat-group">'
+        + '<div class="tag-menu-cat">'
+        + '<span class="cat-arrow">&#9662;</span>'
+        + '<span class="cat-dot" style="background:var(--text-muted)"></span>'
+        + 'بدون تصنيف'
+        + '</div>'
+        + '<div class="tag-menu-cat-body">';
       uncat.forEach(function (t) {
         rows += tagMenuRow(t, currentIds);
       });
+      rows += '</div></div>';
     }
     if (!rows) rows = '<div class="tag-menu-empty">لا توجد وسوم بعد — أضف وسماً جديداً بالأسفل</div>';
 
@@ -359,6 +375,13 @@
       });
     });
 
+    menu.querySelectorAll('.tag-menu-cat').forEach(function (cat) {
+      cat.addEventListener('click', function (e) {
+        if (e.target.closest('input')) return;
+        cat.closest('.tag-menu-cat-group').classList.toggle('collapsed');
+      });
+    });
+
     menu.querySelector('.tag-new').addEventListener('submit', function (e) {
       e.preventDefault();
       var input = menu.querySelector('.tag-new input');
@@ -392,14 +415,13 @@
       el.style.display = show ? '' : 'none';
       if (show) visibleRows++;
     });
-    list.querySelectorAll('.tag-menu-cat').forEach(function (cat) {
+    list.querySelectorAll('.tag-menu-cat-group').forEach(function (group) {
       var any = false;
-      var next = cat.nextElementSibling;
-      while (next && !next.classList.contains('tag-menu-cat')) {
-        if (next.style.display !== 'none') any = true;
-        next = next.nextElementSibling;
-      }
-      cat.style.display = any ? '' : 'none';
+      group.querySelectorAll('.tag-menu-row').forEach(function (row) {
+        if (row.style.display !== 'none') any = true;
+      });
+      group.style.display = any ? '' : 'none';
+      if (q && any) group.classList.remove('collapsed');
     });
     var empty = list.querySelector('.tag-menu-empty');
     if (empty) empty.style.display = visibleRows ? 'none' : '';
