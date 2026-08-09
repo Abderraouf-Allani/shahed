@@ -275,7 +275,9 @@
   }
 
   function tagChip(t) {
-    return '<span class="tag-chip" style="--tagc:' + t.color + '">' + esc(t.name) + '</span>';
+    var catName = t.categoryId && tagState.byCatId[t.categoryId]
+      ? tagState.byCatId[t.categoryId].name : 'بدون تصنيف';
+    return '<span class="tag-chip" style="--tagc:' + t.color + '" data-cat="' + esc(catName) + '">' + esc(t.name) + '</span>';
   }
 
   var TAG_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
