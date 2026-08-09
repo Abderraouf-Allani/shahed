@@ -1284,12 +1284,14 @@
       fetch('data/surahs.json').then(function (r) { return r.json(); }),
       fetch('data/quran.json').then(function (r) { return r.json(); }),
       fetch('data/dawaa.json').then(function (r) { return r.json(); }),
-      fetch('data/jam3.json').then(function (r) { return r.json(); })
+      fetch('data/jam3.json').then(function (r) { return r.json(); }),
+      fetch('data/iman.json').then(function (r) { return r.json(); })
     ]).then(function (res) {
       state.surahs = res[0];
       state.quran = res[1];
       mergeSeedTag(res[2]);
       mergeSeedTag(res[3]);
+      mergeSeedTag(res[4]);
     });
   }
 
