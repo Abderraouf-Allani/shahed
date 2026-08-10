@@ -17,6 +17,77 @@
 </head>
 <body>
 
+  <div id="loader" class="loader" role="status" aria-live="polite">
+    <svg class="loader-star" viewBox="-120 -120 240 240" aria-hidden="true">
+      <circle class="loader-ring" cx="0" cy="0" r="108"/>
+      <g class="loader-spikes"></g>
+      <path class="loader-core"/>
+    </svg>
+    <div class="loader-caption">تُحمَّل البيانات…</div>
+  </div>
+
+  <script>
+    (function () {
+      var SPIKES = 8;
+      var RT = 100;
+      var RN = 100 * Math.sqrt(2 - Math.sqrt(2));
+      var NS = 'http://www.w3.org/2000/svg';
+      function pt(r, deg) {
+        var a = deg * Math.PI / 180;
+        return [r * Math.cos(a), r * Math.sin(a)];
+      }
+      function el(tag, attrs) {
+        var e = document.createElementNS(NS, tag);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        return e;
+      }
+      var svg = document.getElementById('loader').querySelector('.loader-star');
+      var spikesG = svg.querySelector('.loader-spikes');
+      var spikes = [];
+      for (var k = 0; k < SPIKES; k++) {
+        var deg = k * 45;
+        var tip = pt(RT, deg);
+        var n1 = pt(RN, deg - 22.5);
+        var n2 = pt(RN, deg + 22.5);
+        var p = el('path', {
+          'class': 'loader-spike',
+          'd': 'M0 0 L' + n1[0] + ' ' + n1[1] + ' L' + tip[0] + ' ' + tip[1] + ' L' + n2[0] + ' ' + n2[1] + ' Z'
+        });
+        spikesG.appendChild(p);
+        spikes.push(p);
+      }
+      var coreD = '';
+      for (var m = 0; m < SPIKES; m++) {
+        var n = pt(RN, m * 45 + 22.5);
+        coreD += (m ? ' L' : 'M') + n[0] + ' ' + n[1];
+      }
+      coreD += ' Z';
+      svg.querySelector('.loader-core').setAttribute('d', coreD);
+
+      var loader = document.getElementById('loader');
+      var caption = loader.querySelector('.loader-caption');
+      var done = false;
+      window.__quranLoader = {
+        progress: function (frac) {
+          if (done) return;
+          var n = Math.round(Math.max(0, Math.min(1, frac)) * SPIKES);
+          for (var i = 0; i < SPIKES; i++) spikes[i].classList.toggle('lit', i < n);
+        },
+        done: function () {
+          if (done) return;
+          done = true;
+          for (var i = 0; i < SPIKES; i++) spikes[i].classList.add('lit');
+          svg.querySelector('.loader-core').classList.add('lit');
+          if (caption) caption.textContent = '';
+          loader.classList.add('loader-ready');
+          setTimeout(function () {
+            if (loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 800);
+        }
+      };
+    })();
+  </script>
+
   <header class="app-header">
     <div class="header-inner">
       <a class="brand" href="#/">

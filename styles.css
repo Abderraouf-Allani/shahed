@@ -508,6 +508,19 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   overflow-y: auto;
 }
 .tag-context-popup-empty { font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 0.6rem 0; margin-bottom: 0.4rem; }
+.tag-context-popup-video {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--tagc, var(--accent));
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.tag-context-popup-video a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.tag-context-popup-video a:hover { text-decoration: underline; }
+.tag-context-popup-video .tag-context-popup-duration { display: block; color: var(--text-muted); font-size: 0.78rem; margin-top: 0.25rem; }
 .tag-context-popup-close {
   display: block; width: 100%;
   border: 1px solid var(--border); border-radius: 8px;
@@ -660,9 +673,13 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   font-family: inherit;
   font-size: 0.9rem;
 }
-.tag-menu-close {
-  width: 100%;
+.tag-menu-actions {
+  display: flex;
+  gap: 0.4rem;
   margin-top: 0.55rem;
+}
+.tag-menu-actions button {
+  flex: 1;
   padding: 0.35rem;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -671,6 +688,13 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   cursor: pointer;
   font-family: inherit;
   font-size: 0.9rem;
+}
+.tag-menu-none {
+  color: var(--muted);
+}
+.tag-menu-none:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 /* ---------- tags view ---------- */
@@ -891,3 +915,77 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   line-height: 1;
 }
 .tayah-remove:hover { color: #c0392b; border-color: #c0392b; }
+
+/* ---------- loading overlay ---------- */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.3rem;
+  background: #fbf7ec;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+html.dark .loader { background: #171a1f; }
+.loader-ready { opacity: 0; visibility: hidden; pointer-events: none; }
+.loader-star {
+  width: min(42vh, 220px);
+  height: auto;
+  animation: loader-breathe 2.6s ease-in-out infinite;
+}
+@keyframes loader-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.97); opacity: 0.9; }
+}
+.loader-spike {
+  fill: rgba(206, 150, 55, 0.13);
+  stroke: rgba(206, 150, 55, 0.35);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: fill 0.55s ease, stroke 0.55s ease, filter 0.55s ease;
+}
+.loader-spike.lit {
+  fill: #e4b25c;
+  stroke: #f2d9a0;
+  filter: drop-shadow(0 0 10px rgba(233, 178, 82, 0.75));
+}
+html.dark .loader-spike {
+  fill: rgba(232, 178, 82, 0.07);
+  stroke: rgba(232, 178, 82, 0.32);
+}
+html.dark .loader-spike.lit {
+  fill: #e4b25c;
+  stroke: #f7e3b3;
+}
+.loader-core {
+  fill: rgba(30, 90, 60, 0.14);
+  stroke: rgba(30, 90, 60, 0.35);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: fill 0.7s ease;
+}
+.loader-core.lit {
+  fill: #1e5a3c;
+  stroke: #3a8a5e;
+}
+html.dark .loader-core { fill: rgba(78, 156, 110, 0.1); stroke: rgba(78, 156, 110, 0.35); }
+html.dark .loader-core.lit { fill: #3f9a68; stroke: #5fbc87; }
+.loader-ring {
+  fill: none;
+  stroke: rgba(30, 90, 60, 0.25);
+  stroke-width: 1;
+  stroke-dasharray: 3 7;
+  animation: loader-spin 30s linear infinite;
+}
+html.dark .loader-ring { stroke: rgba(78, 156, 110, 0.3); }
+@keyframes loader-spin { to { transform: rotate(360deg); } }
+.loader-caption {
+  color: #7a6f5d;
+  font-size: 0.95rem;
+  font-family: "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+html.dark .loader-caption { color: #9a917f; }

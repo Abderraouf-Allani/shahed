@@ -1,0 +1,2080 @@
+{
+ "categories": [
+  {
+   "id": "c-tafsir",
+   "name": "تفسير",
+   "color": "#7c3aed"
+  }
+ ],
+ "tags": [
+  {
+   "id": "t-adib",
+   "name": "أديب الصانع",
+   "description": "مقاطع «تفسير الوجيز للواحدي» للدكتور أديب الصانع على يوتيوب.",
+   "color": "#7c3aed",
+   "categoryId": "c-tafsir"
+  }
+ ],
+ "verses": {
+  "1:1": [
+   "t-adib"
+  ],
+  "1:2": [
+   "t-adib"
+  ],
+  "1:3": [
+   "t-adib"
+  ],
+  "1:4": [
+   "t-adib"
+  ],
+  "1:5": [
+   "t-adib"
+  ],
+  "1:6": [
+   "t-adib"
+  ],
+  "1:7": [
+   "t-adib"
+  ],
+  "2:1": [
+   "t-adib"
+  ],
+  "2:2": [
+   "t-adib"
+  ],
+  "2:3": [
+   "t-adib"
+  ],
+  "2:4": [
+   "t-adib"
+  ],
+  "2:5": [
+   "t-adib"
+  ],
+  "2:6": [
+   "t-adib"
+  ],
+  "2:7": [
+   "t-adib"
+  ],
+  "2:8": [
+   "t-adib"
+  ],
+  "2:9": [
+   "t-adib"
+  ],
+  "2:10": [
+   "t-adib"
+  ],
+  "2:11": [
+   "t-adib"
+  ],
+  "2:12": [
+   "t-adib"
+  ],
+  "2:13": [
+   "t-adib"
+  ],
+  "2:14": [
+   "t-adib"
+  ],
+  "2:15": [
+   "t-adib"
+  ],
+  "2:16": [
+   "t-adib"
+  ],
+  "2:17": [
+   "t-adib"
+  ],
+  "2:18": [
+   "t-adib"
+  ],
+  "2:19": [
+   "t-adib"
+  ],
+  "2:20": [
+   "t-adib"
+  ],
+  "2:21": [
+   "t-adib"
+  ],
+  "2:22": [
+   "t-adib"
+  ],
+  "2:23": [
+   "t-adib"
+  ],
+  "2:24": [
+   "t-adib"
+  ],
+  "2:25": [
+   "t-adib"
+  ],
+  "2:26": [
+   "t-adib"
+  ],
+  "2:27": [
+   "t-adib"
+  ],
+  "2:28": [
+   "t-adib"
+  ],
+  "2:29": [
+   "t-adib"
+  ],
+  "2:30": [
+   "t-adib"
+  ],
+  "2:31": [
+   "t-adib"
+  ],
+  "2:32": [
+   "t-adib"
+  ],
+  "2:33": [
+   "t-adib"
+  ],
+  "2:34": [
+   "t-adib"
+  ],
+  "2:35": [
+   "t-adib"
+  ],
+  "2:36": [
+   "t-adib"
+  ],
+  "2:37": [
+   "t-adib"
+  ],
+  "2:38": [
+   "t-adib"
+  ],
+  "2:39": [
+   "t-adib"
+  ],
+  "2:40": [
+   "t-adib"
+  ],
+  "2:41": [
+   "t-adib"
+  ],
+  "2:42": [
+   "t-adib"
+  ],
+  "2:43": [
+   "t-adib"
+  ],
+  "2:44": [
+   "t-adib"
+  ],
+  "2:45": [
+   "t-adib"
+  ],
+  "2:46": [
+   "t-adib"
+  ],
+  "2:47": [
+   "t-adib"
+  ],
+  "2:48": [
+   "t-adib"
+  ],
+  "2:49": [
+   "t-adib"
+  ],
+  "2:50": [
+   "t-adib"
+  ],
+  "2:51": [
+   "t-adib"
+  ],
+  "2:52": [
+   "t-adib"
+  ],
+  "2:53": [
+   "t-adib"
+  ],
+  "2:54": [
+   "t-adib"
+  ],
+  "2:55": [
+   "t-adib"
+  ],
+  "2:56": [
+   "t-adib"
+  ],
+  "2:57": [
+   "t-adib"
+  ],
+  "2:58": [
+   "t-adib"
+  ],
+  "2:59": [
+   "t-adib"
+  ],
+  "2:60": [
+   "t-adib"
+  ],
+  "2:61": [
+   "t-adib"
+  ],
+  "2:62": [
+   "t-adib"
+  ],
+  "2:63": [
+   "t-adib"
+  ],
+  "2:64": [
+   "t-adib"
+  ],
+  "2:65": [
+   "t-adib"
+  ],
+  "2:66": [
+   "t-adib"
+  ],
+  "2:67": [
+   "t-adib"
+  ],
+  "2:68": [
+   "t-adib"
+  ],
+  "2:69": [
+   "t-adib"
+  ],
+  "2:70": [
+   "t-adib"
+  ],
+  "2:71": [
+   "t-adib"
+  ],
+  "2:72": [
+   "t-adib"
+  ],
+  "2:73": [
+   "t-adib"
+  ],
+  "2:74": [
+   "t-adib"
+  ],
+  "2:75": [
+   "t-adib"
+  ],
+  "2:76": [
+   "t-adib"
+  ],
+  "2:77": [
+   "t-adib"
+  ],
+  "2:78": [
+   "t-adib"
+  ],
+  "2:79": [
+   "t-adib"
+  ],
+  "2:80": [
+   "t-adib"
+  ],
+  "2:81": [
+   "t-adib"
+  ],
+  "2:82": [
+   "t-adib"
+  ],
+  "2:83": [
+   "t-adib"
+  ],
+  "2:84": [
+   "t-adib"
+  ],
+  "2:85": [
+   "t-adib"
+  ],
+  "2:86": [
+   "t-adib"
+  ],
+  "2:87": [
+   "t-adib"
+  ],
+  "2:88": [
+   "t-adib"
+  ],
+  "2:89": [
+   "t-adib"
+  ],
+  "2:90": [
+   "t-adib"
+  ],
+  "2:91": [
+   "t-adib"
+  ],
+  "2:92": [
+   "t-adib"
+  ],
+  "2:93": [
+   "t-adib"
+  ],
+  "2:94": [
+   "t-adib"
+  ],
+  "2:95": [
+   "t-adib"
+  ],
+  "2:96": [
+   "t-adib"
+  ],
+  "2:97": [
+   "t-adib"
+  ],
+  "2:98": [
+   "t-adib"
+  ],
+  "2:99": [
+   "t-adib"
+  ],
+  "2:100": [
+   "t-adib"
+  ],
+  "2:101": [
+   "t-adib"
+  ],
+  "2:102": [
+   "t-adib"
+  ],
+  "2:103": [
+   "t-adib"
+  ],
+  "2:104": [
+   "t-adib"
+  ],
+  "2:110": [
+   "t-adib"
+  ],
+  "2:111": [
+   "t-adib"
+  ],
+  "2:114": [
+   "t-adib"
+  ],
+  "2:115": [
+   "t-adib"
+  ],
+  "2:119": [
+   "t-adib"
+  ],
+  "2:120": [
+   "t-adib"
+  ],
+  "2:124": [
+   "t-adib"
+  ],
+  "2:125": [
+   "t-adib"
+  ],
+  "2:128": [
+   "t-adib"
+  ],
+  "2:129": [
+   "t-adib"
+  ],
+  "2:133": [
+   "t-adib"
+  ],
+  "2:134": [
+   "t-adib"
+  ],
+  "2:138": [
+   "t-adib"
+  ],
+  "2:139": [
+   "t-adib"
+  ],
+  "2:142": [
+   "t-adib"
+  ],
+  "2:143": [
+   "t-adib"
+  ],
+  "2:145": [
+   "t-adib"
+  ],
+  "2:146": [
+   "t-adib"
+  ],
+  "2:150": [
+   "t-adib"
+  ],
+  "2:151": [
+   "t-adib"
+  ],
+  "2:157": [
+   "t-adib"
+  ],
+  "2:158": [
+   "t-adib"
+  ],
+  "2:159": [
+   "t-adib"
+  ],
+  "2:160": [
+   "t-adib"
+  ],
+  "2:161": [
+   "t-adib"
+  ],
+  "2:162": [
+   "t-adib"
+  ],
+  "2:163": [
+   "t-adib"
+  ],
+  "2:164": [
+   "t-adib"
+  ],
+  "2:165": [
+   "t-adib"
+  ],
+  "2:166": [
+   "t-adib"
+  ],
+  "2:167": [
+   "t-adib"
+  ],
+  "2:168": [
+   "t-adib"
+  ],
+  "2:169": [
+   "t-adib"
+  ],
+  "2:170": [
+   "t-adib"
+  ],
+  "2:171": [
+   "t-adib"
+  ],
+  "2:172": [
+   "t-adib"
+  ],
+  "2:173": [
+   "t-adib"
+  ],
+  "2:174": [
+   "t-adib"
+  ],
+  "2:175": [
+   "t-adib"
+  ],
+  "2:176": [
+   "t-adib"
+  ],
+  "2:177": [
+   "t-adib"
+  ],
+  "2:178": [
+   "t-adib"
+  ],
+  "2:179": [
+   "t-adib"
+  ],
+  "2:180": [
+   "t-adib"
+  ],
+  "2:181": [
+   "t-adib"
+  ],
+  "2:182": [
+   "t-adib"
+  ],
+  "2:183": [
+   "t-adib"
+  ],
+  "2:184": [
+   "t-adib"
+  ],
+  "2:185": [
+   "t-adib"
+  ],
+  "2:186": [
+   "t-adib"
+  ],
+  "2:187": [
+   "t-adib"
+  ],
+  "2:188": [
+   "t-adib"
+  ],
+  "2:189": [
+   "t-adib"
+  ],
+  "2:190": [
+   "t-adib"
+  ],
+  "2:191": [
+   "t-adib"
+  ],
+  "2:192": [
+   "t-adib"
+  ],
+  "2:193": [
+   "t-adib"
+  ],
+  "2:194": [
+   "t-adib"
+  ],
+  "2:195": [
+   "t-adib"
+  ],
+  "2:196": [
+   "t-adib"
+  ],
+  "2:197": [
+   "t-adib"
+  ],
+  "2:198": [
+   "t-adib"
+  ],
+  "2:199": [
+   "t-adib"
+  ],
+  "2:200": [
+   "t-adib"
+  ],
+  "2:201": [
+   "t-adib"
+  ],
+  "2:202": [
+   "t-adib"
+  ],
+  "2:203": [
+   "t-adib"
+  ],
+  "2:204": [
+   "t-adib"
+  ],
+  "2:205": [
+   "t-adib"
+  ],
+  "2:206": [
+   "t-adib"
+  ],
+  "2:207": [
+   "t-adib"
+  ],
+  "2:208": [
+   "t-adib"
+  ],
+  "2:209": [
+   "t-adib"
+  ],
+  "2:210": [
+   "t-adib"
+  ],
+  "2:211": [
+   "t-adib"
+  ],
+  "2:212": [
+   "t-adib"
+  ],
+  "2:213": [
+   "t-adib"
+  ],
+  "2:214": [
+   "t-adib"
+  ],
+  "2:215": [
+   "t-adib"
+  ],
+  "2:216": [
+   "t-adib"
+  ],
+  "2:217": [
+   "t-adib"
+  ],
+  "2:218": [
+   "t-adib"
+  ],
+  "2:219": [
+   "t-adib"
+  ],
+  "2:220": [
+   "t-adib"
+  ],
+  "2:221": [
+   "t-adib"
+  ],
+  "2:222": [
+   "t-adib"
+  ],
+  "2:223": [
+   "t-adib"
+  ],
+  "2:224": [
+   "t-adib"
+  ],
+  "2:225": [
+   "t-adib"
+  ],
+  "2:226": [
+   "t-adib"
+  ],
+  "2:227": [
+   "t-adib"
+  ],
+  "2:228": [
+   "t-adib"
+  ],
+  "2:229": [
+   "t-adib"
+  ],
+  "2:230": [
+   "t-adib"
+  ],
+  "2:231": [
+   "t-adib"
+  ],
+  "2:232": [
+   "t-adib"
+  ],
+  "2:233": [
+   "t-adib"
+  ],
+  "2:234": [
+   "t-adib"
+  ],
+  "2:235": [
+   "t-adib"
+  ],
+  "2:236": [
+   "t-adib"
+  ],
+  "2:237": [
+   "t-adib"
+  ],
+  "2:238": [
+   "t-adib"
+  ],
+  "2:239": [
+   "t-adib"
+  ],
+  "2:240": [
+   "t-adib"
+  ],
+  "2:241": [
+   "t-adib"
+  ],
+  "2:242": [
+   "t-adib"
+  ],
+  "2:243": [
+   "t-adib"
+  ],
+  "2:244": [
+   "t-adib"
+  ],
+  "2:245": [
+   "t-adib"
+  ],
+  "2:246": [
+   "t-adib"
+  ],
+  "2:247": [
+   "t-adib"
+  ],
+  "2:248": [
+   "t-adib"
+  ],
+  "2:249": [
+   "t-adib"
+  ],
+  "2:250": [
+   "t-adib"
+  ],
+  "2:251": [
+   "t-adib"
+  ],
+  "2:252": [
+   "t-adib"
+  ],
+  "2:253": [
+   "t-adib"
+  ],
+  "2:254": [
+   "t-adib"
+  ],
+  "2:255": [
+   "t-adib"
+  ],
+  "2:256": [
+   "t-adib"
+  ],
+  "2:257": [
+   "t-adib"
+  ],
+  "2:258": [
+   "t-adib"
+  ],
+  "2:259": [
+   "t-adib"
+  ],
+  "2:260": [
+   "t-adib"
+  ],
+  "2:261": [
+   "t-adib"
+  ],
+  "2:262": [
+   "t-adib"
+  ],
+  "2:263": [
+   "t-adib"
+  ],
+  "2:264": [
+   "t-adib"
+  ],
+  "2:265": [
+   "t-adib"
+  ],
+  "2:266": [
+   "t-adib"
+  ],
+  "2:267": [
+   "t-adib"
+  ],
+  "2:271": [
+   "t-adib"
+  ],
+  "2:272": [
+   "t-adib"
+  ],
+  "2:274": [
+   "t-adib"
+  ],
+  "2:275": [
+   "t-adib"
+  ],
+  "2:276": [
+   "t-adib"
+  ],
+  "2:277": [
+   "t-adib"
+  ],
+  "2:278": [
+   "t-adib"
+  ],
+  "2:279": [
+   "t-adib"
+  ],
+  "2:280": [
+   "t-adib"
+  ],
+  "2:281": [
+   "t-adib"
+  ],
+  "2:282": [
+   "t-adib"
+  ],
+  "2:283": [
+   "t-adib"
+  ],
+  "2:284": [
+   "t-adib"
+  ],
+  "2:285": [
+   "t-adib"
+  ],
+  "2:286": [
+   "t-adib"
+  ]
+ },
+ "ayahMeta": {
+  "t-adib": {
+   "1:1": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:2": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:3": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:4": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:5": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:6": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "1:7": {
+    "url": "https://www.youtube.com/watch?v=s6TqOSwuPh4",
+    "duration": 4346,
+    "videoTitle": "01 تفسير سورة الفاتحة  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:1": {
+    "url": "https://www.youtube.com/watch?v=XWwIELaCfw8",
+    "duration": 3647,
+    "videoTitle": "تفسير سورة البقرة (الآية: 1 - 5) | تفسير الوجيز للواحدي   02 | د. أديب الصانع"
+   },
+   "2:2": {
+    "url": "https://www.youtube.com/watch?v=XWwIELaCfw8",
+    "duration": 3647,
+    "videoTitle": "تفسير سورة البقرة (الآية: 1 - 5) | تفسير الوجيز للواحدي   02 | د. أديب الصانع"
+   },
+   "2:3": {
+    "url": "https://www.youtube.com/watch?v=XWwIELaCfw8",
+    "duration": 3647,
+    "videoTitle": "تفسير سورة البقرة (الآية: 1 - 5) | تفسير الوجيز للواحدي   02 | د. أديب الصانع"
+   },
+   "2:4": {
+    "url": "https://www.youtube.com/watch?v=XWwIELaCfw8",
+    "duration": 3647,
+    "videoTitle": "تفسير سورة البقرة (الآية: 1 - 5) | تفسير الوجيز للواحدي   02 | د. أديب الصانع"
+   },
+   "2:5": {
+    "url": "https://www.youtube.com/watch?v=XWwIELaCfw8",
+    "duration": 3647,
+    "videoTitle": "تفسير سورة البقرة (الآية: 1 - 5) | تفسير الوجيز للواحدي   02 | د. أديب الصانع"
+   },
+   "2:6": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:7": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:8": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:9": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:10": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:11": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:12": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:13": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:14": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:15": {
+    "url": "https://www.youtube.com/watch?v=cV-OU9wOr54",
+    "duration": 4404,
+    "videoTitle": "تفسير سورة البقرة (الآية: 6 - 15) | تفسير الوجيز للواحدي  03 | د. أديب الصانع"
+   },
+   "2:16": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:17": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:18": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:19": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:20": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:21": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:22": {
+    "url": "https://www.youtube.com/watch?v=gi_T6EtavEQ",
+    "duration": 4187,
+    "videoTitle": "تفسير سورة البقرة (الآية: 16 - 22) | تفسير الوجيز للواحدي  04 | د. أديب الصانع"
+   },
+   "2:23": {
+    "url": "https://www.youtube.com/watch?v=YSjSUyPe_os",
+    "duration": 4081,
+    "videoTitle": "تفسير سورة البقرة (الآية: 23 - 27) | تفسير الوجيز للواحدي  05 | د. أديب الصانع"
+   },
+   "2:24": {
+    "url": "https://www.youtube.com/watch?v=YSjSUyPe_os",
+    "duration": 4081,
+    "videoTitle": "تفسير سورة البقرة (الآية: 23 - 27) | تفسير الوجيز للواحدي  05 | د. أديب الصانع"
+   },
+   "2:25": {
+    "url": "https://www.youtube.com/watch?v=YSjSUyPe_os",
+    "duration": 4081,
+    "videoTitle": "تفسير سورة البقرة (الآية: 23 - 27) | تفسير الوجيز للواحدي  05 | د. أديب الصانع"
+   },
+   "2:26": {
+    "url": "https://www.youtube.com/watch?v=YSjSUyPe_os",
+    "duration": 4081,
+    "videoTitle": "تفسير سورة البقرة (الآية: 23 - 27) | تفسير الوجيز للواحدي  05 | د. أديب الصانع"
+   },
+   "2:27": {
+    "url": "https://www.youtube.com/watch?v=YSjSUyPe_os",
+    "duration": 4081,
+    "videoTitle": "تفسير سورة البقرة (الآية: 23 - 27) | تفسير الوجيز للواحدي  05 | د. أديب الصانع"
+   },
+   "2:28": {
+    "url": "https://www.youtube.com/watch?v=E2RNA-4PxgI",
+    "duration": 3495,
+    "videoTitle": "06 تفسير سورة البقرة (الآية 28 - 30)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:29": {
+    "url": "https://www.youtube.com/watch?v=E2RNA-4PxgI",
+    "duration": 3495,
+    "videoTitle": "06 تفسير سورة البقرة (الآية 28 - 30)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:30": {
+    "url": "https://www.youtube.com/watch?v=E2RNA-4PxgI",
+    "duration": 3495,
+    "videoTitle": "06 تفسير سورة البقرة (الآية 28 - 30)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:31": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:32": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:33": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:34": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:35": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:36": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:37": {
+    "url": "https://www.youtube.com/watch?v=z0kmf1zZm1Y",
+    "duration": 4421,
+    "videoTitle": "07 تفسير سورة البقرة (الآية 31 - 37)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:38": {
+    "url": "https://www.youtube.com/watch?v=ziEmYVCAfQQ",
+    "duration": 4128,
+    "videoTitle": "08 تفسير سورة البقرة (الآية 38 -42)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:39": {
+    "url": "https://www.youtube.com/watch?v=ziEmYVCAfQQ",
+    "duration": 4128,
+    "videoTitle": "08 تفسير سورة البقرة (الآية 38 -42)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:40": {
+    "url": "https://www.youtube.com/watch?v=ziEmYVCAfQQ",
+    "duration": 4128,
+    "videoTitle": "08 تفسير سورة البقرة (الآية 38 -42)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:41": {
+    "url": "https://www.youtube.com/watch?v=ziEmYVCAfQQ",
+    "duration": 4128,
+    "videoTitle": "08 تفسير سورة البقرة (الآية 38 -42)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:42": {
+    "url": "https://www.youtube.com/watch?v=ziEmYVCAfQQ",
+    "duration": 4128,
+    "videoTitle": "08 تفسير سورة البقرة (الآية 38 -42)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:43": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:44": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:45": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:46": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:47": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:48": {
+    "url": "https://www.youtube.com/watch?v=WwRzAbTeWh0",
+    "duration": 3901,
+    "videoTitle": "09 تفسير سورة البقرة (الآية 43 - 48)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:49": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:50": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:51": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:52": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:53": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:54": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:55": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:56": {
+    "url": "https://www.youtube.com/watch?v=iiCp6LmBtyo",
+    "duration": 3588,
+    "videoTitle": "10 تفسير سورة البقرة (الآية 49 - 56)  قراءة في تفسير الوجيز للواحدي #د_أديب_الصانع"
+   },
+   "2:57": {
+    "url": "https://www.youtube.com/watch?v=54hQVtHwp-w",
+    "duration": 4243,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 57 -61) 11"
+   },
+   "2:58": {
+    "url": "https://www.youtube.com/watch?v=54hQVtHwp-w",
+    "duration": 4243,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 57 -61) 11"
+   },
+   "2:59": {
+    "url": "https://www.youtube.com/watch?v=54hQVtHwp-w",
+    "duration": 4243,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 57 -61) 11"
+   },
+   "2:60": {
+    "url": "https://www.youtube.com/watch?v=54hQVtHwp-w",
+    "duration": 4243,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 57 -61) 11"
+   },
+   "2:61": {
+    "url": "https://www.youtube.com/watch?v=54hQVtHwp-w",
+    "duration": 4243,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 57 -61) 11"
+   },
+   "2:62": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:63": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:64": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:65": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:66": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:67": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:68": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:69": {
+    "url": "https://www.youtube.com/watch?v=918S9viO5lQ",
+    "duration": 4432,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 62 -69) 12"
+   },
+   "2:70": {
+    "url": "https://www.youtube.com/watch?v=aYl6S38RhhU",
+    "duration": 3902,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 70 -74) 13"
+   },
+   "2:71": {
+    "url": "https://www.youtube.com/watch?v=aYl6S38RhhU",
+    "duration": 3902,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 70 -74) 13"
+   },
+   "2:72": {
+    "url": "https://www.youtube.com/watch?v=aYl6S38RhhU",
+    "duration": 3902,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 70 -74) 13"
+   },
+   "2:73": {
+    "url": "https://www.youtube.com/watch?v=aYl6S38RhhU",
+    "duration": 3902,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 70 -74) 13"
+   },
+   "2:74": {
+    "url": "https://www.youtube.com/watch?v=aYl6S38RhhU",
+    "duration": 3902,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 70 -74) 13"
+   },
+   "2:75": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:76": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:77": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:78": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:79": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:80": {
+    "url": "https://www.youtube.com/watch?v=uekUYtzId0A",
+    "duration": 4007,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 75 -80) 14"
+   },
+   "2:81": {
+    "url": "https://www.youtube.com/watch?v=kt3etoGsNXk",
+    "duration": 4220,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 81 -85) 15"
+   },
+   "2:82": {
+    "url": "https://www.youtube.com/watch?v=kt3etoGsNXk",
+    "duration": 4220,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 81 -85) 15"
+   },
+   "2:83": {
+    "url": "https://www.youtube.com/watch?v=kt3etoGsNXk",
+    "duration": 4220,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 81 -85) 15"
+   },
+   "2:84": {
+    "url": "https://www.youtube.com/watch?v=kt3etoGsNXk",
+    "duration": 4220,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 81 -85) 15"
+   },
+   "2:85": {
+    "url": "https://www.youtube.com/watch?v=kt3etoGsNXk",
+    "duration": 4220,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 81 -85) 15"
+   },
+   "2:86": {
+    "url": "https://www.youtube.com/watch?v=VOjghj8k4YM",
+    "duration": 3544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 86 -90) 16"
+   },
+   "2:87": {
+    "url": "https://www.youtube.com/watch?v=VOjghj8k4YM",
+    "duration": 3544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 86 -90) 16"
+   },
+   "2:88": {
+    "url": "https://www.youtube.com/watch?v=VOjghj8k4YM",
+    "duration": 3544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 86 -90) 16"
+   },
+   "2:89": {
+    "url": "https://www.youtube.com/watch?v=VOjghj8k4YM",
+    "duration": 3544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 86 -90) 16"
+   },
+   "2:90": {
+    "url": "https://www.youtube.com/watch?v=VOjghj8k4YM",
+    "duration": 3544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 86 -90) 16"
+   },
+   "2:91": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:92": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:93": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:94": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:95": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:96": {
+    "url": "https://www.youtube.com/watch?v=I59W7sVU2Zg",
+    "duration": 4036,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 91 - 96) 17"
+   },
+   "2:97": {
+    "url": "https://www.youtube.com/watch?v=WTDB2x4AALE",
+    "duration": 3728,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 97 - 101) 18"
+   },
+   "2:98": {
+    "url": "https://www.youtube.com/watch?v=WTDB2x4AALE",
+    "duration": 3728,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 97 - 101) 18"
+   },
+   "2:99": {
+    "url": "https://www.youtube.com/watch?v=WTDB2x4AALE",
+    "duration": 3728,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 97 - 101) 18"
+   },
+   "2:100": {
+    "url": "https://www.youtube.com/watch?v=WTDB2x4AALE",
+    "duration": 3728,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 97 - 101) 18"
+   },
+   "2:101": {
+    "url": "https://www.youtube.com/watch?v=WTDB2x4AALE",
+    "duration": 3728,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 97 - 101) 18"
+   },
+   "2:102": {
+    "url": "https://www.youtube.com/watch?v=NOTsYanMkkc",
+    "duration": 3556,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 102، 103) 19"
+   },
+   "2:103": {
+    "url": "https://www.youtube.com/watch?v=NOTsYanMkkc",
+    "duration": 3556,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 102، 103) 19"
+   },
+   "2:104": {
+    "url": "https://www.youtube.com/watch?v=uzb4BVJ9xUc",
+    "duration": 4790,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 104، 110) 20"
+   },
+   "2:110": {
+    "url": "https://www.youtube.com/watch?v=uzb4BVJ9xUc",
+    "duration": 4790,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 104، 110) 20"
+   },
+   "2:111": {
+    "url": "https://www.youtube.com/watch?v=MSl6h8ER-G4",
+    "duration": 3654,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 111، 114) 21"
+   },
+   "2:114": {
+    "url": "https://www.youtube.com/watch?v=MSl6h8ER-G4",
+    "duration": 3654,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 111، 114) 21"
+   },
+   "2:115": {
+    "url": "https://www.youtube.com/watch?v=QD20H5cEPrY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 115، 119) 22"
+   },
+   "2:119": {
+    "url": "https://www.youtube.com/watch?v=QD20H5cEPrY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 115، 119) 22"
+   },
+   "2:120": {
+    "url": "https://www.youtube.com/watch?v=KTn05iA79HA",
+    "duration": 3619,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 120، 124) 23"
+   },
+   "2:124": {
+    "url": "https://www.youtube.com/watch?v=KTn05iA79HA",
+    "duration": 3619,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 120، 124) 23"
+   },
+   "2:125": {
+    "url": "https://www.youtube.com/watch?v=S3aiGBjDMo0",
+    "duration": 4120,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 125، 128) 24"
+   },
+   "2:128": {
+    "url": "https://www.youtube.com/watch?v=S3aiGBjDMo0",
+    "duration": 4120,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 125، 128) 24"
+   },
+   "2:129": {
+    "url": "https://www.youtube.com/watch?v=FdU2NE-BNQs",
+    "duration": 4544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 129، 133) 25"
+   },
+   "2:133": {
+    "url": "https://www.youtube.com/watch?v=FdU2NE-BNQs",
+    "duration": 4544,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية 129، 133) 25"
+   },
+   "2:134": {
+    "url": "https://www.youtube.com/watch?v=YY3FNQNPVHk",
+    "duration": 3435,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 134، 138) 26"
+   },
+   "2:138": {
+    "url": "https://www.youtube.com/watch?v=YY3FNQNPVHk",
+    "duration": 3435,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 134، 138) 26"
+   },
+   "2:139": {
+    "url": "https://www.youtube.com/watch?v=OQK4Gqo5BHU",
+    "duration": 3482,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 139، 142) 27"
+   },
+   "2:142": {
+    "url": "https://www.youtube.com/watch?v=OQK4Gqo5BHU",
+    "duration": 3482,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 139، 142) 27"
+   },
+   "2:143": {
+    "url": "https://www.youtube.com/watch?v=ofcGeq3IUx4",
+    "duration": 4323,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 143، 145) 28"
+   },
+   "2:145": {
+    "url": "https://www.youtube.com/watch?v=ofcGeq3IUx4",
+    "duration": 4323,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 143، 145) 28"
+   },
+   "2:146": {
+    "url": "https://www.youtube.com/watch?v=k9nQhAD3aW4",
+    "duration": 3585,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 146، 150) 29"
+   },
+   "2:150": {
+    "url": "https://www.youtube.com/watch?v=k9nQhAD3aW4",
+    "duration": 3585,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 146، 150) 29"
+   },
+   "2:151": {
+    "url": "https://www.youtube.com/watch?v=cu5dobe3siE",
+    "duration": 4409,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 151، 157) 30"
+   },
+   "2:157": {
+    "url": "https://www.youtube.com/watch?v=cu5dobe3siE",
+    "duration": 4409,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 151، 157) 30"
+   },
+   "2:158": {
+    "url": "https://www.youtube.com/watch?v=6WgX9PtpnG8",
+    "duration": 4005,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 158 - 162) 31"
+   },
+   "2:159": {
+    "url": "https://www.youtube.com/watch?v=6WgX9PtpnG8",
+    "duration": 4005,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 158 - 162) 31"
+   },
+   "2:160": {
+    "url": "https://www.youtube.com/watch?v=6WgX9PtpnG8",
+    "duration": 4005,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 158 - 162) 31"
+   },
+   "2:161": {
+    "url": "https://www.youtube.com/watch?v=6WgX9PtpnG8",
+    "duration": 4005,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 158 - 162) 31"
+   },
+   "2:162": {
+    "url": "https://www.youtube.com/watch?v=6WgX9PtpnG8",
+    "duration": 4005,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 158 - 162) 31"
+   },
+   "2:163": {
+    "url": "https://www.youtube.com/watch?v=ZRpSETVYQWI",
+    "duration": 3445,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 163 - 167) 32"
+   },
+   "2:164": {
+    "url": "https://www.youtube.com/watch?v=ZRpSETVYQWI",
+    "duration": 3445,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 163 - 167) 32"
+   },
+   "2:165": {
+    "url": "https://www.youtube.com/watch?v=ZRpSETVYQWI",
+    "duration": 3445,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 163 - 167) 32"
+   },
+   "2:166": {
+    "url": "https://www.youtube.com/watch?v=ZRpSETVYQWI",
+    "duration": 3445,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 163 - 167) 32"
+   },
+   "2:167": {
+    "url": "https://www.youtube.com/watch?v=ZRpSETVYQWI",
+    "duration": 3445,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 163 - 167) 32"
+   },
+   "2:168": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:169": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:170": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:171": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:172": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:173": {
+    "url": "https://www.youtube.com/watch?v=Lnuxo23Rydw",
+    "duration": 3898,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 168 - 173)  33"
+   },
+   "2:174": {
+    "url": "https://www.youtube.com/watch?v=y4dipK04i7c",
+    "duration": 3678,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 174 - 177) 34"
+   },
+   "2:175": {
+    "url": "https://www.youtube.com/watch?v=y4dipK04i7c",
+    "duration": 3678,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 174 - 177) 34"
+   },
+   "2:176": {
+    "url": "https://www.youtube.com/watch?v=y4dipK04i7c",
+    "duration": 3678,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 174 - 177) 34"
+   },
+   "2:177": {
+    "url": "https://www.youtube.com/watch?v=y4dipK04i7c",
+    "duration": 3678,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 174 - 177) 34"
+   },
+   "2:178": {
+    "url": "https://www.youtube.com/watch?v=r2unvqjIo8Q",
+    "duration": 4308,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 178 - 182) 35"
+   },
+   "2:179": {
+    "url": "https://www.youtube.com/watch?v=r2unvqjIo8Q",
+    "duration": 4308,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 178 - 182) 35"
+   },
+   "2:180": {
+    "url": "https://www.youtube.com/watch?v=r2unvqjIo8Q",
+    "duration": 4308,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 178 - 182) 35"
+   },
+   "2:181": {
+    "url": "https://www.youtube.com/watch?v=r2unvqjIo8Q",
+    "duration": 4308,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 178 - 182) 35"
+   },
+   "2:182": {
+    "url": "https://www.youtube.com/watch?v=r2unvqjIo8Q",
+    "duration": 4308,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 178 - 182) 35"
+   },
+   "2:183": {
+    "url": "https://www.youtube.com/watch?v=vGARHKL49qA",
+    "duration": 3635,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 183 - 185) 36"
+   },
+   "2:184": {
+    "url": "https://www.youtube.com/watch?v=vGARHKL49qA",
+    "duration": 3635,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 183 - 185) 36"
+   },
+   "2:185": {
+    "url": "https://www.youtube.com/watch?v=vGARHKL49qA",
+    "duration": 3635,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 183 - 185) 36"
+   },
+   "2:186": {
+    "url": "https://www.youtube.com/watch?v=Udng21EaSzg",
+    "duration": 3914,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 186 - 187) 37"
+   },
+   "2:187": {
+    "url": "https://www.youtube.com/watch?v=Udng21EaSzg",
+    "duration": 3914,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 186 - 187) 37"
+   },
+   "2:188": {
+    "url": "https://www.youtube.com/watch?v=3rZxoKD92Co",
+    "duration": 3267,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 188، 189) 38"
+   },
+   "2:189": {
+    "url": "https://www.youtube.com/watch?v=3rZxoKD92Co",
+    "duration": 3267,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 188، 189) 38"
+   },
+   "2:190": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:191": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:192": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:193": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:194": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:195": {
+    "url": "https://www.youtube.com/watch?v=UybX2yt6vjM",
+    "duration": 3284,
+    "videoTitle": "39 تفسير سورة البقرة (الآية: 190 - 195) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:196": {
+    "url": "https://www.youtube.com/watch?v=kke9AU2OOM4",
+    "duration": 3129,
+    "videoTitle": "40 تفسير سورة البقرة (الآية: 196 - 198) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:197": {
+    "url": "https://www.youtube.com/watch?v=kke9AU2OOM4",
+    "duration": 3129,
+    "videoTitle": "40 تفسير سورة البقرة (الآية: 196 - 198) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:198": {
+    "url": "https://www.youtube.com/watch?v=kke9AU2OOM4",
+    "duration": 3129,
+    "videoTitle": "40 تفسير سورة البقرة (الآية: 196 - 198) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:199": {
+    "url": "https://www.youtube.com/watch?v=5Z1AvTXHd4U",
+    "duration": 3031,
+    "videoTitle": "41 تفسير سورة البقرة (الآية: 199 - 203) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:200": {
+    "url": "https://www.youtube.com/watch?v=5Z1AvTXHd4U",
+    "duration": 3031,
+    "videoTitle": "41 تفسير سورة البقرة (الآية: 199 - 203) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:201": {
+    "url": "https://www.youtube.com/watch?v=5Z1AvTXHd4U",
+    "duration": 3031,
+    "videoTitle": "41 تفسير سورة البقرة (الآية: 199 - 203) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:202": {
+    "url": "https://www.youtube.com/watch?v=5Z1AvTXHd4U",
+    "duration": 3031,
+    "videoTitle": "41 تفسير سورة البقرة (الآية: 199 - 203) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:203": {
+    "url": "https://www.youtube.com/watch?v=5Z1AvTXHd4U",
+    "duration": 3031,
+    "videoTitle": "41 تفسير سورة البقرة (الآية: 199 - 203) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:204": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:205": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:206": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:207": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:208": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:209": {
+    "url": "https://www.youtube.com/watch?v=M6csv7Dg32c",
+    "duration": 3918,
+    "videoTitle": "42 تفسير سورة البقرة (الآية: 204 - 209) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:210": {
+    "url": "https://www.youtube.com/watch?v=067xbrC2hko",
+    "duration": 3358,
+    "videoTitle": "43 تفسير سورة البقرة (الآية: 210 - 213) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:211": {
+    "url": "https://www.youtube.com/watch?v=067xbrC2hko",
+    "duration": 3358,
+    "videoTitle": "43 تفسير سورة البقرة (الآية: 210 - 213) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:212": {
+    "url": "https://www.youtube.com/watch?v=067xbrC2hko",
+    "duration": 3358,
+    "videoTitle": "43 تفسير سورة البقرة (الآية: 210 - 213) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:213": {
+    "url": "https://www.youtube.com/watch?v=067xbrC2hko",
+    "duration": 3358,
+    "videoTitle": "43 تفسير سورة البقرة (الآية: 210 - 213) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:214": {
+    "url": "https://www.youtube.com/watch?v=_U6A-R4_9Js",
+    "duration": 4204,
+    "videoTitle": "44 تفسير سورة البقرة (الآية: 214 - 217) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:215": {
+    "url": "https://www.youtube.com/watch?v=_U6A-R4_9Js",
+    "duration": 4204,
+    "videoTitle": "44 تفسير سورة البقرة (الآية: 214 - 217) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:216": {
+    "url": "https://www.youtube.com/watch?v=_U6A-R4_9Js",
+    "duration": 4204,
+    "videoTitle": "44 تفسير سورة البقرة (الآية: 214 - 217) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:217": {
+    "url": "https://www.youtube.com/watch?v=_U6A-R4_9Js",
+    "duration": 4204,
+    "videoTitle": "44 تفسير سورة البقرة (الآية: 214 - 217) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:218": {
+    "url": "https://www.youtube.com/watch?v=-EuwQzknS8Q",
+    "duration": 4078,
+    "videoTitle": "45 تفسير سورة البقرة (الآية: 218 - 221) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:219": {
+    "url": "https://www.youtube.com/watch?v=-EuwQzknS8Q",
+    "duration": 4078,
+    "videoTitle": "45 تفسير سورة البقرة (الآية: 218 - 221) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:220": {
+    "url": "https://www.youtube.com/watch?v=-EuwQzknS8Q",
+    "duration": 4078,
+    "videoTitle": "45 تفسير سورة البقرة (الآية: 218 - 221) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:221": {
+    "url": "https://www.youtube.com/watch?v=-EuwQzknS8Q",
+    "duration": 4078,
+    "videoTitle": "45 تفسير سورة البقرة (الآية: 218 - 221) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:222": {
+    "url": "https://www.youtube.com/watch?v=w2ijKObJrtw",
+    "duration": 3774,
+    "videoTitle": "46 تفسير سورة البقرة (الآية: 222 - 223) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:223": {
+    "url": "https://www.youtube.com/watch?v=w2ijKObJrtw",
+    "duration": 3774,
+    "videoTitle": "46 تفسير سورة البقرة (الآية: 222 - 223) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:224": {
+    "url": "https://www.youtube.com/watch?v=bOP1iUGFiG8",
+    "duration": 3570,
+    "videoTitle": "47 تفسير سورة البقرة (الآية: 224 - 227) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:225": {
+    "url": "https://www.youtube.com/watch?v=bOP1iUGFiG8",
+    "duration": 3570,
+    "videoTitle": "47 تفسير سورة البقرة (الآية: 224 - 227) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:226": {
+    "url": "https://www.youtube.com/watch?v=bOP1iUGFiG8",
+    "duration": 3570,
+    "videoTitle": "47 تفسير سورة البقرة (الآية: 224 - 227) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:227": {
+    "url": "https://www.youtube.com/watch?v=bOP1iUGFiG8",
+    "duration": 3570,
+    "videoTitle": "47 تفسير سورة البقرة (الآية: 224 - 227) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:228": {
+    "url": "https://www.youtube.com/watch?v=WCU2FmxrUuc",
+    "duration": 4146,
+    "videoTitle": "48 تفسير سورة البقرة (الآية: 228 - 230) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:229": {
+    "url": "https://www.youtube.com/watch?v=WCU2FmxrUuc",
+    "duration": 4146,
+    "videoTitle": "48 تفسير سورة البقرة (الآية: 228 - 230) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:230": {
+    "url": "https://www.youtube.com/watch?v=WCU2FmxrUuc",
+    "duration": 4146,
+    "videoTitle": "48 تفسير سورة البقرة (الآية: 228 - 230) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:231": {
+    "url": "https://www.youtube.com/watch?v=LSiioYxQu1I",
+    "duration": 2967,
+    "videoTitle": "49 تفسير سورة البقرة (الآية: 231 - 232) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:232": {
+    "url": "https://www.youtube.com/watch?v=LSiioYxQu1I",
+    "duration": 2967,
+    "videoTitle": "49 تفسير سورة البقرة (الآية: 231 - 232) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:233": {
+    "url": "https://www.youtube.com/watch?v=1bcAVgVAhXc",
+    "duration": 4666,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 233- 237) 50"
+   },
+   "2:234": {
+    "url": "https://www.youtube.com/watch?v=1bcAVgVAhXc",
+    "duration": 4666,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 233- 237) 50"
+   },
+   "2:235": {
+    "url": "https://www.youtube.com/watch?v=1bcAVgVAhXc",
+    "duration": 4666,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 233- 237) 50"
+   },
+   "2:236": {
+    "url": "https://www.youtube.com/watch?v=1bcAVgVAhXc",
+    "duration": 4666,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 233- 237) 50"
+   },
+   "2:237": {
+    "url": "https://www.youtube.com/watch?v=1bcAVgVAhXc",
+    "duration": 4666,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 233- 237) 50"
+   },
+   "2:238": {
+    "url": "https://www.youtube.com/watch?v=xzqxNBE1YDY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 238- 242) 51"
+   },
+   "2:239": {
+    "url": "https://www.youtube.com/watch?v=xzqxNBE1YDY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 238- 242) 51"
+   },
+   "2:240": {
+    "url": "https://www.youtube.com/watch?v=xzqxNBE1YDY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 238- 242) 51"
+   },
+   "2:241": {
+    "url": "https://www.youtube.com/watch?v=xzqxNBE1YDY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 238- 242) 51"
+   },
+   "2:242": {
+    "url": "https://www.youtube.com/watch?v=xzqxNBE1YDY",
+    "duration": 4014,
+    "videoTitle": "#د_أديب_الصانع قراءة في تفسير الوجيز للواحدي (سورة البقرة: الآية: 238- 242) 51"
+   },
+   "2:243": {
+    "url": "https://www.youtube.com/watch?v=4Dt-7d1BKEA",
+    "duration": 3750,
+    "videoTitle": "52 تفسير سورة البقرة (الآية: 243-245) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:244": {
+    "url": "https://www.youtube.com/watch?v=4Dt-7d1BKEA",
+    "duration": 3750,
+    "videoTitle": "52 تفسير سورة البقرة (الآية: 243-245) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:245": {
+    "url": "https://www.youtube.com/watch?v=4Dt-7d1BKEA",
+    "duration": 3750,
+    "videoTitle": "52 تفسير سورة البقرة (الآية: 243-245) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:246": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:247": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:248": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:249": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:250": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:251": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:252": {
+    "url": "https://www.youtube.com/watch?v=I0XizR32Prg",
+    "duration": 6868,
+    "videoTitle": "53 تفسير سورة البقرة (الآية: 246-252) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:253": {
+    "url": "https://www.youtube.com/watch?v=dNfJ7R-315E",
+    "duration": 5347,
+    "videoTitle": "54 تفسير سورة البقرة (الآية: 253-255) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:254": {
+    "url": "https://www.youtube.com/watch?v=dNfJ7R-315E",
+    "duration": 5347,
+    "videoTitle": "54 تفسير سورة البقرة (الآية: 253-255) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:255": {
+    "url": "https://www.youtube.com/watch?v=dNfJ7R-315E",
+    "duration": 5347,
+    "videoTitle": "54 تفسير سورة البقرة (الآية: 253-255) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:256": {
+    "url": "https://www.youtube.com/watch?v=RrScWhNId3I",
+    "duration": 3496,
+    "videoTitle": "55 تفسير سورة البقرة (الآية: 256-257) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:257": {
+    "url": "https://www.youtube.com/watch?v=RrScWhNId3I",
+    "duration": 3496,
+    "videoTitle": "55 تفسير سورة البقرة (الآية: 256-257) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:258": {
+    "url": "https://www.youtube.com/watch?v=JZdg0TpUz1o",
+    "duration": 3753,
+    "videoTitle": "56 تفسير سورة البقرة (الآية: 258-260) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:259": {
+    "url": "https://www.youtube.com/watch?v=JZdg0TpUz1o",
+    "duration": 3753,
+    "videoTitle": "56 تفسير سورة البقرة (الآية: 258-260) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:260": {
+    "url": "https://www.youtube.com/watch?v=JZdg0TpUz1o",
+    "duration": 3753,
+    "videoTitle": "56 تفسير سورة البقرة (الآية: 258-260) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:261": {
+    "url": "https://www.youtube.com/watch?v=6GduUIxPzYQ",
+    "duration": 4133,
+    "videoTitle": "57 تفسير سورة البقرة (الآية: 261-264) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:262": {
+    "url": "https://www.youtube.com/watch?v=6GduUIxPzYQ",
+    "duration": 4133,
+    "videoTitle": "57 تفسير سورة البقرة (الآية: 261-264) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:263": {
+    "url": "https://www.youtube.com/watch?v=6GduUIxPzYQ",
+    "duration": 4133,
+    "videoTitle": "57 تفسير سورة البقرة (الآية: 261-264) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:264": {
+    "url": "https://www.youtube.com/watch?v=6GduUIxPzYQ",
+    "duration": 4133,
+    "videoTitle": "57 تفسير سورة البقرة (الآية: 261-264) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:265": {
+    "url": "https://www.youtube.com/watch?v=3Ru3SY7J8JA",
+    "duration": 2579,
+    "videoTitle": "58 تفسير سورة البقرة (الآية: 265، 266) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:266": {
+    "url": "https://www.youtube.com/watch?v=3Ru3SY7J8JA",
+    "duration": 2579,
+    "videoTitle": "58 تفسير سورة البقرة (الآية: 265، 266) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:267": {
+    "url": "https://www.youtube.com/watch?v=rnoo8bqWXlc",
+    "duration": 3145,
+    "videoTitle": "59 تفسير سورة البقرة (الآية: 267، 271) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:271": {
+    "url": "https://www.youtube.com/watch?v=rnoo8bqWXlc",
+    "duration": 3145,
+    "videoTitle": "59 تفسير سورة البقرة (الآية: 267، 271) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:272": {
+    "url": "https://www.youtube.com/watch?v=JkCh0d1dkAs",
+    "duration": 2784,
+    "videoTitle": "60 تفسير سورة البقرة (الآية: 272، 274) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:274": {
+    "url": "https://www.youtube.com/watch?v=JkCh0d1dkAs",
+    "duration": 2784,
+    "videoTitle": "60 تفسير سورة البقرة (الآية: 272، 274) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:275": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:276": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:277": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:278": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:279": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:280": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:281": {
+    "url": "https://www.youtube.com/watch?v=HrSCLbit3Fo",
+    "duration": 3673,
+    "videoTitle": "61 تفسير سورة البقرة (الآية: 275 - 281) | قراءة في تفسير الوجيز للواحدي | #د_أديب_الصانع"
+   },
+   "2:282": {
+    "url": "https://www.youtube.com/watch?v=LRHA9BbTc88",
+    "duration": 3923,
+    "videoTitle": "تفسير سورة البقرة (الآية: 282، 283) | تفسير الوجيز للواحدي  62 | د. أديب الصانع"
+   },
+   "2:283": {
+    "url": "https://www.youtube.com/watch?v=LRHA9BbTc88",
+    "duration": 3923,
+    "videoTitle": "تفسير سورة البقرة (الآية: 282، 283) | تفسير الوجيز للواحدي  62 | د. أديب الصانع"
+   },
+   "2:284": {
+    "url": "https://www.youtube.com/watch?v=nQYZkkTPgkE",
+    "duration": 5041,
+    "videoTitle": "تفسير سورة البقرة (الآية: 284 - 286) | تفسير الوجيز للواحدي 63 | د. أديب الصانع"
+   },
+   "2:285": {
+    "url": "https://www.youtube.com/watch?v=nQYZkkTPgkE",
+    "duration": 5041,
+    "videoTitle": "تفسير سورة البقرة (الآية: 284 - 286) | تفسير الوجيز للواحدي 63 | د. أديب الصانع"
+   },
+   "2:286": {
+    "url": "https://www.youtube.com/watch?v=nQYZkkTPgkE",
+    "duration": 5041,
+    "videoTitle": "تفسير سورة البقرة (الآية: 284 - 286) | تفسير الوجيز للواحدي 63 | د. أديب الصانع"
+   }
+  }
+ }
+}

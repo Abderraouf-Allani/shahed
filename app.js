@@ -32,6 +32,10 @@
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
 
+  var FORMAT_VERSION = 2;
+  var FORMAT_TAG = 'quran-tag/v' + FORMAT_VERSION;
+  var FORMAT_PREFIX = 'quran-tag/v';
+
   var state = {
     surahs: null,
     quran: null,
@@ -88,6 +92,12 @@
   function mergeSeedTag(seed) {
     if (!seed || !seed.tags || !seed.tags.length) return;
     var seedTagId = seed.tags[0].id;
+    Object.keys(seed.ayahMeta || {}).forEach(function (tagId) {
+      if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
+      Object.keys(seed.ayahMeta[tagId]).forEach(function (vkey) {
+        state.ayahMeta[tagId][vkey] = seed.ayahMeta[tagId][vkey];
+      });
+    });
     if (tagState.byId[seedTagId]) return;
     seed.categories.forEach(function (c) {
       if (!tagState.byCatId[c.id]) {
@@ -108,12 +118,6 @@
         if (cur.indexOf(id) === -1) cur.push(id);
       });
       if (cur.length) tagState.verses[key] = cur;
-    });
-    Object.keys(seed.ayahMeta || {}).forEach(function (tagId) {
-      if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
-      Object.keys(seed.ayahMeta[tagId]).forEach(function (vkey) {
-        state.ayahMeta[tagId][vkey] = seed.ayahMeta[tagId][vkey];
-      });
     });
     saveTags();
   }
@@ -280,9 +284,15 @@
   /* ---------- export / import ---------- */
 
   function exportTagsData() {
+    var ayahMetaOut = {};
+    Object.keys(state.ayahMeta).forEach(function (tagId) {
+      if (!tagState.byId[tagId]) return;
+      var m = state.ayahMeta[tagId];
+      if (m && Object.keys(m).length) ayahMetaOut[tagId] = m;
+    });
     return {
-      format: 'quran-tag',
-      version: 1,
+      format: FORMAT_TAG,
+      version: FORMAT_VERSION,
       exportedAt: new Date().toISOString(),
       categories: tagState.categories.map(function (c) {
         return { id: c.id, name: c.name, color: c.color };
@@ -293,7 +303,8 @@
         if (t.metatag !== undefined) o.metatag = t.metatag;
         return o;
       }),
-      associations: tagState.verses
+      associations: tagState.verses,
+      ayahMeta: ayahMetaOut
     };
   }
 
@@ -328,9 +339,28 @@
       return;
     }
 
+    if (typeof data.format === 'string' && data.format && data.format.indexOf('quran-tag') !== 0) {
+      report(false, 'هذا الملف ليس ملف تصدير وسوم لهذا التطبيق.');
+      return;
+    }
+    var fileVersion = null;
+    if (typeof data.format === 'string' && data.format.indexOf(FORMAT_PREFIX) === 0) {
+      fileVersion = parseInt(data.format.slice(FORMAT_PREFIX.length), 10);
+    }
+    if ((fileVersion === null || isNaN(fileVersion)) && typeof data.version === 'number') {
+      fileVersion = data.version;
+    }
+    if (fileVersion !== null && !isNaN(fileVersion) && fileVersion !== FORMAT_VERSION) {
+      report(false, 'تعذّر الاستيراد: إصدار التنسيق في الملف (v' + fileVersion + ') لا يطابق إصدار التطبيق (v' + FORMAT_VERSION + '). يرجى تحديث التطبيق أو تصدير ملف جديد.');
+      return;
+    }
+
     var categories = Array.isArray(data.categories) ? data.categories : [];
     var tags = data.tags;
-    var assoc = data.associations && typeof data.associations === 'object' ? data.associations : {};
+    var assoc = data.associations && typeof data.associations === 'object'
+      ? data.associations
+      : (data.verses && typeof data.verses === 'object' ? data.verses : {});
+    var metaIn = data.ayahMeta && typeof data.ayahMeta === 'object' ? data.ayahMeta : {};
 
     var catMap = {};
     var mergedCats = 0;
@@ -381,9 +411,22 @@
       assocKeys++;
     });
 
+    var metaKeys = 0;
+    Object.keys(metaIn).forEach(function (tagId) {
+      var newTagId = tagMap[tagId];
+      if (!newTagId) return;
+      var byVerse = metaIn[tagId] || {};
+      if (!state.ayahMeta[newTagId]) state.ayahMeta[newTagId] = {};
+      Object.keys(byVerse).forEach(function (vkey) {
+        state.ayahMeta[newTagId][vkey] = byVerse[vkey];
+        metaKeys++;
+      });
+    });
+
     saveTags();
 
     var msg = 'تم استيراد ' + toAr(createdTags) + ' وسماً و' + toAr(createdCats) + ' تصنيفاً، مع ' + toAr(assocKeys) + ' آية موسومة (' + toAr(addedAssoc) + ' رابطة).';
+    if (metaKeys) msg += '\nاستُعيدت بيانات ' + toAr(metaKeys) + ' رابطة من وسم.';
     if (mergedCats) msg += '\nدُمجت ' + toAr(mergedCats) + ' تصنيف بنفس اسم تصنيف موجود.';
     if (renamedTags) msg += '\nأُعيد تسمية ' + toAr(renamedTags) + ' وسماً مطابقاً لاسم وسم موجود.';
     report(true, msg);
@@ -437,6 +480,16 @@
     });
   }
 
+  function fmtDuration(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    var out = h ? toAr(h) + ':' + toAr(pad(m)) + ':' + toAr(pad(s)) : toAr(m) + ':' + toAr(pad(s));
+    return 'المدة: ' + out;
+  }
+
   function surahByNumber(n) {
     return state.surahs[n - 1];
   }
@@ -457,7 +510,7 @@
     var hasCtx = !!(state.ayahMeta[t.id] && state.ayahMeta[t.id][surah + ':' + ayah]);
     return '<button type="button" class="tag-chip verse-tag-chip' + (hasCtx ? ' has-context' : '') + '"'
       + ' style="--tagc:' + t.color + '" data-tagid="' + t.id + '" data-ayah="' + surah + ':' + ayah + '"'
-      + ' data-cat="' + esc(catName) + '" title="' + (hasCtx ? 'اضغط لعرض سياق الاستشهاد' : '') + '">'
+      + ' data-cat="' + esc(catName) + '" title="' + (hasCtx ? 'اضغط لعرض سياق الاستشهاد' : 'اضغط لعرض تفاصيل الوسم') + '">'
       + esc(t.name) + '</button>';
   }
 
@@ -695,7 +748,10 @@
     menu.innerHTML =
       '<div class="tag-menu-title">عرض الوسوم في هذه الجلسة</div>'
       + '<div class="tag-menu-list">' + rows + '</div>'
-      + '<button type="button" class="tag-menu-close">تم</button>';
+      + '<div class="tag-menu-actions">'
+      + '<button type="button" class="tag-menu-none">إلغاء تحديد الكل</button>'
+      + '<button type="button" class="tag-menu-close">تم</button>'
+      + '</div>';
 
     document.body.appendChild(menu);
     positionTagMenu(menu, anchor);
@@ -723,6 +779,15 @@
       });
     });
     menu.querySelector('.tag-menu-close').addEventListener('click', closeTagFilterMenu);
+    menu.querySelector('.tag-menu-none').addEventListener('click', function () {
+      menu.querySelectorAll('input[data-tagid]').forEach(function (cb) {
+        cb.checked = false;
+        cb.indeterminate = false;
+      });
+      updateSessionTagFilter(menu);
+      syncCategoryStates(menu);
+      refreshAllVerseDecorations();
+    });
   }
 
   function applyCategoryFilter(menu, catCb) {
@@ -814,7 +879,6 @@
     var verse = chip.dataset.ayah;
     var tagId = chip.dataset.tagid;
     var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][verse];
-    if (!meta) return;
     var t = tagState.byId[tagId];
     if (!t) return;
     var parts = verse.split(':');
@@ -831,14 +895,23 @@
       + (catName ? '<span class="tag-context-popup-cat">' + esc(catName) + '</span>' : '')
       + '</div>';
     var assoc = '<div class="tag-context-popup-assoc">استُشهد في الآية ' + toAr(+parts[1]) + ' من سورة ' + esc(surahName)
-      + (meta.page ? '<span class="tag-context-popup-page">صفحة ' + toAr(meta.page) + '</span>' : '')
+      + (meta && meta.page ? '<span class="tag-context-popup-page">صفحة ' + toAr(meta.page) + '</span>' : '')
       + '</div>';
-    var para = meta.paragraph
+    var para = meta && meta.paragraph
       ? '<div class="tag-context-popup-para">' + esc(meta.paragraph) + '</div>'
-      : '<div class="tag-context-popup-empty">لا يتوفر سياق لهذا الاستشهاد</div>';
+      : '';
+    var video = meta && meta.url
+      ? '<div class="tag-context-popup-video"><a href="' + esc(meta.url) + '" target="_blank" rel="noopener">'
+        + (meta.videoTitle ? esc(meta.videoTitle) : 'مشاهدة الشرح على يوتيوب') + ' ↗</a>'
+        + (meta.duration ? '<span class="tag-context-popup-duration">' + fmtDuration(meta.duration) + '</span>' : '')
+        + '</div>'
+      : '';
+    var empty = !para && !video
+      ? '<div class="tag-context-popup-empty">لا يتوفر سياق مستخرج لهذه الآية في كتاب «' + esc(t.name) + '»</div>'
+      : '';
     var close = '<button type="button" class="tag-context-popup-close">تم</button>';
 
-    popup.innerHTML = head + assoc + para + close;
+    popup.innerHTML = head + assoc + video + para + empty + close;
     document.body.appendChild(popup);
     positionTagMenu(popup, chip);
     popup.querySelector('.tag-context-popup-close').addEventListener('click', closeTagContextPopup);
@@ -930,6 +1003,8 @@
         renderAyahResults();
         ayahInput.focus();
       }
+      var chip = e.target.closest('.verse-tag-chip');
+      if (chip) openVerseTagContext(chip);
     });
 
     renderAyahResults();
@@ -1529,6 +1604,12 @@
       return;
     }
 
+    var ctxChip = e.target.closest('.verse-tag-chip');
+    if (ctxChip) {
+      openVerseTagContext(ctxChip);
+      return;
+    }
+
     var rem = e.target.closest('.tayah-remove');
     if (rem) {
       removeTagFromVerse(+rem.dataset.surah, +rem.dataset.ayah, rem.dataset.tagid);
@@ -1560,7 +1641,7 @@
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
       + '<div class="tayah-text">' + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></div>'
       + '</a>'
-      + (tags.length ? '<div class="tayah-chips">' + tags.map(tagChip).join('') + '</div>' : '')
+      + (tags.length ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
       + '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>'
       + '</div>';
   }
@@ -1640,13 +1721,20 @@
   }
 
   function loadData() {
+    var loaded = 0;
+    var count = function (v) {
+      loaded++;
+      if (window.__quranLoader) window.__quranLoader.progress(loaded / 7);
+      return v;
+    };
     return Promise.all([
-      fetch('data/surahs.json').then(function (r) { return r.json(); }),
-      fetch('data/quran.json').then(function (r) { return r.json(); }),
-      fetch('data/dawaa.json').then(function (r) { return r.json(); }),
-      fetch('data/jam3.json').then(function (r) { return r.json(); }),
-      fetch('data/iman.json').then(function (r) { return r.json(); }),
-      fetch('data/asarar.json').then(function (r) { return r.json(); })
+      fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/dawaa.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/jam3.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/iman.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/asarar.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/adib.json').then(function (r) { return r.json(); }).then(count)
     ]).then(function (res) {
       state.surahs = res[0];
       state.quran = res[1];
@@ -1654,10 +1742,14 @@
       mergeSeedTag(res[3]);
       mergeSeedTag(res[4]);
       mergeSeedTag(res[5]);
+      mergeSeedTag(res[6]);
     });
   }
 
-  loadData().then(render).catch(function (err) {
+  loadData().then(render).then(function () {
+    if (window.__quranLoader) window.__quranLoader.done();
+  }).catch(function (err) {
     appEl.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات: ' + esc(err.message) + '</div>';
+    if (window.__quranLoader) window.__quranLoader.done();
   });
 })();
