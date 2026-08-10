@@ -1,0 +1,21 @@
+{
+ "categories": [
+  {
+   "id": "c-dawaa",
+   "name": "كتب",
+   "color": "#1e5a3c"
+  }
+ ],
+ "tags": [
+  {
+   "id": "t-asarar",
+   "name": "من أسرار حروف الجر في الذكر الحكيم",
+   "description": "الآيات التي استشهد بها المؤلف في بيان أسرار حروف الجر.",
+   "color": "#6b4fa1",
+   "categoryId": "c-dawaa",
+   "metatag": {"source": "archive.org", "format": "ocr-fulltext"}
+  }
+ ],
+ "verses": {
+ }
+}

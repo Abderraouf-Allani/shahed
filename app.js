@@ -41,7 +41,8 @@
     surahQuery: '',
     tagQuery: '',
     selectedTagId: null,
-    edit: null
+    edit: null,
+    ayahMeta: {}
   };
 
   var normVersesCache = null;
@@ -107,6 +108,12 @@
         if (cur.indexOf(id) === -1) cur.push(id);
       });
       if (cur.length) tagState.verses[key] = cur;
+    });
+    Object.keys(seed.ayahMeta || {}).forEach(function (tagId) {
+      if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
+      Object.keys(seed.ayahMeta[tagId]).forEach(function (vkey) {
+        state.ayahMeta[tagId][vkey] = seed.ayahMeta[tagId][vkey];
+      });
     });
     saveTags();
   }
@@ -212,13 +219,15 @@
     return cat;
   }
 
-  function createTag(name, color, categoryId) {
+  function createTag(name, color, categoryId, description, metatag) {
     var tag = {
       id: newId('t'),
       name: name,
       color: color || TAG_COLORS[tagState.tags.length % TAG_COLORS.length],
       categoryId: categoryId || (tagState.categories[0] ? tagState.categories[0].id : '')
     };
+    if (description) tag.description = description;
+    if (metatag !== undefined) tag.metatag = metatag;
     tagState.tags.push(tag);
     tagState.byId[tag.id] = tag;
     saveTags();
@@ -255,6 +264,8 @@
     if (patch.name !== undefined) t.name = patch.name;
     if (patch.color !== undefined) t.color = patch.color;
     if (patch.categoryId !== undefined) t.categoryId = patch.categoryId;
+    if (patch.description !== undefined) t.description = patch.description;
+    if (patch.metatag !== undefined) t.metatag = patch.metatag;
     saveTags();
   }
 
@@ -264,6 +275,141 @@
       if (tagState.verses[k].indexOf(tagId) !== -1) count++;
     });
     return count;
+  }
+
+  /* ---------- export / import ---------- */
+
+  function exportTagsData() {
+    return {
+      format: 'quran-tag',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      categories: tagState.categories.map(function (c) {
+        return { id: c.id, name: c.name, color: c.color };
+      }),
+      tags: tagState.tags.map(function (t) {
+        var o = { id: t.id, name: t.name, color: t.color, categoryId: t.categoryId };
+        if (t.description) o.description = t.description;
+        if (t.metatag !== undefined) o.metatag = t.metatag;
+        return o;
+      }),
+      associations: tagState.verses
+    };
+  }
+
+  function downloadTagsFile() {
+    var data = exportTagsData();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'quran-tag-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function uniqueTagName(base) {
+    var n = 2;
+    var name = base;
+    while (tagState.tags.some(function (u) { return norm(u.name) === norm(name); })) {
+      name = base + ' (' + toAr(n) + ')';
+      n++;
+    }
+    return name;
+  }
+
+  function importTagsData(raw, report) {
+    var data;
+    try { data = JSON.parse(raw); } catch (e) { report(false, 'الملف غير صالح — ليس JSON صحيحاً.'); return; }
+    if (!data || typeof data !== 'object' || !Array.isArray(data.tags)) {
+      report(false, 'الملف لا يحتوي على بيانات وسوم صالحة.');
+      return;
+    }
+
+    var categories = Array.isArray(data.categories) ? data.categories : [];
+    var tags = data.tags;
+    var assoc = data.associations && typeof data.associations === 'object' ? data.associations : {};
+
+    var catMap = {};
+    var mergedCats = 0;
+    var createdCats = 0;
+    categories.forEach(function (c) {
+      if (!c || typeof c.name !== 'string' || !c.name.trim()) return;
+      var existing = tagState.categories.filter(function (u) { return norm(u.name) === norm(c.name); })[0];
+      if (existing) {
+        catMap[c.id] = existing.id;
+        mergedCats++;
+      } else {
+        var cat = createCategory(c.name.trim(), c.color || TAG_COLORS[tagState.categories.length % TAG_COLORS.length]);
+        catMap[c.id] = cat.id;
+        createdCats++;
+      }
+    });
+
+    var tagMap = {};
+    var createdTags = 0;
+    var renamedTags = 0;
+    tags.forEach(function (t) {
+      if (!t || typeof t.name !== 'string' || !t.name.trim()) return;
+      var name = t.name.trim();
+      if (tagState.tags.some(function (u) { return norm(u.name) === norm(name); })) {
+        name = uniqueTagName(name);
+        renamedTags++;
+      }
+      var catId = (t.categoryId && catMap[t.categoryId])
+        ? catMap[t.categoryId]
+        : (tagState.categories[0] ? tagState.categories[0].id : '');
+      var tag = createTag(name, t.color || TAG_COLORS[tagState.tags.length % TAG_COLORS.length], catId, t.description || '', t.metatag);
+      tagMap[t.id] = tag.id;
+      createdTags++;
+    });
+
+    var assocKeys = 0;
+    var addedAssoc = 0;
+    Object.keys(assoc).forEach(function (key) {
+      var parts = key.split(':');
+      if (parts.length !== 2 || !(+parts[0]) || !(+parts[1])) return;
+      var ids = (assoc[key] || []).map(function (id) { return tagMap[id]; }).filter(Boolean);
+      if (!ids.length) return;
+      var cur = tagState.verses[key] || [];
+      ids.forEach(function (id) {
+        if (cur.indexOf(id) === -1) { cur.push(id); addedAssoc++; }
+      });
+      if (cur.length) tagState.verses[key] = cur;
+      assocKeys++;
+    });
+
+    saveTags();
+
+    var msg = 'تم استيراد ' + toAr(createdTags) + ' وسماً و' + toAr(createdCats) + ' تصنيفاً، مع ' + toAr(assocKeys) + ' آية موسومة (' + toAr(addedAssoc) + ' رابطة).';
+    if (mergedCats) msg += '\nدُمجت ' + toAr(mergedCats) + ' تصنيف بنفس اسم تصنيف موجود.';
+    if (renamedTags) msg += '\nأُعيد تسمية ' + toAr(renamedTags) + ' وسماً مطابقاً لاسم وسم موجود.';
+    report(true, msg);
+  }
+
+  function importTagsFromFile() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          importTagsData(String(reader.result), function (ok, msg) {
+            alert(msg);
+            renderTagArea();
+          });
+        };
+        reader.readAsText(file);
+      }
+      input.remove();
+    });
+    input.click();
   }
 
   /* ---------- theme ---------- */
@@ -303,6 +449,16 @@
     var catName = t.categoryId && tagState.byCatId[t.categoryId]
       ? tagState.byCatId[t.categoryId].name : 'بدون تصنيف';
     return '<span class="tag-chip" style="--tagc:' + t.color + '" data-cat="' + esc(catName) + '">' + esc(t.name) + '</span>';
+  }
+
+  function verseTagChip(t, surah, ayah) {
+    var catName = t.categoryId && tagState.byCatId[t.categoryId]
+      ? tagState.byCatId[t.categoryId].name : 'بدون تصنيف';
+    var hasCtx = !!(state.ayahMeta[t.id] && state.ayahMeta[t.id][surah + ':' + ayah]);
+    return '<button type="button" class="tag-chip verse-tag-chip' + (hasCtx ? ' has-context' : '') + '"'
+      + ' style="--tagc:' + t.color + '" data-tagid="' + t.id + '" data-ayah="' + surah + ':' + ayah + '"'
+      + ' data-cat="' + esc(catName) + '" title="' + (hasCtx ? 'اضغط لعرض سياق الاستشهاد' : '') + '">'
+      + esc(t.name) + '</button>';
   }
 
   var TAG_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
@@ -452,11 +608,16 @@
     if (empty) empty.style.display = visibleRows ? 'none' : '';
   }
 
+  function tagMenuRowBody(t) {
+    var desc = t.description ? '<div class="tag-desc">' + esc(t.description) + '</div>' : '';
+    return '<span class="tag-menu-row-body">' + tagChip(t) + desc + '</span>';
+  }
+
   function tagMenuRow(t, currentIds) {
     var on = currentIds.indexOf(t.id) !== -1;
     return '<label class="tag-menu-row">'
       + '<input type="checkbox" data-tagid="' + t.id + '"' + (on ? ' checked' : '') + '>'
-      + tagChip(t)
+      + tagMenuRowBody(t)
       + '</label>';
   }
 
@@ -480,14 +641,16 @@
 
   document.addEventListener('click', function (e) {
     if (tagMenu && !tagMenu.contains(e.target) && !e.target.closest('.tag-btn')) closeTagMenu();
+    if (tagContextPopup && !tagContextPopup.contains(e.target)) closeTagContextPopup();
   }, true);
 
   window.addEventListener('scroll', function () {
     if (tagMenu && tagMenu._anchor) positionTagMenu(tagMenu, tagMenu._anchor);
     if (tagFilterMenu && tagFilterMenu._anchor) positionTagMenu(tagFilterMenu, tagFilterMenu._anchor);
+    if (tagContextPopup && tagContextPopup._anchor) positionTagMenu(tagContextPopup, tagContextPopup._anchor);
   }, true);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { closeTagMenu(); closeTagFilterMenu(); }
+    if (e.key === 'Escape') { closeTagMenu(); closeTagFilterMenu(); closeTagContextPopup(); }
   });
 
   /* ---------- session tag filter menu ---------- */
@@ -522,7 +685,7 @@
         var on = !sessionTagFilter || active.indexOf(t.id) !== -1;
         rows += '<label class="tag-menu-row">'
           + '<input type="checkbox" data-tagid="' + t.id + '"' + (on ? ' checked' : '') + '>'
-          + tagChip(t)
+          + tagMenuRowBody(t)
           + '</label>';
       });
       rows += '</div></div>';
@@ -607,6 +770,7 @@
   /* ---------- verse decorations ---------- */
 
   function refreshVerseDecorations(surah, ayah) {
+    closeTagContextPopup();
     var el = document.getElementById('ayah-' + surah + '-' + ayah);
     if (!el) return;
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
@@ -622,7 +786,7 @@
           el.appendChild(chipsEl);
         }
       }
-      chipsEl.innerHTML = tags.map(tagChip).join('');
+      chipsEl.innerHTML = tags.map(function (t) { return verseTagChip(t, surah, ayah); }).join('');
     } else if (chipsEl) {
       chipsEl.remove();
     }
@@ -634,6 +798,52 @@
       var el = els[i];
       refreshVerseDecorations(+el.dataset.surah, +el.dataset.ayah);
     }
+  }
+
+  var tagContextPopup = null;
+
+  function closeTagContextPopup() {
+    if (tagContextPopup) { tagContextPopup.remove(); tagContextPopup = null; }
+    appEl.querySelectorAll('.verse-tag-chip.expanded').forEach(function (c) {
+      c.classList.remove('expanded');
+    });
+  }
+
+  function openVerseTagContext(chip) {
+    closeTagContextPopup();
+    var verse = chip.dataset.ayah;
+    var tagId = chip.dataset.tagid;
+    var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][verse];
+    if (!meta) return;
+    var t = tagState.byId[tagId];
+    if (!t) return;
+    var parts = verse.split(':');
+    var surahName = surahByNumber(+parts[0]).nameAr;
+    var catName = t.categoryId && tagState.byCatId[t.categoryId] ? tagState.byCatId[t.categoryId].name : '';
+
+    var popup = document.createElement('div');
+    popup.className = 'tag-menu tag-context-popup';
+    popup.style.setProperty('--tagc', t.color);
+    popup._anchor = chip;
+
+    var head = '<div class="tag-context-popup-tags">'
+      + '<span class="tag-chip" style="--tagc:' + t.color + '">' + esc(t.name) + '</span>'
+      + (catName ? '<span class="tag-context-popup-cat">' + esc(catName) + '</span>' : '')
+      + '</div>';
+    var assoc = '<div class="tag-context-popup-assoc">استُشهد في الآية ' + toAr(+parts[1]) + ' من سورة ' + esc(surahName)
+      + (meta.page ? '<span class="tag-context-popup-page">صفحة ' + toAr(meta.page) + '</span>' : '')
+      + '</div>';
+    var para = meta.paragraph
+      ? '<div class="tag-context-popup-para">' + esc(meta.paragraph) + '</div>'
+      : '<div class="tag-context-popup-empty">لا يتوفر سياق لهذا الاستشهاد</div>';
+    var close = '<button type="button" class="tag-context-popup-close">تم</button>';
+
+    popup.innerHTML = head + assoc + para + close;
+    document.body.appendChild(popup);
+    positionTagMenu(popup, chip);
+    popup.querySelector('.tag-context-popup-close').addEventListener('click', closeTagContextPopup);
+    tagContextPopup = popup;
+    chip.classList.add('expanded');
   }
 
   function applySurahAyahFilter() {
@@ -655,7 +865,7 @@
 
   function renderVerse(q, surah, ayah, text) {
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
-    var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(tagChip).join('') + '</span>' : '';
+    var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(function (t) { return verseTagChip(t, surah, ayah); }).join('') + '</span>' : '';
     return '<span class="verse" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
       + '<span class="verse-text">' + esc(text) + '</span>'
       + '<button type="button" class="tag-btn" data-surah="' + surah + '" data-ayah="' + ayah + '" title="وسم هذه الآية" aria-label="وسم هذه الآية">' + TAG_ICON + '</button>'
@@ -925,6 +1135,8 @@
     document.getElementById('mushaf').addEventListener('click', function (e) {
       var btn = e.target.closest('.tag-btn');
       if (btn) openTagMenu(+btn.dataset.surah, +btn.dataset.ayah, btn);
+      var chip = e.target.closest('.verse-tag-chip');
+      if (chip) openVerseTagContext(chip);
     });
 
     var ayahSearch = document.getElementById('surahAyahSearch');
@@ -961,6 +1173,10 @@
     var html = '';
     html += '<div class="index-toolbar">';
     html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a></div>';
+    html += '<div class="tags-io">'
+      + '<button type="button" class="io-btn" data-io="import" title="استيراد وسوم وتصنيفات من ملف">استيراد</button>'
+      + '<button type="button" class="io-btn" data-io="export" title="تصدير الوسوم والتصنيفات والآيات الموسومة إلى ملف">تصدير</button>'
+      + '</div>';
     html += '<div class="search-box">';
     html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
     html += '<input type="search" id="tagSearch" placeholder="ابحث عن وسم…" value="' + esc(state.tagQuery) + '">';
@@ -974,6 +1190,14 @@
     document.getElementById('tagSearch').addEventListener('input', function () {
       state.tagQuery = this.value;
       renderTagArea();
+    });
+
+    var ioWrap = appEl.querySelector('.tags-io');
+    if (ioWrap) ioWrap.addEventListener('click', function (e) {
+      var btn = e.target.closest('.io-btn');
+      if (!btn) return;
+      if (btn.dataset.io === 'export') downloadTagsFile();
+      else importTagsFromFile();
     });
 
     document.getElementById('tagArea').addEventListener('click', handleTagAreaClick);
@@ -1097,6 +1321,7 @@
       + '<div class="edit-row"><input type="text" id="editName" class="edit-name" value="' + esc(tag.name) + '" maxlength="40">'
       + '<select id="editCat" class="edit-cat">' + opts + '</select></div>'
       + '<div class="edit-colors">' + colorSwatches(tag.color) + '</div>'
+      + '<textarea class="edit-desc" placeholder="وصف الوسم (اختياري)…" maxlength="200" rows="2">' + esc(tag.description || '') + '</textarea>'
       + '<div class="edit-actions">'
       + '<button type="button" class="edit-save" data-type="tag" data-id="' + tag.id + '">حفظ</button>'
       + '<button type="button" class="edit-cancel">إلغاء</button>'
@@ -1160,6 +1385,7 @@
         html += '<div class="tag-new-inline">'
           + '<input type="text" class="edit-name tag-new-name" placeholder="اسم الوسم الجديد…" maxlength="40">'
           + '<div class="edit-colors">' + colorSwatches(TAG_COLORS[0]) + '</div>'
+          + '<textarea class="edit-desc" placeholder="وصف الوسم (اختياري)…" maxlength="200" rows="2"></textarea>'
           + '<div class="edit-actions">'
           + '<button type="button" class="edit-save" data-type="newtag" data-catid="' + c.id + '">إضافة</button>'
           + '<button type="button" class="edit-cancel">إلغاء</button>'
@@ -1215,24 +1441,26 @@
       return;
     }
 
-    var editSave = e.target.closest('.edit-save');
-    if (editSave) {
-      var panel = editSave.closest('.edit-panel, .tag-new-inline');
-      var name = panel.querySelector('.edit-name').value.trim();
-      var colorEl = panel.querySelector('.swatch.on');
-      var color = colorEl ? colorEl.dataset.color : TAG_COLORS[0];
-      var type = editSave.dataset.type;
-      var id = editSave.dataset.id;
-      if (type === 'newcat') {
-        if (name) { createCategory(name, color); state.selectedTagId = null; }
-      } else if (type === 'cat') {
-        if (name) updateCategory(id, { name: name, color: color });
-      } else if (type === 'newtag') {
-        if (name) { createTag(name, color, editSave.dataset.catid); state.selectedTagId = null; }
-      } else if (type === 'tag') {
-        var catId = panel.querySelector('.edit-cat').value;
-        if (name) updateTag(id, { name: name, color: color, categoryId: catId });
-      }
+      var editSave = e.target.closest('.edit-save');
+      if (editSave) {
+        var panel = editSave.closest('.edit-panel, .tag-new-inline');
+        var name = panel.querySelector('.edit-name').value.trim();
+        var colorEl = panel.querySelector('.swatch.on');
+        var color = colorEl ? colorEl.dataset.color : TAG_COLORS[0];
+        var descEl = panel.querySelector('.edit-desc');
+        var desc = descEl ? descEl.value.trim() : '';
+        var type = editSave.dataset.type;
+        var id = editSave.dataset.id;
+        if (type === 'newcat') {
+          if (name) { createCategory(name, color); state.selectedTagId = null; }
+        } else if (type === 'cat') {
+          if (name) updateCategory(id, { name: name, color: color });
+        } else if (type === 'newtag') {
+          if (name) { createTag(name, color, editSave.dataset.catid, desc); state.selectedTagId = null; }
+        } else if (type === 'tag') {
+          var catId = panel.querySelector('.edit-cat').value;
+          if (name) updateTag(id, { name: name, color: color, categoryId: catId, description: desc });
+        }
       state.edit = null;
       renderTagArea();
       return;
@@ -1417,13 +1645,15 @@
       fetch('data/quran.json').then(function (r) { return r.json(); }),
       fetch('data/dawaa.json').then(function (r) { return r.json(); }),
       fetch('data/jam3.json').then(function (r) { return r.json(); }),
-      fetch('data/iman.json').then(function (r) { return r.json(); })
+      fetch('data/iman.json').then(function (r) { return r.json(); }),
+      fetch('data/asarar.json').then(function (r) { return r.json(); })
     ]).then(function (res) {
       state.surahs = res[0];
       state.quran = res[1];
       mergeSeedTag(res[2]);
       mergeSeedTag(res[3]);
       mergeSeedTag(res[4]);
+      mergeSeedTag(res[5]);
     });
   }
 

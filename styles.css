@@ -290,6 +290,21 @@ html.dark .icon-moon { display: block; }
 .pill:hover { background: var(--surface-2); border-color: var(--accent); }
 .pill[disabled] { opacity: 0.4; pointer-events: none; }
 
+.tags-io { display: flex; gap: 0.5rem; }
+.io-btn {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.io-btn:hover { background: var(--surface-2); border-color: var(--accent); }
+.io-btn[data-io="export"] { color: var(--accent); }
+
 .font-size-ctl {
   display: inline-flex;
   align-items: center;
@@ -469,6 +484,38 @@ html.dark .icon-moon { display: block; }
   white-space: nowrap;
 }
 .verse-chips .tag-chip { font-size: 0.3em; position: relative; }
+button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
+.verse-tag-chip { padding: 0.06em 0.6em; }
+.verse-tag-chip.has-context { text-decoration: underline dotted; text-decoration-color: rgba(255,255,255,0.85); text-underline-offset: 3px; }
+.verse-tag-chip.expanded { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tag-context-popup { min-width: 300px; max-width: 420px; }
+.tag-context-popup-tags { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.55rem; }
+.tag-context-popup-cat { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; }
+.tag-context-popup-assoc { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-bottom: 0.55rem; line-height: 1.7; }
+.tag-context-popup-page { color: var(--text-muted); margin-inline-start: 0.4rem; font-weight: 600; }
+.tag-context-popup-para {
+  font-size: 0.9rem;
+  line-height: 1.9;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--tagc, var(--accent));
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.6rem;
+  direction: rtl;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.tag-context-popup-empty { font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 0.6rem 0; margin-bottom: 0.4rem; }
+.tag-context-popup-close {
+  display: block; width: 100%;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 0.85rem; font-weight: 600;
+  padding: 0.4rem; cursor: pointer;
+}
+.tag-context-popup-close:hover { border-color: var(--accent); color: var(--accent); }
 .verse-chips .tag-chip[data-cat]:hover::after {
   content: attr(data-cat);
   position: absolute;
@@ -572,9 +619,11 @@ html.dark .icon-moon { display: block; }
 .tag-menu-cat-group.collapsed .cat-arrow { transform: rotate(-90deg); }
 .tag-menu-cat-group.collapsed .tag-menu-cat-body { display: none; }
 .tag-menu-cat-body { display: flex; flex-direction: column; gap: 0.3rem; }
-.tag-menu-row { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.3rem 0.4rem; border-radius: 8px; }
+.tag-menu-row { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; padding: 0.3rem 0.4rem; border-radius: 8px; }
 .tag-menu-row:hover { background: var(--surface-2); }
-.tag-menu-row input { accent-color: var(--accent); width: 1em; height: 1em; margin: 0; cursor: pointer; }
+.tag-menu-row input { accent-color: var(--accent); width: 1em; height: 1em; margin: 0.15rem 0 0; cursor: pointer; }
+.tag-menu-row-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tag-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; }
 .tag-menu-empty { color: var(--text-muted); font-size: 0.85rem; padding: 0.2rem 0; }
 .tag-new { display: flex; flex-direction: column; gap: 0.4rem; }
 .tag-new-row { display: flex; gap: 0.4rem; }
@@ -758,6 +807,23 @@ html.dark .icon-moon { display: block; }
   outline: none;
 }
 .edit-colors { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+.edit-desc {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  margin-bottom: 0.7rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  outline: none;
+}
+.edit-desc:focus { border-color: var(--accent); }
 .swatch {
   width: 22px; height: 22px;
   border-radius: 50%;

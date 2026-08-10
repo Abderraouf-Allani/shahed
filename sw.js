@@ -14,7 +14,9 @@ const CORE_ASSETS = [
   './data/surahs.json',
   './data/quran.json',
   './data/dawaa.json',
-  './data/jam3.json'
+  './data/jam3.json',
+  './data/iman.json',
+  './data/asarar.json'
 ];
 
 self.addEventListener('install', function (e) {
