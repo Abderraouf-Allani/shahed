@@ -431,6 +431,46 @@ html.dark .icon-moon { display: block; }
   border-top: 1px solid var(--border);
 }
 .app-footer p { margin: 0; }
+.app-footer .license-link {
+  background: none; border: none; padding: 0.2rem 0;
+  color: var(--accent); font: inherit; font-size: 0.85rem;
+  text-decoration: underline; cursor: pointer;
+}
+.app-footer .license-link:hover { color: var(--accent-strong, var(--accent)); }
+
+.licenses-modal { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; }
+.licenses-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
+.licenses-panel {
+  position: relative;
+  width: min(580px, calc(100vw - 2rem));
+  max-height: min(78vh, 640px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 1.1rem 1.25rem;
+  font-family: "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 0.95rem;
+}
+.licenses-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+.licenses-title { font-weight: 700; color: var(--accent); font-size: 1.05rem; }
+.licenses-close {
+  border: none; background: var(--surface-2); color: var(--text-muted);
+  width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  font-size: 0.85rem; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.licenses-close:hover { background: var(--surface-3, rgba(0,0,0,0.08)); color: var(--text); }
+.licenses-section { margin-bottom: 1.1rem; }
+.licenses-section:last-child { margin-bottom: 0; }
+.licenses-section h3 { font-size: 0.95rem; color: var(--accent); margin: 0 0 0.4rem; }
+.licenses-section ul { margin: 0; padding-inline-start: 1.3rem; }
+.licenses-section li { font-size: 0.9rem; line-height: 2; color: var(--text); }
+.licenses-section a { color: var(--accent); text-decoration: underline; word-break: break-word; }
+.licenses-section code {
+  background: var(--surface-2); padding: 0.05rem 0.35rem; border-radius: 4px;
+  font-size: 0.85em; direction: ltr; unicode-bidi: embed;
+}
 
 /* ---------- responsive ---------- */
 
@@ -493,6 +533,7 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 .tag-context-popup-cat { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; }
 .tag-context-popup-assoc { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-bottom: 0.55rem; line-height: 1.7; }
 .tag-context-popup-page { color: var(--text-muted); margin-inline-start: 0.4rem; font-weight: 600; }
+.tag-context-popup-chapter { color: var(--tagc, var(--accent)); margin-inline-start: 0.4rem; font-weight: 700; }
 .tag-context-popup-para {
   font-size: 0.9rem;
   line-height: 1.9;
@@ -989,3 +1030,50 @@ html.dark .loader-ring { stroke: rgba(78, 156, 110, 0.3); }
   font-family: "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
 }
 html.dark .loader-caption { color: #9a917f; }
+
+/* ---------- document upload progress ---------- */
+
+.io-btn[data-io="doc"] { color: var(--accent); }
+.doc-progress {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 20, 0.35);
+}
+.doc-progress-box {
+  width: min(320px, 86vw);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2rem 1.3rem;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+.doc-progress-spinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 0.8rem;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: doc-spin 0.8s linear infinite;
+}
+@keyframes doc-spin { to { transform: rotate(360deg); } }
+.doc-progress-msg { font-size: 0.95rem; color: var(--text); min-height: 1.4rem; }
+.doc-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  margin-top: 0.8rem;
+}
+.doc-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}

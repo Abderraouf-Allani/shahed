@@ -128,6 +128,8 @@
     var categories = raw && Array.isArray(raw.categories) ? raw.categories : null;
     var tags = raw && Array.isArray(raw.tags) ? raw.tags : [];
     var verses = raw && raw.verses && typeof raw.verses === 'object' ? raw.verses : {};
+    var ayahMeta = raw && raw.ayahMeta && typeof raw.ayahMeta === 'object' ? raw.ayahMeta : {};
+    state.ayahMeta = ayahMeta;
 
     var legacyDefault = categories && categories.length === 1 && categories[0].name === 'عام';
     if (!categories || !categories.length || legacyDefault) {
@@ -140,7 +142,7 @@
       }
       categories = defs;
       try {
-        localStorage.setItem(LS.tags, JSON.stringify({ categories: categories, tags: tags, verses: verses }));
+        localStorage.setItem(LS.tags, JSON.stringify({ categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
       } catch (e) {}
     } else {
       var catIds = {};
@@ -162,7 +164,8 @@
     localStorage.setItem(LS.tags, JSON.stringify({
       categories: tagState.categories,
       tags: tagState.tags,
-      verses: tagState.verses
+      verses: tagState.verses,
+      ayahMeta: state.ayahMeta
     }));
   }
 
@@ -201,6 +204,10 @@
     var i = ids.indexOf(tagId);
     if (i >= 0) { ids.splice(i, 1); }
     if (!ids.length) { delete tagState.verses[key]; } else { tagState.verses[key] = ids; }
+    if (state.ayahMeta[tagId] && state.ayahMeta[tagId][key]) {
+      delete state.ayahMeta[tagId][key];
+      if (!Object.keys(state.ayahMeta[tagId]).length) delete state.ayahMeta[tagId];
+    }
     saveTags();
   }
 
@@ -212,6 +219,7 @@
       if (!tagState.verses[key].length) delete tagState.verses[key];
     });
     if (state.selectedTagId === tagId) state.selectedTagId = null;
+    delete state.ayahMeta[tagId];
     saveTags();
   }
 
@@ -455,6 +463,706 @@
     input.click();
   }
 
+  /* ---------- document upload (PDF/DOCX) ---------- */
+
+  var DOC_MIN_MATCH = 26;
+
+  var docAyahIndex = null;
+  var docProgressEl = null;
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error('تعذّر تحميل مكتبة ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+
+  var AR_PR_FORMS = {0xFB50:0x621,0xFB51:0x621,0xFB52:0x627,0xFB53:0x627,0xFB54:0x627,0xFB55:0x627,0xFE70:0x640,0xFE71:0x640,0xFE73:0x640,0xFE81:0x622,0xFE82:0x622,0xFE83:0x623,0xFE84:0x623,0xFE85:0x624,0xFE86:0x624,0xFE87:0x625,0xFE88:0x625,0xFE89:0x626,0xFE8A:0x626,0xFE8B:0x626,0xFE8C:0x626,0xFE8D:0x627,0xFE8E:0x627,0xFE8F:0x628,0xFE90:0x628,0xFE91:0x628,0xFE92:0x628,0xFE93:0x629,0xFE94:0x629,0xFE95:0x62A,0xFE96:0x62A,0xFE97:0x62A,0xFE98:0x62A,0xFE99:0x62B,0xFE9A:0x62B,0xFE9B:0x62B,0xFE9C:0x62B,0xFE9D:0x62C,0xFE9E:0x62C,0xFE9F:0x62C,0xFEA0:0x62C,0xFEA1:0x62D,0xFEA2:0x62D,0xFEA3:0x62D,0xFEA4:0x62D,0xFEA5:0x62E,0xFEA6:0x62E,0xFEA7:0x62E,0xFEA8:0x62E,0xFEA9:0x62F,0xFEAA:0x62F,0xFEAB:0x630,0xFEAC:0x630,0xFEAD:0x631,0xFEAE:0x631,0xFEAF:0x632,0xFEB0:0x632,0xFEB1:0x633,0xFEB2:0x633,0xFEB3:0x633,0xFEB4:0x633,0xFEB5:0x634,0xFEB6:0x634,0xFEB7:0x634,0xFEB8:0x634,0xFEB9:0x635,0xFEBA:0x635,0xFEBB:0x635,0xFEBC:0x635,0xFEBD:0x636,0xFEBE:0x636,0xFEBF:0x636,0xFEC0:0x636,0xFEC1:0x637,0xFEC2:0x637,0xFEC3:0x637,0xFEC4:0x637,0xFEC5:0x638,0xFEC6:0x638,0xFEC7:0x638,0xFEC8:0x638,0xFEC9:0x639,0xFECA:0x639,0xFECB:0x639,0xFECC:0x639,0xFECD:0x63A,0xFECE:0x63A,0xFECF:0x63A,0xFED0:0x63A,0xFED1:0x641,0xFED2:0x641,0xFED3:0x641,0xFED4:0x641,0xFED5:0x642,0xFED6:0x642,0xFED7:0x642,0xFED8:0x642,0xFED9:0x643,0xFEDA:0x643,0xFEDB:0x643,0xFEDC:0x643,0xFEDD:0x644,0xFEDE:0x644,0xFEDF:0x644,0xFEE0:0x644,0xFEE1:0x645,0xFEE2:0x645,0xFEE3:0x645,0xFEE4:0x645,0xFEE5:0x646,0xFEE6:0x646,0xFEE7:0x646,0xFEE8:0x646,0xFEE9:0x647,0xFEEA:0x647,0xFEEB:0x647,0xFEEC:0x647,0xFEED:0x648,0xFEEE:0x648,0xFEEF:0x649,0xFEF0:0x649,0xFEF1:0x64A,0xFEF2:0x64A,0xFEF3:0x64A,0xFEF4:0x64A};
+
+  function normDocText(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[\uFE70-\uFEFF\uFB50-\uFDFF]/g, function (ch) {
+        if (ch === '\uFDF2') return '\u0627\u0644\u0644\u0647';
+        if (ch >= '\uFEF5' && ch <= '\uFEFC') return '\u0644\u0627';
+        if (ch === '\uFDF0') return '\u0635\u0644\u0649';
+        if (ch === '\uFDF1') return '\u0642\u0644\u0649';
+        if (ch === '\uFDFA' || ch === '\uFDFB') return '';
+        return AR_PR_FORMS[ch.charCodeAt(0)] ? String.fromCharCode(AR_PR_FORMS[ch.charCodeAt(0)]) : '';
+      })
+      .replace(/[\u064B-\u0652\u06D6-\u06ED\u0640\u0653\u0654\u0655]/g, '')
+      .replace(/\u0670/g, 'ا')
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ؤ/g, 'و')
+      .replace(/[\u0621\u0626]/g, '')
+      .replace(/[ى\u06D2]/g, 'ي')
+      .replace(/الرحمن/g, 'الرحمان')
+      .replace(/[^\u0621-\u064A\u06D2\u06CC ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function buildDocAyahIndex() {
+    if (docAyahIndex) return docAyahIndex;
+    docAyahIndex = [];
+    state.quran.forEach(function (ch) {
+      ch.verses.forEach(function (v, ai) {
+        var n = normDocText(v);
+        if (n) docAyahIndex.push({ key: ch.chapter + ':' + (ai + 1), text: n, words: n.split(' ') });
+      });
+    });
+    return docAyahIndex;
+  }
+
+  function isArabicLetter(ch) {
+    return ch && ch !== ' ' && /[\u0621-\u064A\u06D2\u06CC]/.test(ch);
+  }
+
+  function hasBoundaryIndex(doc, t) {
+    var i = doc.indexOf(t);
+    while (i !== -1) {
+      var before = i === 0 ? ' ' : doc.charAt(i - 1);
+      var after = i + t.length >= doc.length ? ' ' : doc.charAt(i + t.length);
+      if (!isArabicLetter(before) && !isArabicLetter(after)) return i;
+      i = doc.indexOf(t, i + 1);
+    }
+    return -1;
+  }
+
+  var DOC_MIN_WORDS = 6;
+
+  function buildDocPosIndex(docWords) {
+    var index = {};
+    docWords.forEach(function (w, p) {
+      (index[w] || (index[w] = [])).push(p);
+    });
+    return index;
+  }
+
+  function wordRunCandidates(docWords, posIndex, item, minWords) {
+    var T = item.words;
+    var m = T.length;
+    if (m < minWords) return null;
+    var best = null;
+    var seen = {};
+    var D = docWords;
+    var Dlen = D.length;
+    for (var i = 0; i < m - 1; i++) {
+      var positions = posIndex[T[i]];
+      if (!positions) continue;
+      for (var pi = 0; pi < positions.length; pi++) {
+        var p = positions[pi];
+        if (p + 1 >= Dlen || D[p + 1] !== T[i + 1]) continue;
+        var seedKey = i + '|' + p;
+        if (seen[seedKey]) continue;
+        seen[seedKey] = true;
+        var res = expandRun(D, T, i, p);
+        if (!best || res.exact > best.exact || (res.exact === best.exact && res.run > best.run)) best = res;
+      }
+    }
+    if (!best) return null;
+    if (best.exact < minWords) return null;
+    var slack = 1 + Math.floor(best.run / 8);
+    if (best.run - best.exact > slack) return null;
+    if (best.exact === m) return { key: item.key, start: best.start, end: best.end, exact: best.exact, run: best.run, frac: 1 };
+    return { key: item.key, start: best.start, end: best.end, exact: best.exact, run: best.run, frac: best.exact / m };
+  }
+
+  function expandRun(D, T, seedI, seedP) {
+    var i = seedI;
+    var p = seedP;
+    while (i > 0 && p > 0 && T[i - 1] === D[p - 1]) { i--; p--; }
+    var j = i;
+    var q = p;
+    var exact = 0;
+    var mism = 0;
+    while (j < T.length && q < D.length) {
+      if (T[j] === D[q]) { exact++; mism = 0; }
+      else { mism++; }
+      if (mism > 2) break;
+      j++;
+      q++;
+    }
+    return { exact: exact, run: j - i, start: p, end: q };
+  }
+
+  function indexDocumentAyahs(text, onDone) {
+    var forward = normDocText(text);
+    if (!forward) { onDone({ matched: [], spans: [], orientation: 1 }); return; }
+    var rev = forward.split(' ').reverse().join(' ');
+    if (rev === forward) { indexOrientation(forward, 1, onDone); return; }
+    var revCount = countTier1(rev);
+    var fwdCount = countTier1(forward);
+    if (revCount > fwdCount) indexOrientation(rev, -1, onDone);
+    else indexOrientation(forward, 1, onDone);
+  }
+
+  function countTier1(docN) {
+    var idx = buildDocAyahIndex();
+    var c = 0;
+    for (var i = 0; i < idx.length; i++) {
+      var tN = idx[i].text;
+      if (tN && hasBoundaryIndex(docN, tN) !== -1) c++;
+    }
+    return c;
+  }
+
+  function indexOrientation(docN, orientation, onDone) {
+    var docWords = docN.split(' ');
+    var spacePrefix = [0];
+    for (var sc = 0; sc < docN.length; sc++) {
+      spacePrefix[sc + 1] = spacePrefix[sc] + (docN.charAt(sc) === ' ' ? 1 : 0);
+    }
+    function charPosToWord(pos) {
+      return pos >= docN.length ? docWords.length : spacePrefix[pos];
+    }
+    var posIndex = buildDocPosIndex(docWords);
+    var idx = buildDocAyahIndex();
+    var matched = [];
+    var spans = [];
+    var t1Ranges = [];
+    var candidates = [];
+    var CHUNK = 150;
+
+    function overlaps(ranges, start, end) {
+      for (var k = 0; k < ranges.length; k++) {
+        if (start < ranges[k][1] && end > ranges[k][0]) return true;
+      }
+      return false;
+    }
+
+    var i = 0;
+    function pass1() {
+      var end = Math.min(i + CHUNK, idx.length);
+      for (; i < end; i++) {
+        var tN = idx[i].text;
+        if (!tN) continue;
+        var bi = hasBoundaryIndex(docN, tN);
+        if (bi === -1) continue;
+        var s = charPosToWord(bi);
+        var e = charPosToWord(bi + tN.length);
+        t1Ranges.push([s, e]);
+        matched.push(idx[i].key);
+        spans.push({ key: idx[i].key, start: s, end: e });
+      }
+      if (i < idx.length) {
+        showDocProgress('يجري مطابقة الآيات… (' + toAr(matched.length) + ' آية حتى الآن)', i / idx.length);
+        setTimeout(pass1, 0);
+      } else {
+        i = 0;
+        pass2();
+      }
+    }
+
+    function pass2() {
+      var end = Math.min(i + CHUNK, idx.length);
+      for (; i < end; i++) {
+        var item = idx[i];
+        if (matched.indexOf(item.key) !== -1) continue;
+        var cand = wordRunCandidates(docWords, posIndex, item, DOC_MIN_WORDS);
+        if (!cand) continue;
+        if (overlaps(t1Ranges, cand.start, cand.end)) continue;
+        candidates.push(cand);
+      }
+      if (i < idx.length) {
+        showDocProgress('يجري مطابقة الآيات… (' + toAr(matched.length) + ' آية حتى الآن)', i / idx.length);
+        setTimeout(pass2, 0);
+      } else {
+        candidates.sort(function (x, y) {
+          if (y.exact !== x.exact) return y.exact - x.exact;
+          if (y.run !== x.run) return y.run - x.run;
+          return y.frac - x.frac;
+        });
+        var accepted2 = [];
+        candidates.forEach(function (cand) {
+          if (overlaps(accepted2, cand.start, cand.end)) return;
+          accepted2.push([cand.start, cand.end]);
+          matched.push(cand.key);
+          spans.push({ key: cand.key, start: cand.start, end: cand.end });
+        });
+        onDone({ matched: matched, spans: spans, orientation: orientation });
+      }
+    }
+
+    pass1();
+  }
+
+  var CHAPTER_WORDS = ['الفصل', 'الباب', 'القسم', 'الجزء', 'المبحث', 'المطلب', 'المقدمة', 'الخاتمة', 'التمهيد', 'التوطئة', 'الملحق', 'المرحلة', 'الوحدة', 'الدرس'];
+  var ORDINAL_ONLY = /^(الاول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)$/;
+
+  function paraText(p) {
+    if (p && typeof p === 'object') return p.text || '';
+    return p || '';
+  }
+
+  function isOrdinalOnly(text) {
+    return ORDINAL_ONLY.test(normDocText(text).trim());
+  }
+
+  function isChapterHeading(line) {
+    var t = normDocText(line).replace(/\s+/g, ' ').trim();
+    if (!t || t.length > 60) return false;
+    for (var i = 0; i < CHAPTER_WORDS.length; i++) {
+      if (t.indexOf(CHAPTER_WORDS[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  function cleanChapter(heading) {
+    var t = String(heading || '').replace(/[\\\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    t = t.replace(/^[0-9\u0660-\u0669\u06F0-\u06F9]+\s*[\-–—:.،]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/\s*[0-9\u0660-\u0669\u06F0-\u06F9]+\s*$/g, '').trim();
+    if (t.length > 50) t = t.slice(0, 50);
+    return t;
+  }
+
+  function detectChapter(paras, i) {
+    var line = paraText(paras[i]);
+    if (!isChapterHeading(line)) return null;
+    var h = cleanChapter(line);
+    if (!h) return null;
+    var contentWords = 0;
+    for (var j = i + 1; j < paras.length && j <= i + 4; j++) {
+      contentWords += normDocText(paraText(paras[j])).split(' ').filter(Boolean).length;
+      if (contentWords >= 8) return h;
+    }
+    return null;
+  }
+
+  function buildChapters(paras) {
+    var groups = [];
+    var cur = null;
+    function close() {
+      if (cur && cur.text.trim()) groups.push(cur);
+      cur = null;
+    }
+    paras.forEach(function (p, i) {
+      var text = paraText(p);
+      var page = p && p.page ? p.page : null;
+      var h = detectChapter(paras, i);
+      if (h) {
+        if (cur && cur.text.trim()) close();
+        if (!cur) cur = { name: null, text: '', paras: [], page: page };
+        if (!cur.name) { cur.name = h; cur._headPara = i; }
+        if (page && !cur.page) cur.page = page;
+      } else if (isOrdinalOnly(text) && cur && cur.name && !cur.text.trim() && cur._headPara === i - 1) {
+        cur.name = (cur.name + ' ' + cleanChapter(text)).trim();
+      } else {
+        if (!cur) cur = { name: null, text: '', paras: [], page: page };
+        cur.text += ' ' + text;
+        cur.paras.push(text);
+        if (page && !cur.page) cur.page = page;
+      }
+    });
+    close();
+    if (!groups.length) {
+      groups.push({ name: null, text: paras.map(paraText).join(' '), paras: paras.map(paraText), page: null });
+    }
+    return groups.filter(function (g) {
+      return normDocText(g.text).split(' ').filter(Boolean).length >= DOC_MIN_WORDS;
+    });
+  }
+
+  var ayahNormCache = {};
+
+  function ayahNorm(key) {
+    if (ayahNormCache[key] !== undefined) return ayahNormCache[key];
+    var parts = key.split(':');
+    var ch = state.quran[+parts[0] - 1];
+    var v = ch && ch.verses[+parts[1] - 1];
+    ayahNormCache[key] = v ? normDocText(v) : '';
+    return ayahNormCache[key];
+  }
+
+  function overlapWords(pn, n) {
+    var pw = pn.split(' ');
+    var nw = n.split(' ');
+    var i = 0;
+    var score = 0;
+    for (var j = 0; j < pw.length && i < nw.length; j++) {
+      if (nw[i] === pw[j]) { score++; i++; }
+    }
+    return score;
+  }
+
+  function trimParagraph(p) {
+    var t = String(p || '').replace(/\s+/g, ' ').trim();
+    if (t.length > 300) t = t.slice(0, 300) + '…';
+    return t;
+  }
+
+  function paragraphIndexAt(pnList, pos) {
+    var acc = 0;
+    for (var i = 0; i < pnList.length; i++) {
+      acc += pnList[i].split(' ').filter(Boolean).length;
+      if (pos < acc) return i;
+    }
+    return pnList.length ? pnList.length - 1 : -1;
+  }
+
+  function wordRange(doc, i, t) {
+    var before = doc.slice(0, i);
+    var s = before ? before.split(' ').filter(Boolean).length : 0;
+    return { s: s, e: s + t.split(' ').filter(Boolean).length };
+  }
+
+  function contextWindow(chParas, p0, p1) {
+    var out = [];
+    for (var k = p0; k <= p1 && k < chParas.length; k++) out.push(chParas[k]);
+    return trimParagraph(out.join(' '));
+  }
+
+  function findParagraphForAyah(chParas, pnList, rpList, key) {
+    var n = ayahNorm(key);
+    if (!n) return null;
+    var nWords = n.split(' ').filter(Boolean).length;
+    if (!nWords) return null;
+    var chNorm = pnList.join(' ');
+    var revAll = rpList.join(' ');
+    var pos = hasBoundaryIndex(chNorm, n);
+    var src = pos !== -1 ? chNorm : null;
+    if (src === null) {
+      pos = hasBoundaryIndex(revAll, n);
+      if (pos !== -1) src = revAll;
+    }
+    if (src !== null) {
+      var r = wordRange(src, pos, n);
+      var p0 = paragraphIndexAt(pnList, r.s);
+      var p1 = paragraphIndexAt(pnList, r.e - 1);
+      return contextWindow(chParas, p0, p1);
+    }
+    var nRev = n.split(' ').reverse().join(' ');
+    var best = null;
+    var bestScore = 0;
+    var bestW = 0;
+    var MAXW = 5;
+    for (var w = 1; w <= MAXW && w <= pnList.length; w++) {
+      for (var j = 0; j + w <= pnList.length; j++) {
+        var joined = pnList.slice(j, j + w).join(' ');
+        var score = Math.max(overlapWords(joined, n), overlapWords(joined, nRev));
+        if (score > bestScore) { bestScore = score; best = j; bestW = w; }
+      }
+    }
+    var need = Math.max(6, Math.floor(nWords / 2));
+    if (best !== null && bestScore >= need) return contextWindow(chParas, best, best + bestW - 1);
+    return null;
+  }
+
+  function indexDocumentParagraphs(paras, onProgress, onDone) {
+    var groups = buildChapters(paras);
+    var matchedKeys = [];
+    var metaOf = {};
+    var seen = {};
+    var gi = 0;
+    function step() {
+      if (gi >= groups.length) {
+        onDone({ matched: matchedKeys, meta: metaOf, chapters: groups.length });
+        return;
+      }
+      var g = groups[gi];
+      if (onProgress) onProgress(gi + 1, groups.length, g.name);
+      setTimeout(function () {
+        indexDocumentAyahs(g.text, function (res) {
+          var pnList = g.paras.map(normDocText);
+          var rpList = pnList.map(function (p) { return p.split(' ').reverse().join(' '); });
+          res.matched.forEach(function (key) {
+            if (seen[key]) return;
+            seen[key] = true;
+            matchedKeys.push(key);
+            var m = {};
+            if (g.name) m.chapter = g.name;
+            if (g.page) m.page = g.page;
+            var ctx = findParagraphForAyah(g.paras, pnList, rpList, key);
+            if (ctx) m.paragraph = ctx;
+            if (m.chapter || m.page || m.paragraph) metaOf[key] = m;
+          });
+          gi++;
+          step();
+        });
+      }, 0);
+    }
+    step();
+  }
+
+  function extractPdfText(buffer, onProgress) {
+    var pdfjs = window.pdfjsLib;
+    pdfjs.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+    return pdfjs.getDocument({ data: buffer }).promise.then(function (pdf) {
+      var paragraphs = [];
+      var max = Math.min(pdf.numPages, 500);
+      var chain = Promise.resolve();
+      for (var p = 1; p <= max; p++) {
+        (function (pg) {
+          chain = chain.then(function () {
+            if (onProgress) onProgress(pg, max);
+            return pdf.getPage(pg).then(function (page) {
+              return page.getTextContent().then(function (tc) {
+                var line = '';
+                tc.items.forEach(function (it) {
+                  var s = it.str || '';
+                  if (it.hasEOL) {
+                    if (line.trim()) paragraphs.push({ page: pg, text: line.trim() });
+                    line = s;
+                  } else {
+                    line += (line && s ? ' ' : '') + s;
+                  }
+                });
+                if (line.trim()) paragraphs.push({ page: pg, text: line.trim() });
+              });
+            });
+          });
+        })(p);
+      }
+      return chain.then(function () { return { paragraphs: paragraphs, pages: pdf.numPages }; });
+    });
+  }
+
+  function extractDocxText(buffer) {
+    var u8 = new Uint8Array(buffer);
+    var files;
+    try { files = window.fflate.unzipSync(u8); } catch (e) {
+      return Promise.reject(new Error('فشل فك ضغط ملف DOCX.'));
+    }
+    var xmlArr = files['word/document.xml'];
+    if (!xmlArr) return Promise.reject(new Error('ملف DOCX غير صالح — لا يحتوي على نص.'));
+    var xml = new TextDecoder().decode(xmlArr);
+    var paragraphs = [];
+    xml.split(/<\/w:p>|<\/w:tr>/).forEach(function (seg) {
+      var text = seg
+        .replace(/<w:tab\b[^>]*\/>/g, ' ')
+        .replace(/<w:br\b[^>]*\/>/g, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (text) paragraphs.push({ text: text });
+    });
+    return Promise.resolve({ paragraphs: paragraphs, pages: 0 });
+  }
+
+  function showDocProgress(msg, frac) {
+    if (!docProgressEl) {
+      docProgressEl = document.createElement('div');
+      docProgressEl.className = 'doc-progress';
+      docProgressEl.innerHTML = '<div class="doc-progress-box">'
+        + '<div class="doc-progress-spinner"></div>'
+        + '<div class="doc-progress-msg"></div>'
+        + '<div class="doc-progress-bar"><div class="doc-progress-fill"></div></div>'
+        + '</div>';
+      document.body.appendChild(docProgressEl);
+    }
+    docProgressEl.querySelector('.doc-progress-msg').textContent = msg;
+    var fill = docProgressEl.querySelector('.doc-progress-fill');
+    if (typeof frac === 'number') fill.style.width = Math.round(frac * 100) + '%';
+  }
+
+  function hideDocProgress() {
+    if (docProgressEl) { docProgressEl.remove(); docProgressEl = null; }
+  }
+
+  function ensureBooksCategory() {
+    var cat = tagState.categories.filter(function (c) { return norm(c.name) === 'كتب'; })[0];
+    if (cat) return cat;
+    cat = { id: 'c-dawaa', name: 'كتب', color: '#1e5a3c' };
+    if (!tagState.byCatId[cat.id]) {
+      tagState.categories.push(cat);
+      tagState.byCatId[cat.id] = cat;
+    }
+    return cat;
+  }
+
+  function pickTagColor() {
+    var usage = {};
+    TAG_COLORS.forEach(function (c) { usage[c] = 0; });
+    tagState.tags.forEach(function (t) { if (usage[t.color] !== undefined) usage[t.color]++; });
+    var best = TAG_COLORS[0];
+    var bestN = Infinity;
+    TAG_COLORS.forEach(function (c) {
+      if (usage[c] < bestN) { bestN = usage[c]; best = c; }
+    });
+    return best;
+  }
+
+  function finishDocumentIndex(fileName, result) {
+    hideDocProgress();
+    var matched = result && result.matched ? result.matched : [];
+    var metaOf = (result && result.meta) || {};
+    if (!matched.length) {
+      alert('لم يُعثر على آيات كريمة في المستند «' + fileName + '». تأكد أن الملف يحتوي على نص قابل للقراءة.');
+      return;
+    }
+    var bookName = fileName.replace(/\.(pdf|docx)$/i, '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!bookName) bookName = 'مستند';
+    var cat = ensureBooksCategory();
+    var tag = {
+      id: newId('t'),
+      name: uniqueTagName(bookName),
+      categoryId: cat.id,
+      color: pickTagColor(),
+      description: 'الآيات المستشهد بها في «' + bookName + '» — استُخرجت من المستند المرفوع.'
+    };
+    tagState.tags.push(tag);
+    tagState.byId[tag.id] = tag;
+    matched.forEach(function (key) {
+      var cur = tagState.verses[key] || [];
+      if (cur.indexOf(tag.id) === -1) cur.push(tag.id);
+      tagState.verses[key] = cur;
+      var m = metaOf[key];
+      if (m && (m.chapter || m.page || m.paragraph)) {
+        if (!state.ayahMeta[tag.id]) state.ayahMeta[tag.id] = {};
+        state.ayahMeta[tag.id][key] = m;
+      }
+    });
+    saveTags();
+    var chaptersMsg = result.chapters > 1
+      ? ' موزعة على ' + toAr(result.chapters) + ' فصول.'
+      : '';
+    alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + toAr(matched.length) + ' آية' + chaptersMsg);
+    renderTagArea();
+  }
+
+  function processDocument(file) {
+    var isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    var isDocx = /\.docx$/i.test(file.name) || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (!isPdf && !isDocx) {
+      alert('الرجاء اختيار ملف PDF أو DOCX.');
+      return;
+    }
+    showDocProgress('جاري تحميل المكتبات…', 0);
+    var ready = Promise.resolve();
+    if (isPdf && !window.pdfjsLib) ready = loadScript('lib/pdf.min.js');
+    if (isDocx && !window.fflate) ready = loadScript('lib/fflate.min.js');
+    ready.then(function () {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var buf = reader.result;
+        var textPromise = isPdf
+          ? extractPdfText(buf, function (p, m) {
+            showDocProgress('يجري استخراج النص من الصفحة ' + toAr(p) + ' من ' + toAr(m) + '…', p / m);
+          })
+          : extractDocxText(buf);
+        textPromise.then(function (out) {
+          var paras = out && out.paragraphs ? out.paragraphs : [];
+          var hasText = paras.some(function (p) { return paraText(p).trim(); });
+          if (!paras.length || !hasText) {
+            hideDocProgress();
+            alert('لم يُستخرج أي نص من المستند. تأكد أن الملف نصي وليس صوراً ممسوحة ضوئياً.');
+            return;
+          }
+          showDocProgress('جاري فحص فصول المستند…', 0);
+          indexDocumentParagraphs(paras, function (ci, cn, name) {
+            showDocProgress(
+              'جاري مطابقة آيات الفصل ' + toAr(ci) + ' من ' + toAr(cn) + (name ? ' — ' + name : '') + '…',
+              ci / cn
+            );
+          }, function (result) {
+            finishDocumentIndex(file.name, result);
+          });
+        }).catch(function (err) {
+          hideDocProgress();
+          alert('تعذّر معالجة المستند: ' + err.message);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }).catch(function (err) {
+      hideDocProgress();
+      alert('تعذّر تحميل المكتبات: ' + err.message);
+    });
+  }
+
+  function importDocumentFromFile() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (file) processDocument(file);
+      input.remove();
+    });
+    input.click();
+  }
+
+  /* ---------- licenses ---------- */
+
+  var licensesModal = null;
+
+  function closeLicensesModal() {
+    if (licensesModal) { licensesModal.remove(); licensesModal = null; }
+    document.removeEventListener('keydown', onLicensesKeydown);
+  }
+
+  function onLicensesKeydown(e) {
+    if (e.key === 'Escape') closeLicensesModal();
+  }
+
+  function licensesSection(title, rowsHtml) {
+    return '<div class="licenses-section"><h3>' + esc(title) + '</h3><ul>'
+      + rowsHtml + '</ul></div>';
+  }
+
+  function openLicensesModal() {
+    closeLicensesModal();
+    var modal = document.createElement('div');
+    modal.className = 'licenses-modal';
+
+    var quranRows =
+      '<li>النص القرآني كاملاً (٦٢١٤ آية) برواية <strong>قالون عن نافع</strong> منشور من <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — منصة «تقنيات خدمة القرآن الكريم»:'
+      + ' <a href="https://qurancomplex.gov.sa/en/techquran/dev/" target="_blank" rel="noopener">qurancomplex.gov.sa — صفحة المطورين</a>'
+      + ' (ملف البيانات الرسمي: <code>QaloonData</code>).'
+      + '</li>'
+      + '<li>تعذر الاتصال بموقع المجمع أثناء الإعداد، فجُلب النص من نسخة مطابقة منشورة على GitHub:'
+      + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>';
+
+    var libRows =
+      '<li>pdf.js <code>3.32.2</code> — رخصة Apache-2.0 — <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">github.com/mozilla/pdf.js</a></li>'
+      + '<li>fflate <code>0.8.x</code> — رخصة MIT — <a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener">github.com/101arrowz/fflate</a></li>'
+      + '<li>خط «قالون» الحاسوبي — <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — <a href="https://fonts.qurancomplex.gov.sa/ten-readings" target="_blank" rel="noopener">fonts.qurancomplex.gov.sa</a></li>';
+
+    var toolRows =
+      '<li>Node.js <code>v22.23.2</code> — سكربتات بناء ومعالجة البيانات</li>'
+      + '<li>Python <code>3.9.6</code> — سكربتات معالجة البيانات والخطوط</li>'
+      + '<li>Google Chrome <code>151.0.7922.77</code> — اختبار تطبيق الويب (PWA) وتوليد الأيقونات</li>'
+      + '<li>Git — إدارة الإصدارات</li>';
+
+    modal.innerHTML =
+      '<div class="licenses-overlay"></div>'
+      + '<div class="licenses-panel" role="dialog" aria-modal="true" aria-label="التراخيص والمصادر">'
+      +   '<div class="licenses-head">'
+      +     '<span class="licenses-title">التراخيص والمصادر</span>'
+      +     '<button type="button" class="licenses-close" aria-label="إغلاق">✕</button>'
+      +   '</div>'
+      +   '<div class="licenses-body">'
+      +     licensesSection('النص القرآني', quranRows)
+      +     licensesSection('المكتبات', libRows)
+      +     licensesSection('أدوات البناء', toolRows)
+      +   '</div>'
+      + '</div>';
+
+    document.body.appendChild(modal);
+    licensesModal = modal;
+    document.addEventListener('keydown', onLicensesKeydown);
+    modal.querySelector('.licenses-close').addEventListener('click', closeLicensesModal);
+    modal.querySelector('.licenses-overlay').addEventListener('click', closeLicensesModal);
+  }
+
+  var licenseBtn = document.getElementById('licenseLink');
+  if (licenseBtn) licenseBtn.addEventListener('click', openLicensesModal);
+
   /* ---------- theme ---------- */
 
   var appEl = document.getElementById('app');
@@ -589,7 +1297,9 @@
       + '<select class="tag-new-cat">' + catOpts + '</select></div>'
       + '<button type="submit">إضافة</button>'
       + '</form>'
-      + '<button type="button" class="tag-menu-close">تم</button>';
+      + '<div class="tag-menu-actions">'
+      + '<button type="button" class="tag-menu-close">تم</button>'
+      + '</div>';
 
     document.body.appendChild(menu);
     menu._anchor = anchor;
@@ -895,6 +1605,7 @@
       + (catName ? '<span class="tag-context-popup-cat">' + esc(catName) + '</span>' : '')
       + '</div>';
     var assoc = '<div class="tag-context-popup-assoc">استُشهد في الآية ' + toAr(+parts[1]) + ' من سورة ' + esc(surahName)
+      + (meta && meta.chapter ? '<span class="tag-context-popup-chapter">' + esc(meta.chapter) + '</span>' : '')
       + (meta && meta.page ? '<span class="tag-context-popup-page">صفحة ' + toAr(meta.page) + '</span>' : '')
       + '</div>';
     var para = meta && meta.paragraph
@@ -1249,6 +1960,7 @@
     html += '<div class="index-toolbar">';
     html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a></div>';
     html += '<div class="tags-io">'
+      + '<button type="button" class="io-btn" data-io="doc" title="رفع مستند (PDF أو DOCX) واستخراج الآيات منه كوسم جديد في تصنيف الكتب">رفع مستند</button>'
       + '<button type="button" class="io-btn" data-io="import" title="استيراد وسوم وتصنيفات من ملف">استيراد</button>'
       + '<button type="button" class="io-btn" data-io="export" title="تصدير الوسوم والتصنيفات والآيات الموسومة إلى ملف">تصدير</button>'
       + '</div>';
@@ -1272,6 +1984,7 @@
       var btn = e.target.closest('.io-btn');
       if (!btn) return;
       if (btn.dataset.io === 'export') downloadTagsFile();
+      else if (btn.dataset.io === 'doc') importDocumentFromFile();
       else importTagsFromFile();
     });
 
@@ -1724,30 +2437,38 @@
     var loaded = 0;
     var count = function (v) {
       loaded++;
-      if (window.__quranLoader) window.__quranLoader.progress(loaded / 7);
+      if (window.__quranLoader) window.__quranLoader.progress(loaded / 2);
       return v;
     };
     return Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/dawaa.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/jam3.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/iman.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/asarar.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/adib.json').then(function (r) { return r.json(); }).then(count)
+      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count)
     ]).then(function (res) {
       state.surahs = res[0];
       state.quran = res[1];
-      mergeSeedTag(res[2]);
-      mergeSeedTag(res[3]);
-      mergeSeedTag(res[4]);
-      mergeSeedTag(res[5]);
-      mergeSeedTag(res[6]);
     });
+  }
+
+  var BOOK_SEEDS = [
+    'data/dawaa.json',
+    'data/jam3.json',
+    'data/iman.json',
+    'data/asarar.json',
+    'data/adib.json'
+  ];
+
+  function loadBookSeeds() {
+    return Promise.all(BOOK_SEEDS.map(function (src) {
+      return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
+        mergeSeedTag(seed);
+      }).catch(function () {});
+    }));
   }
 
   loadData().then(render).then(function () {
     if (window.__quranLoader) window.__quranLoader.done();
+    if (document.readyState === 'complete') loadBookSeeds();
+    else window.addEventListener('load', loadBookSeeds);
   }).catch(function (err) {
     appEl.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات: ' + esc(err.message) + '</div>';
     if (window.__quranLoader) window.__quranLoader.done();

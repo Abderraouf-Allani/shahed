@@ -1,4 +1,4 @@
-const CACHE = 'quran-tag-v7';
+const CACHE = 'quran-tag-v12';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -12,11 +12,7 @@ const CORE_ASSETS = [
   './fonts/qaloon.woff2',
   './fonts/qaloon.otf',
   './data/surahs.json',
-  './data/quran.json',
-  './data/dawaa.json',
-  './data/jam3.json',
-  './data/iman.json',
-  './data/asarar.json'
+  './data/quran.json'
 ];
 
 self.addEventListener('install', function (e) {
