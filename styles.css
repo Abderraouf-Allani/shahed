@@ -5,6 +5,7 @@
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0600-0648, U+064A-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 :root {
@@ -331,14 +332,14 @@ html.dark .icon-moon { display: block; }
 
 .bismillah {
   text-align: center;
-  font-family: 'Qaloon', "Geeza Pro", serif;
+  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: calc(var(--fs, 32px) * 0.8);
   color: var(--gold);
   margin: 0 0 1.4rem;
 }
 
 .mushaf-text {
-  font-family: 'Qaloon', "Geeza Pro", serif;
+  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: var(--fs, 32px);
   line-height: 2.15;
   text-align: justify;
@@ -934,7 +935,7 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 .tayah-link { text-decoration: none; color: inherit; display: block; }
 .tayah-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; }
 .tayah-text {
-  font-family: 'Qaloon', "Geeza Pro", serif;
+  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: 1.55rem;
   line-height: 2;
   text-align: justify;
