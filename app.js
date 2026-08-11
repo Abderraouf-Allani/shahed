@@ -1141,10 +1141,6 @@
       + '<li>opencode — أداة تطوير برمجي بالذكاء الاصطناعي — <a href="https://opencode.ai" target="_blank" rel="noopener">opencode.ai</a></li>'
       + '<li>النموذج اللغوي المستخدم في هذه الجلسة: <code>big-pickle</code> (opencode/big-pickle)</li>';
 
-    var noteRows =
-      '<li>ملاحظة عرض: خط «قالون» الحاسوبي لا يرسم الحرف <code>ى</code> (الألف المقصورة، U+0649)؛ الـ glyph له مفرّغ في النسختين <code>otf</code> و<code>woff2</code>، إذ يرسم الخطُّ الألفَ المقصورةَ على هيئة <code>ے</code> (U+06D2) وفق اصطلاح رسم المصحف.</li>'
-      + '<li>لذا يُعرض <code>ى</code> في التطبيق عبر خط النظام الاحتياطي باستثناء U+0649 من نطاق الخط بخصيصة <code>unicode-range</code> في CSS، دون تغيير الحرف في النص القرآني أو في بيانات المصدر.</li>';
-
     modal.innerHTML =
       '<div class="licenses-overlay"></div>'
       + '<div class="licenses-panel" role="dialog" aria-modal="true" aria-label="التراخيص والمصادر">'
@@ -1156,7 +1152,6 @@
       +     licensesSection('النص القرآني', quranRows)
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('أدوات البناء', toolRows)
-      +     licensesSection('ملاحظات تقنية', noteRows)
       +   '</div>'
       + '</div>';
 
@@ -2442,17 +2437,24 @@
 
   function loadData() {
     var loaded = 0;
+    var total = 2 + BOOK_SEEDS.length;
     var count = function (v) {
       loaded++;
-      if (window.__quranLoader) window.__quranLoader.progress(loaded / 2);
+      if (window.__quranLoader) window.__quranLoader.progress(loaded / total);
       return v;
     };
-    return Promise.all([
+    var core = Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
       fetch('data/quran.json').then(function (r) { return r.json(); }).then(count)
-    ]).then(function (res) {
-      state.surahs = res[0];
-      state.quran = res[1];
+    ]);
+    var seeds = Promise.all(BOOK_SEEDS.map(function (src) {
+      return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
+        mergeSeedTag(seed);
+      }).catch(function () {}).then(count);
+    }));
+    return Promise.all([core, seeds]).then(function (res) {
+      state.surahs = res[0][0];
+      state.quran = res[0][1];
     });
   }
 
@@ -2461,21 +2463,12 @@
     'data/jam3.json',
     'data/iman.json',
     'data/asarar.json',
-    'data/adib.json'
+    'data/adib.json',
+    'data/dirasat.json'
   ];
-
-  function loadBookSeeds() {
-    return Promise.all(BOOK_SEEDS.map(function (src) {
-      return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
-        mergeSeedTag(seed);
-      }).catch(function () {});
-    }));
-  }
 
   loadData().then(render).then(function () {
     if (window.__quranLoader) window.__quranLoader.done();
-    if (document.readyState === 'complete') loadBookSeeds();
-    else window.addEventListener('load', loadBookSeeds);
   }).catch(function (err) {
     appEl.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات: ' + esc(err.message) + '</div>';
     if (window.__quranLoader) window.__quranLoader.done();
