@@ -1137,7 +1137,13 @@
       '<li>Node.js <code>v22.23.2</code> — سكربتات بناء ومعالجة البيانات</li>'
       + '<li>Python <code>3.9.6</code> — سكربتات معالجة البيانات والخطوط</li>'
       + '<li>Google Chrome <code>151.0.7922.77</code> — اختبار تطبيق الويب (PWA) وتوليد الأيقونات</li>'
-      + '<li>Git — إدارة الإصدارات</li>';
+      + '<li>Git — إدارة الإصدارات</li>'
+      + '<li>opencode — أداة تطوير برمجي بالذكاء الاصطناعي — <a href="https://opencode.ai" target="_blank" rel="noopener">opencode.ai</a></li>'
+      + '<li>النموذج اللغوي المستخدم في هذه الجلسة: <code>big-pickle</code> (opencode/big-pickle)</li>';
+
+    var noteRows =
+      '<li>ملاحظة عرض: خط «قالون» الحاسوبي لا يرسم الحرف <code>ى</code> (الألف المقصورة، U+0649)؛ الـ glyph له مفرّغ في النسختين <code>otf</code> و<code>woff2</code>، إذ يرسم الخطُّ الألفَ المقصورةَ على هيئة <code>ے</code> (U+06D2) وفق اصطلاح رسم المصحف.</li>'
+      + '<li>لذا يُعرض <code>ى</code> في التطبيق عبر خط النظام الاحتياطي باستثناء U+0649 من نطاق الخط بخصيصة <code>unicode-range</code> في CSS، دون تغيير الحرف في النص القرآني أو في بيانات المصدر.</li>';
 
     modal.innerHTML =
       '<div class="licenses-overlay"></div>'
@@ -1150,6 +1156,7 @@
       +     licensesSection('النص القرآني', quranRows)
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('أدوات البناء', toolRows)
+      +     licensesSection('ملاحظات تقنية', noteRows)
       +   '</div>'
       + '</div>';
 
