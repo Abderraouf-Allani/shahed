@@ -1255,6 +1255,7 @@ html.dark .loader-caption { color: #9a917f; }
   overflow: hidden;
 }
 .lab-node.dragging { box-shadow: var(--shadow-lg); opacity: 0.92; z-index: 10; }
+.lab-node.open { z-index: 4; }
 .lab-node.link-source { outline: 3px solid var(--accent); outline-offset: 2px; }
 .lab-node-head {
   display: flex; align-items: center; gap: 0.45rem;

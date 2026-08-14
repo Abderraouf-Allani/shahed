@@ -189,7 +189,7 @@
         });
         if (!verses.length) ayahsHtml = '<div class="lab-ayah-empty">لا توجد آيات موسومة بهذا الوسم</div>';
       }
-      nodesHtml += '<div class="lab-node' + (labLinkSource === t.id ? ' link-source' : '') + '" id="lab-node-' + t.id + '" data-tagid="' + t.id + '"'
+      nodesHtml += '<div class="lab-node' + (n.showAyahs ? ' open' : '') + (labLinkSource === t.id ? ' link-source' : '') + '" id="lab-node-' + t.id + '" data-tagid="' + t.id + '"'
         + ' style="left:' + n.x + 'px; top:' + n.y + 'px; --tagc:' + t.color + '">'
         + '<div class="lab-node-head">'
         + '<span class="lab-node-dot"></span>'
