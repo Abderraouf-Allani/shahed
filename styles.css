@@ -1,11 +1,8 @@
 @font-face {
-  font-family: 'Qaloon';
-  src: url('fonts/qaloon.woff2') format('woff2'),
-       url('fonts/qaloon.otf') format('opentype');
-  font-weight: normal;
-  font-style: normal;
+  font-family: 'qpc-qaloun';
+  src: url('fonts/uthmanic-qaloun-v21.woff2') format('woff2'),
+       url('fonts/uthmanic-qaloun-v21.ttf') format('truetype');
   font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 :root {
@@ -332,14 +329,14 @@ html.dark .icon-moon { display: block; }
 
 .bismillah {
   text-align: center;
-  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: 'qpc-qaloun', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: calc(var(--fs, 32px) * 0.8);
   color: var(--gold);
   margin: 0 0 1.4rem;
 }
 
 .mushaf-text {
-  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: 'qpc-qaloun', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: var(--fs, 32px);
   line-height: 2.15;
   text-align: justify;
@@ -571,6 +568,63 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   padding: 0.4rem; cursor: pointer;
 }
 .tag-context-popup-close:hover { border-color: var(--accent); color: var(--accent); }
+.tag-context-popup-rel {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  font-size: 0.85rem; line-height: 1.7; color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--tagc, var(--accent));
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  margin-bottom: 0.5rem;
+  direction: rtl;
+}
+.tag-context-popup-rel-label { font-weight: 700; color: var(--accent); }
+.tag-context-popup-note {
+  font-size: 0.9rem; line-height: 1.9; color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--tagc, var(--accent));
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.6rem;
+  direction: rtl;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.tag-context-editor-edit {
+  display: block; width: 100%;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--accent);
+  font: inherit; font-size: 0.85rem; font-weight: 600;
+  padding: 0.4rem; cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+.tag-context-editor-edit:hover { border-color: var(--accent); background: var(--surface-2); }
+.tag-context-editor { min-width: 320px; max-width: 440px; }
+.tag-context-editor-title { font-weight: 700; margin-bottom: 0.6rem; color: var(--accent); font-size: 0.9rem; }
+.tag-context-editor-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.6rem; }
+.tag-context-editor-label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+.tag-context-editor select,
+.tag-context-editor textarea {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text);
+  font-family: inherit; font-size: 0.85rem;
+  outline: none; padding: 0.45rem 0.6rem;
+}
+.tag-context-editor select:focus, .tag-context-editor textarea:focus { border-color: var(--accent); }
+.tag-context-editor textarea { resize: vertical; direction: rtl; line-height: 1.7; }
+.tag-context-editor-actions { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.tag-context-editor-actions button {
+  flex: 1;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 0.85rem; font-weight: 600;
+  padding: 0.42rem; cursor: pointer;
+}
+.tag-context-editor-actions button:hover { border-color: var(--accent); }
+.tag-context-editor-actions .tag-context-editor-save { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tag-context-editor-actions .tag-context-editor-clear:hover { border-color: var(--danger, #c0392b); color: var(--danger, #c0392b); }
 .verse-chips .tag-chip[data-cat]:hover::after {
   content: attr(data-cat);
   position: absolute;
@@ -674,9 +728,21 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 .tag-menu-cat-group.collapsed .cat-arrow { transform: rotate(-90deg); }
 .tag-menu-cat-group.collapsed .tag-menu-cat-body { display: none; }
 .tag-menu-cat-body { display: flex; flex-direction: column; gap: 0.3rem; }
-.tag-menu-row { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; padding: 0.3rem 0.4rem; border-radius: 8px; }
+.tag-menu-row { display: flex; align-items: flex-start; gap: 0.35rem; cursor: pointer; padding: 0.3rem 0.4rem; border-radius: 8px; }
 .tag-menu-row:hover { background: var(--surface-2); }
+.tag-menu-row-main { display: flex; align-items: flex-start; gap: 0.5rem; flex: 1; min-width: 0; cursor: pointer; }
 .tag-menu-row input { accent-color: var(--accent); width: 1em; height: 1em; margin: 0.15rem 0 0; cursor: pointer; }
+.tag-menu-ctx {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.45rem; height: 1.45rem;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface-2); color: var(--text-muted);
+  cursor: pointer; padding: 0;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.tag-menu-ctx[hidden] { display: none; }
+.tag-menu-ctx:hover { color: var(--accent); border-color: var(--accent); background: var(--surface-3, rgba(0,0,0,0.06)); }
 .tag-menu-row-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tag-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.35; }
 .tag-menu-empty { color: var(--text-muted); font-size: 0.85rem; padding: 0.2rem 0; }
@@ -935,7 +1001,7 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 .tayah-link { text-decoration: none; color: inherit; display: block; }
 .tayah-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; }
 .tayah-text {
-  font-family: 'Qaloon', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: 'qpc-qaloun', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: 1.55rem;
   line-height: 2;
   text-align: justify;
@@ -1078,3 +1144,150 @@ html.dark .loader-caption { color: #9a917f; }
   background: var(--accent);
   transition: width 0.2s ease;
 }
+
+/* ---------- tag lab ---------- */
+
+.lab-toolbar { flex-wrap: wrap; }
+.lab-cat-wrap { display: flex; align-items: center; gap: 0.4rem; }
+.lab-cat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 700; }
+.lab-cat-select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 0.9rem; outline: none;
+}
+.lab-cat-select:focus { border-color: var(--accent); }
+.lab-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.pill.lab-danger { color: #c0392b; }
+.pill.lab-danger:hover { border-color: #c0392b; }
+.pill.on { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.lab-hint {
+  font-size: 0.82rem; color: var(--text-muted); text-align: center;
+  padding: 0.3rem 0 0.8rem; line-height: 1.7;
+}
+.lab-viewport {
+  border: 1px solid var(--border); border-radius: 14px;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 34px 34px;
+  background-color: var(--surface);
+  overflow: auto;
+  min-height: 72vh;
+  max-height: 82vh;
+  position: relative;
+}
+.lab-stage { position: relative; min-width: 400px; }
+.lab-svg { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+.lab-edge { stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 6 4; opacity: 0.9; pointer-events: none; }
+.lab-edge-hit { stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+.lab-edge-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--surface-2);
+  border: 1px solid var(--gold);
+  color: var(--text);
+  font-size: 0.72rem; font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  direction: rtl;
+  z-index: 3;
+}
+.lab-edge-label:hover { border-color: var(--accent); color: var(--accent); }
+.lab-node {
+  position: absolute;
+  width: 250px;
+  z-index: 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.lab-node.dragging { box-shadow: var(--shadow-lg); opacity: 0.92; z-index: 10; }
+.lab-node.link-source { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lab-node-head {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(0deg, var(--surface-2), transparent);
+}
+.lab-node-head:active { cursor: grabbing; }
+.lab-stage.linking .lab-node-head { cursor: crosshair; }
+.lab-stage.linking .lab-node:not(.link-source):hover .lab-node-head { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lab-node-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tagc, var(--gold)); flex-shrink: 0; }
+.lab-node-name { font-weight: 700; font-size: 0.9rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lab-node-count { font-size: 0.72rem; color: var(--text-muted); background: var(--surface-2); border-radius: 999px; padding: 0.05rem 0.5rem; white-space: nowrap; }
+.lab-node-toggle, .lab-node-remove {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface-2); color: var(--text-muted);
+  cursor: pointer; padding: 0;
+}
+.lab-node-toggle:hover, .lab-node-remove:hover { color: var(--accent); border-color: var(--accent); }
+.lab-node-remove:hover { color: #c0392b; border-color: #c0392b; }
+.lab-node-toggle svg { transition: transform 0.15s ease; }
+.lab-node-toggle.off { opacity: 0.45; }
+.lab-node-toggle.off svg { transform: rotate(-90deg); }
+.lab-node-ayahs {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0.4rem 0.5rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.lab-ayah {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  text-decoration: none; color: var(--text);
+  background: var(--surface-2);
+  font: inherit;
+  text-align: start;
+  cursor: default;
+  width: 100%;
+}
+.lab-ayah:hover { border-color: var(--tagc, var(--gold)); }
+.lab-ayah-ref { font-size: 0.7rem; font-weight: 700; color: var(--tagc, var(--accent)); }
+.lab-ayah-text {
+  font-family: "qpc-qaloun", "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 20px;
+  line-height: 1.75;
+  direction: rtl;
+  text-align: justify;
+}
+.lab-ayah-note {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  border-inline-start: 3px solid var(--tagc, var(--gold));
+  padding-inline-start: 0.4rem;
+}
+.lab-ayah-empty { font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.4rem; }
+.lab-edge-popup { min-width: 300px; max-width: 380px; }
+.lab-edge-title { font-weight: 700; margin-bottom: 0.6rem; color: var(--accent); font-size: 0.9rem; }
+.lab-edge-rel {
+  width: 100%;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text);
+  font: inherit; font-size: 0.85rem;
+  outline: none; padding: 0.45rem 0.6rem; margin-bottom: 0.6rem;
+}
+.lab-edge-rel:focus { border-color: var(--accent); }
+.lab-edge-actions { display: flex; gap: 0.4rem; }
+.lab-edge-actions button {
+  flex: 1;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 0.85rem; font-weight: 600;
+  padding: 0.42rem; cursor: pointer;
+}
+.lab-edge-actions button:hover { border-color: var(--accent); }
+.lab-edge-actions .lab-edge-save { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.lab-edge-actions .lab-edge-del:hover { border-color: #c0392b; color: #c0392b; }

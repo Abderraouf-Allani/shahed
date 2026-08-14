@@ -27,10 +27,66 @@
     fontSize: 'qaloon_fontsize',
     last: 'qaloon_last',
     showTags: 'qaloon_show_tags',
-    tags: 'qaloon_tags_v1'
+    tags: 'qaloon_tags_v1',
+    lab: 'qaloon_lab_v1',
+    labCat: 'qaloon_lab_cat'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
+
+  var RELATIONSHIPS = [
+    { name: 'التطابق (Identity)', items: [
+      { id: 'same-as', label: 'مطابق — نفس المعنى' },
+      { id: 'equivalent', label: 'مكافئ' },
+      { id: 'synonym', label: 'مرادف' }
+    ]},
+    { name: 'التسلسل الهرمي (Hierarchy)', items: [
+      { id: 'is-a', label: 'نوع من (is-a)' },
+      { id: 'subclass', label: 'فئة فرعية من' },
+      { id: 'instance-of', label: 'حالة من / مثال على' }
+    ]},
+    { name: 'التكوين (Composition)', items: [
+      { id: 'part-of', label: 'جزء من' },
+      { id: 'has-part', label: 'يتكوّن من' },
+      { id: 'member-of', label: 'عضو في' }
+    ]},
+    { name: 'الخصائص (Attributes)', items: [
+      { id: 'has-property', label: 'يمتلك خاصية' },
+      { id: 'property-of', label: 'خاصية لـ' }
+    ]},
+    { name: 'السببية والاعتماد (Causality & Dependency)', items: [
+      { id: 'causes', label: 'يسبّب' },
+      { id: 'depends-on', label: 'يعتمد على' },
+      { id: 'precondition-for', label: 'شرط مسبق لـ' },
+      { id: 'enables', label: 'يُمكّن' }
+    ]},
+    { name: 'الوظيفة والقدرة (Function & Capability)', items: [
+      { id: 'used-for', label: 'يُستخدم لـ' },
+      { id: 'capable-of', label: 'قادر على' },
+      { id: 'performs', label: 'يقوم بـ' }
+    ]},
+    { name: 'المنطق (Logic)', items: [
+      { id: 'opposite-of', label: 'نقيض لـ' },
+      { id: 'complementary-to', label: 'مكمّل لـ' },
+      { id: 'implies', label: 'يستلزم' },
+      { id: 'contradicts', label: 'يناقض' }
+    ]},
+    { name: 'المكان والزمان (Space & Time)', items: [
+      { id: 'located-in', label: 'يقع في' },
+      { id: 'before', label: 'قبل' },
+      { id: 'after', label: 'بعد' }
+    ]},
+    { name: 'الارتباط (Association)', items: [
+      { id: 'related-to', label: 'مرتبط بـ' },
+      { id: 'similar-to', label: 'مشابه لـ' }
+    ]}
+  ];
+
+  var REL_BY_ID = {};
+  RELATIONSHIPS.forEach(function (g) {
+    g.items.forEach(function (it) { REL_BY_ID[it.id] = it.label; });
+  });
+
 
   var FORMAT_VERSION = 2;
   var FORMAT_TAG = 'quran-tag/v' + FORMAT_VERSION;
@@ -172,6 +228,22 @@
   function getVerseTags(surah, ayah) {
     var ids = tagState.verses[surah + ':' + ayah] || [];
     return ids.map(function (id) { return tagState.byId[id]; }).filter(Boolean);
+  }
+
+  function relLabel(id) {
+    return (id && REL_BY_ID[id]) || '';
+  }
+
+  function setAyahContext(surah, ayah, tagId, rel, note) {
+    var key = surah + ':' + ayah;
+    if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
+    var m = state.ayahMeta[tagId][key] = state.ayahMeta[tagId][key] || {};
+    if (rel) m.rel = rel; else delete m.rel;
+    note = (note || '').trim();
+    if (note) m.note = note; else delete m.note;
+    if (!Object.keys(m).length) delete state.ayahMeta[tagId][key];
+    if (!Object.keys(state.ayahMeta[tagId]).length) delete state.ayahMeta[tagId];
+    saveTags();
   }
 
   function filterVisibleTags(tags) {
@@ -1023,7 +1095,7 @@
       var m = metaOf[key];
       if (m && (m.chapter || m.page || m.paragraph)) {
         if (!state.ayahMeta[tag.id]) state.ayahMeta[tag.id] = {};
-        state.ayahMeta[tag.id][key] = m;
+        state.ayahMeta[tag.id][key] = Object.assign({}, state.ayahMeta[tag.id][key], m);
       }
     });
     saveTags();
@@ -1131,7 +1203,7 @@
     var libRows =
       '<li>pdf.js <code>3.32.2</code> — رخصة Apache-2.0 — <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">github.com/mozilla/pdf.js</a></li>'
       + '<li>fflate <code>0.8.x</code> — رخصة MIT — <a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener">github.com/101arrowz/fflate</a></li>'
-      + '<li>خط «قالون» الحاسوبي — <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — <a href="https://fonts.qurancomplex.gov.sa/ten-readings" target="_blank" rel="noopener">fonts.qurancomplex.gov.sa</a></li>';
+      + '<li>خط «قالون» الحاسوبي (KFGQPC Qaloun Uthmanic Script <code>v2.1</code>) — <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — مرخّص بموجب ترخيص الملك فهد للمستخدم النهائي (يُسمح بالاستخدام والنسخ والتوزيع، دون التعديل أو البيع) — <a href="https://qul.tarteel.ai/resources/font/584" target="_blank" rel="noopener">qul.tarteel.ai/resources/font/584</a></li>';
 
     var toolRows =
       '<li>Node.js <code>v22.23.2</code> — سكربتات بناء ومعالجة البيانات</li>'
@@ -1232,6 +1304,7 @@
     var m = location.hash.match(/^#\/surah\/(\d{1,3})(?:\/(\d{1,3}))?/);
     if (m) return { surah: parseInt(m[1], 10), ayah: m[2] ? parseInt(m[2], 10) : null };
     if (/^#\/tags/.test(location.hash)) return { tags: true };
+    if (/^#\/lab/.test(location.hash)) return { lab: true };
     return {};
   }
 
@@ -1318,6 +1391,22 @@
       cb.addEventListener('change', function () {
         toggleTagOnVerse(surah, ayah, cb.dataset.tagid);
         refreshVerseDecorations(surah, ayah);
+        var btn = cb.closest('.tag-menu-row').querySelector('.tag-menu-ctx');
+        if (btn) btn.hidden = !cb.checked;
+      });
+    });
+
+    menu.querySelectorAll('.tag-menu-ctx').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var tagId = btn.dataset.tagid;
+        if (currentIds.indexOf(tagId) === -1) {
+          toggleTagOnVerse(surah, ayah, tagId);
+          refreshVerseDecorations(surah, ayah);
+        }
+        closeTagMenu();
+        openAyahContextEditor(surah, ayah, tagId, anchor);
       });
     });
 
@@ -1380,10 +1469,16 @@
 
   function tagMenuRow(t, currentIds) {
     var on = currentIds.indexOf(t.id) !== -1;
-    return '<label class="tag-menu-row">'
+    return '<div class="tag-menu-row">'
+      + '<label class="tag-menu-row-main">'
       + '<input type="checkbox" data-tagid="' + t.id + '"' + (on ? ' checked' : '') + '>'
       + tagMenuRowBody(t)
-      + '</label>';
+      + '</label>'
+      + '<button type="button" class="tag-menu-ctx" data-tagid="' + t.id + '"'
+      + ' title="' + (on ? 'تعديل سياق الربط' : 'ربط وإضافة سياق') + '"' + (on ? '' : ' hidden') + '>'
+      + '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+      + '</button>'
+      + '</div>';
   }
 
   function closeTagMenu() {
@@ -1407,15 +1502,25 @@
   document.addEventListener('click', function (e) {
     if (tagMenu && !tagMenu.contains(e.target) && !e.target.closest('.tag-btn')) closeTagMenu();
     if (tagContextPopup && !tagContextPopup.contains(e.target)) closeTagContextPopup();
+    if (tagContextEditor && !tagContextEditor.contains(e.target)) closeTagContextEditor();
+    if (window.QuranLab) window.QuranLab.onDocClick(e.target);
   }, true);
 
   window.addEventListener('scroll', function () {
     if (tagMenu && tagMenu._anchor) positionTagMenu(tagMenu, tagMenu._anchor);
     if (tagFilterMenu && tagFilterMenu._anchor) positionTagMenu(tagFilterMenu, tagFilterMenu._anchor);
     if (tagContextPopup && tagContextPopup._anchor) positionTagMenu(tagContextPopup, tagContextPopup._anchor);
+    if (tagContextEditor && tagContextEditor._anchor) positionTagMenu(tagContextEditor, tagContextEditor._anchor);
+    if (window.QuranLab) window.QuranLab.onDocScroll();
   }, true);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { closeTagMenu(); closeTagFilterMenu(); closeTagContextPopup(); }
+    if (e.key === 'Escape') {
+      closeTagMenu();
+      closeTagFilterMenu();
+      closeTagContextPopup();
+      closeTagContextEditor();
+      closeLabEdgePopup();
+    }
   });
 
   /* ---------- session tag filter menu ---------- */
@@ -1548,6 +1653,7 @@
 
   function refreshVerseDecorations(surah, ayah) {
     closeTagContextPopup();
+    closeTagContextEditor();
     var el = document.getElementById('ayah-' + surah + '-' + ayah);
     if (!el) return;
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
@@ -1586,8 +1692,74 @@
     });
   }
 
+  var tagContextEditor = null;
+
+  function closeTagContextEditor() {
+    if (tagContextEditor) { tagContextEditor.remove(); tagContextEditor = null; }
+  }
+
+  function openAyahContextEditor(surah, ayah, tagId, anchor) {
+    closeTagContextEditor();
+    closeTagContextPopup();
+    var t = tagState.byId[tagId];
+    if (!t) return;
+    var key = surah + ':' + ayah;
+    var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][key];
+    var surahName = surahByNumber(surah).nameAr;
+
+    var popup = document.createElement('div');
+    popup.className = 'tag-menu tag-context-editor';
+    popup.style.setProperty('--tagc', t.color);
+    popup._anchor = anchor;
+
+    var relOpts = RELATIONSHIPS.map(function (g) {
+      return '<optgroup label="' + esc(g.name) + '">' + g.items.map(function (it) {
+        return '<option value="' + it.id + '"' + (meta && meta.rel === it.id ? ' selected' : '') + '>' + esc(it.label) + '</option>';
+      }).join('') + '</optgroup>';
+    }).join('');
+
+    popup.innerHTML =
+      '<div class="tag-context-editor-title">سياق ربط «' + esc(t.name) + '» بالآية ' + toAr(ayah) + ' من ' + esc(surahName) + '</div>'
+      + '<label class="tag-context-editor-field">'
+      + '<span class="tag-context-editor-label">نوع العلاقة</span>'
+      + '<select class="tag-context-editor-rel">'
+      + '<option value="">— اختر نوع العلاقة —</option>' + relOpts
+      + '</select>'
+      + '</label>'
+      + '<label class="tag-context-editor-field">'
+      + '<span class="tag-context-editor-label">وصف / ملاحظة</span>'
+      + '<textarea class="tag-context-editor-note" rows="3" maxlength="500" placeholder="مثال: استُشهد بهذه الآية للدلالة على شرط من شروط…">'
+      + (meta && meta.note ? esc(meta.note) : '')
+      + '</textarea>'
+      + '</label>'
+      + '<div class="tag-context-editor-actions">'
+      + '<button type="button" class="tag-context-editor-save">حفظ</button>'
+      + '<button type="button" class="tag-context-editor-clear" title="إزالة العلاقة والوصف فقط">مسح السياق</button>'
+      + '<button type="button" class="tag-context-editor-close">إلغاء</button>'
+      + '</div>';
+
+    document.body.appendChild(popup);
+    positionTagMenu(popup, anchor);
+    tagContextEditor = popup;
+
+    popup.querySelector('.tag-context-editor-save').addEventListener('click', function () {
+      setAyahContext(surah, ayah, tagId,
+        popup.querySelector('.tag-context-editor-rel').value,
+        popup.querySelector('.tag-context-editor-note').value);
+      refreshVerseDecorations(surah, ayah);
+      closeTagContextEditor();
+    });
+    popup.querySelector('.tag-context-editor-clear').addEventListener('click', function () {
+      setAyahContext(surah, ayah, tagId, '', '');
+      refreshVerseDecorations(surah, ayah);
+      closeTagContextEditor();
+    });
+    popup.querySelector('.tag-context-editor-close').addEventListener('click', closeTagContextEditor);
+  }
+
   function openVerseTagContext(chip) {
     closeTagContextPopup();
+    closeTagContextEditor();
     var verse = chip.dataset.ayah;
     var tagId = chip.dataset.tagid;
     var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][verse];
@@ -1610,6 +1782,12 @@
       + (meta && meta.chapter ? '<span class="tag-context-popup-chapter">' + esc(meta.chapter) + '</span>' : '')
       + (meta && meta.page ? '<span class="tag-context-popup-page">صفحة ' + toAr(meta.page) + '</span>' : '')
       + '</div>';
+    var relLine = meta && meta.rel
+      ? '<div class="tag-context-popup-rel"><span class="tag-context-popup-rel-label">العلاقة:</span> ' + esc(relLabel(meta.rel)) + '</div>'
+      : '';
+    var noteLine = meta && meta.note
+      ? '<div class="tag-context-popup-note">' + esc(meta.note) + '</div>'
+      : '';
     var para = meta && meta.paragraph
       ? '<div class="tag-context-popup-para">' + esc(meta.paragraph) + '</div>'
       : '';
@@ -1619,15 +1797,19 @@
         + (meta.duration ? '<span class="tag-context-popup-duration">' + fmtDuration(meta.duration) + '</span>' : '')
         + '</div>'
       : '';
-    var empty = !para && !video
-      ? '<div class="tag-context-popup-empty">لا يتوفر سياق مستخرج لهذه الآية في كتاب «' + esc(t.name) + '»</div>'
+    var empty = !relLine && !noteLine && !para && !video
+      ? '<div class="tag-context-popup-empty">لا يتوفر سياق لهذا الربط بعد</div>'
       : '';
+    var editBtn = '<button type="button" class="tag-context-editor-edit">' + (relLine || noteLine ? 'تعديل السياق' : 'إضافة سياق') + '</button>';
     var close = '<button type="button" class="tag-context-popup-close">تم</button>';
 
-    popup.innerHTML = head + assoc + video + para + empty + close;
+    popup.innerHTML = head + assoc + relLine + noteLine + video + para + empty + editBtn + close;
     document.body.appendChild(popup);
     positionTagMenu(popup, chip);
     popup.querySelector('.tag-context-popup-close').addEventListener('click', closeTagContextPopup);
+    popup.querySelector('.tag-context-editor-edit').addEventListener('click', function () {
+      openAyahContextEditor(+parts[0], +parts[1], tagId, chip);
+    });
     tagContextPopup = popup;
     chip.classList.add('expanded');
   }
@@ -1844,6 +2026,7 @@
     html += '<div class="nav-pills">';
     html += '<a class="pill" href="#/"><span>الفهرس</span></a>';
     html += '<a class="pill" href="#/tags"><span>الوسوم</span></a>';
+    html += '<a class="pill" href="#/lab"><span>المختبر</span></a>';
     html += '<button class="pill" id="shareBtn" type="button"><span>نسخ الآيات</span></button>';
     html += '</div>';
     html += '<div class="font-size-ctl">';
@@ -1960,7 +2143,7 @@
 
     var html = '';
     html += '<div class="index-toolbar">';
-    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a></div>';
+    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a><a class="pill" href="#/lab">المختبر</a></div>';
     html += '<div class="tags-io">'
       + '<button type="button" class="io-btn" data-io="doc" title="رفع مستند (PDF أو DOCX) واستخراج الآيات منه كوسم جديد في تصنيف الكتب">رفع مستند</button>'
       + '<button type="button" class="io-btn" data-io="import" title="استيراد وسوم وتصنيفات من ملف">استيراد</button>'
@@ -2421,13 +2604,61 @@
     }
   });
 
+  /* ---------- tag lab (lazy-loaded) ---------- */
+
+  function closeLabEdgePopup() {
+    if (window.QuranLab) window.QuranLab.closeEdgePopup();
+  }
+
+  window.QuranLabBridge = {
+    esc: esc,
+    toAr: toAr,
+    relLabel: relLabel,
+    RELATIONSHIPS: RELATIONSHIPS,
+    state: state,
+    tagState: tagState,
+    LS: LS,
+    appEl: appEl,
+    positionTagMenu: positionTagMenu
+  };
+
+  var labScriptPromise = null;
+
+  function lazyLoadLab() {
+    var boot = function () {
+      if (window.QuranLab) {
+        window.QuranLab.render();
+      } else {
+        appEl.innerHTML = '<div class="empty-state">تعذّر تحميل المختبر.</div>';
+      }
+    };
+    if (window.QuranLab) { boot(); return; }
+    if (!labScriptPromise) {
+      labScriptPromise = new Promise(function (resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'lab.js';
+        s.async = true;
+        s.onload = function () { resolve(); };
+        s.onerror = function () { reject(new Error('lab load failed')); };
+        document.head.appendChild(s);
+      });
+      labScriptPromise.catch(function () { labScriptPromise = null; });
+    }
+    labScriptPromise.then(boot).catch(function () {
+      appEl.innerHTML = '<div class="empty-state">تعذّر تحميل صفحة المختبر.</div>';
+    });
+  }
+
   /* ---------- init ---------- */
 
   function render() {
     closeTagMenu();
+    closeLabEdgePopup();
     var route = parseHash();
     if (route.tags && state.quran) {
       renderTags();
+    } else if (route.lab && state.quran) {
+      lazyLoadLab();
     } else if (route.surah && state.surahs && surahByNumber(route.surah)) {
       renderReader(route.surah, route.ayah);
     } else {
