@@ -22,35 +22,52 @@ import sys
 import dspy
 
 QURAN_TAG_SPEC = """\
-Application: quran-tag — a static, offline-capable PWA Quran reader (riwaya Qaloon an Nafi').
+Application: quran-tag — a static, offline-capable PWA Quran reader with a
+Qaloon / Hafs riwaya switch (brand-sub button in the header).
 
 1) Architecture
-   - Pure vanilla JavaScript (single IIFE in app.js), no build step, no framework,
-     no npm dependencies. Static files served as-is. Arabic RTL interface.
+   - Pure vanilla JavaScript (single IIFE in app.js plus a lazy-loaded lab.js),
+     no build step, no framework, no npm dependencies. Static files served as-is.
+     Arabic RTL interface.
    - Views (hash routing): index grid of 114 surahs (#/), reader (#/surah/N,
-     optional #/surah/N/M deep-link to ayah M), tags manager (#/tags).
+     optional #/surah/N/M deep-link to ayah M), tags manager (#/tags), tag lab
+     graph canvas (#/lab).
+   - Every route change scrolls the window to the top before rendering.
 
 2) Quran data
-   - data/quran.json: 114 chapters, 6236 ayahs, Qaloon riwaya text (QaloonData by
+   - data/quran.json: 114 chapters, 6214 ayahs, Qaloon riwaya text (QaloonData by
      King Fahd Complex, fetched via GitHub mirror thetruetruth/quran-data-kfgqpc).
      Each chapter has chapter (1..114), name, bismillah, verses[].
+   - data/hafs.json: same shape, 6236 ayahs, Hafs riwaya text (hafsData_v18 by the
+     same source). In the Kufan/Hafs count the basmala is verse 1 of al-Fatihah, so
+     chapter 1 carries bismillah:"" and the basmala is verses[0]; all other
+     chapters (except 9) carry the KFGQPC Hafs basmala in bismillah.
    - data/surahs.json: 114 surah metadata (number, nameAr, nameEn, meaning, type,
-     ayahCount).
+     ayahCount). ayahCount is Qaloon-based (e.g. 2:285, 9:130); the app displays
+     per-riwaya counts from the active dataset (Hafs: 2:286, 9:129).
    - CRITICAL CONSTRAINT (non-negotiable): the Quran source data files are a
      reference and must NEVER be modified — not even cosmetically. All text
      normalization/adjustments for display must happen in the rendering layer only.
 
-3) Text rendering & the U+0649 issue
-   - The KFGQPC "Qaloon" font draws alef maqsura at U+06D2 (ے), but the text
-     encodes it as U+0649 (ى). The font's U+0649 glyph ("alefmaksura") is EMPTY
-     (0 contours) in both .otf and .woff2, so browsers render nothing for it.
-   - Resolution already applied (must be preserved): the Qaloon @font-face uses
-     unicode-range that EXCLUDES U+0649 (U+0600-0648, U+064A-06FF, ...), so U+0649
-     falls back to a system Arabic font (Geeza Pro / Noto Naskh Arabic / Segoe UI /
-     Tahoma / Arial). The character in the DOM/text stays U+0649 — no substitution.
-   - Requirement: the exact character U+0649 must remain in the text and DOM;
-     only the font used to draw it may differ. Copy/share actions must use the raw
-     text (U+0649 preserved).
+3) Text rendering, the U+0649 issue (resolved), and riwaya switching
+   - Quran text encodes alef maqsura as U+0649 (ى). The old KFGQPC "Qaloon" font
+     drew it at U+06D2 (ے) and its U+0649 glyph was EMPTY (0 contours), so
+     browsers rendered nothing.
+   - Resolution applied (must be preserved): the app ships KFGQPC Uthmanic Qaloun
+     v2.1 (fonts/uthmanic-qaloun-v21.ttf + .woff2, @font-face family 'qpc-qaloun',
+     font-display: swap), which has a real U+0649 outline covering every character
+     present in the data. The Quran text font stack is 'qpc-qaloun', "Geeza Pro",
+     "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial.
+   - Riwaya switch: the header's brand-sub button (#riwayaToggle) toggles between
+     Qaloon and Hafs (persisted as qaloon_riwaya in localStorage; values
+     "qaloon"/"hafs"). applyRiwaya() swaps state.quran to the matching dataset,
+     resets the normalized-verses cache, and sets html[data-riwaya] which flips the
+     mushaf font to the Hafs face: 'qpc-hafs' (fonts/uthmanic-hafs-v18.ttf +
+     .woff2, @font-face family 'qpc-hafs') via
+     html[data-riwaya="hafs"] .bismillah/.mushaf-text. The reader title, ayah
+     counts and index totals are derived from the active dataset.
+   - Hafs text is served raw (it keeps U+0649, U+06E1 sukun marks and U+0671 alef
+     wasla, all covered by the hafs font; zero missing cmap codepoints).
 
 4) Search
    - Surah search: by Arabic name, English name, meaning, or numeric index
@@ -63,8 +80,14 @@ Application: quran-tag — a static, offline-capable PWA Quran reader (riwaya Qa
 5) Tagging
    - Categories + tags; tags can be toggled onto verses; persisted in localStorage
      under key qaloon_tags_v1 (shape {categories, tags, verses, ayahMeta}).
-   - Verse tag chips render inline; clicking opens a context popup showing the
-     citation context (chapter / page / paragraph).
+   - Verse tag chips render inline; clicking a chip opens a context popup showing
+     the citation context (chapter / page / paragraph) and, when present, the
+     per-association tag context: relationship label + description note, with an
+     "add/edit context" button that opens the context editor.
+   - Per-association context: ayahMeta[tagId]["surah:ayah"] may hold {rel, note}.
+     rel is a relationship id from the RELATIONSHIPS taxonomy (9 groups, 27 ids,
+     Arabic labels — e.g. same-as, part-of, causes, related-to, which is also the
+     default the lab uses for new links); note is free text up to 500 chars.
    - Toggles: show/hide tags, filter by selected tags, tag search, categories with
      drag-and-drop reassignment, create/edit/delete categories and tags, unique
      tag names (Arabic-Indic numbering for duplicates).
@@ -74,8 +97,9 @@ Application: quran-tag — a static, offline-capable PWA Quran reader (riwaya Qa
      JSON validity, presence of a tags array, format prefix, version equality
      (mismatch -> clear Arabic error, no import). Merge semantics: categories
      merged by normalized name; duplicate tag names renamed "name (٢)"; ayah
-     associations merged without duplication; ayahMeta restored. Report callback
-     returns success flag + Arabic summary.
+     associations merged without duplication; ayahMeta restored including the
+     per-association rel/note context. Report callback returns success flag +
+     Arabic summary.
 
 7) Document citation extraction (PDF/DOCX)
    - User uploads a PDF or DOCX; text is extracted (pdf.js for PDF, fflate-based
@@ -91,29 +115,71 @@ Application: quran-tag — a static, offline-capable PWA Quran reader (riwaya Qa
    - A new tag is created in the "الكتب" category per document, associated with
      every matched ayah, carrying per-ayah metadata {chapter, page, paragraph}.
 
-8) PWA / performance
-   - Service worker with versioned cache (e.g. quran-tag-v14). Navigation requests:
-     network-first with cache fallback. Static assets: cache-first with
-     stale-while-revalidate. Cache version must be bumped when assets change.
-   - Lazy loading: pdf.js / fflate loaded only when a document is imported;
-     five seed tag-books (dawaa, jam3, iman, asarar, adib) fetched and merged after
-     the first render, never blocking startup.
+8) Tag lab (graph canvas, lazy-loaded)
+   - #/lab shows one category's tags as draggable nodes on a grid canvas; each
+     node lists the tag's ayahs (with note if any) and can collapse to just the
+     tag name via a triangle toggle.
+   - Links between tags are directed: an SVG dashed gold line with an arrowhead
+     marker pointing at the target node; a label chip at the midpoint shows the
+     relationship type. Clicking a line or chip opens the edge editor (relationship
+     select from the full RELATIONSHIPS taxonomy, save/delete/cancel). Link mode
+     ("ربط الوسوم") lets the user click two nodes to create an edge (default
+     rel=related-to) and then opens the editor.
+   - Double-clicking an ayah in a node opens it in the reader (#/surah/N/M).
+   - Toolbar: category select, ربط الوسوم toggle, إضافة كل الوسوم, ترتيب تلقائي,
+     إعادة ضبط, تصدير, استيراد.
+   - Per-category layouts persisted in localStorage: qaloon_lab_v1 (shape
+     {catId: {nodes: {tagId: {x, y, showAyahs}}, edges: [{from, to, rel}]}}) and
+     qaloon_lab_cat (selected category). Sanitization prunes nodes not in the
+     category and edges with missing/self endpoints.
+   - Lab file export format: JSON {app: "quran-tag-lab", version: 1,
+     categories: {catId: {name, nodes, edges}}}; import matches categories by id
+     then by name, sanitizes, and never auto-adds tags.
+   - lab.js is loaded lazily only when #/lab is opened (dynamic <script>), via a
+     shared window.QuranLabBridge (esc, toAr, relLabel, RELATIONSHIPS, state,
+     tagState, LS, appEl, positionTagMenu); the module exposes window.QuranLab
+     {render, closeEdgePopup, onDocClick, onDocScroll} and delegates document
+     click/scroll handlers back to the main app.
 
-9) UI / UX
+9) Continue reading
+   - The last read position is persisted as surah (qaloon_last) + ayah
+     (qaloon_last_ayah), updated debounced (~250ms) while scrolling the reader.
+   - The anchor ayah of a screen is computed from the viewport: the first ayah
+     fully visible (its block within the visible area below the sticky header);
+     if no ayah is fully visible (a single ayah fills the screen), the ayah
+     intersecting the top line — the one "being read".
+   - The index shows a "متابعة القراءة" banner deep-linking to #/surah/N/M, and
+     the sticky app-header shows the surah name being read.
+   - Deep-link navigation scrolls the target ayah to the top of the viewport
+     (scrollIntoView block:start + scroll-margin-top) with a brief highlight.
+
+10) PWA / performance
+   - Service worker with versioned cache (currently quran-tag-v22). Navigation
+     requests: network-first with cache fallback (index.html refreshed in cache).
+     Static assets: cache-first, network update in the background
+     (stale-while-revalidate). Precached core includes app.js, lab.js, styles.css,
+     fonts (both qaloun and hafs), manifest, icons, and the three data JSON files
+     (surahs, quran, hafs). Cache version must be bumped when assets change.
+   - Lazy loading: pdf.js / fflate loaded only when a document is imported; six
+     seed tag-books (dawaa, jam3, iman, asarar, adib, dirasat) fetched and merged
+     after the first render, never blocking startup; lab.js loaded only when the
+     lab view is opened.
+
+11) UI / UX
    - Light/dark theme toggle (persisted), font-size controls 16..46px (persisted),
      keyboard navigation (left/right arrows across surahs when no menu/input open),
-     "continue reading" banner from last-read surah, share/copy current surah
-     (full text + ayah numbers), license/sources modal (Quran text source, pdf.js,
-     fflate, font, build tools, opencode + LLM credits, and a technical note about
-     the U+0649 rendering workaround).
+     "continue reading" banner + header reading indicator from the last read
+     surah/ayah, share/copy current surah (full text + ayah numbers), license/
+     sources modal (Quran text source, pdf.js, fflate, font, build tools, opencode
+     + LLM credits, and a technical note about the U+0649 rendering workaround).
 
-10) Testing
-    - Unit tests (node:test) covering helpers, normalization, quran data integrity,
-      tags store, export/import, chapter detection, and document indexing
-      (including multi-line ayah splitting and reversed-text cases).
-    - E2E tests run against headless Chrome via the DevTools protocol: boot, grid,
-      navigation, reader rendering (U+0649 preserved in DOM), search, tag flow,
-      theme, license modal, font size, hash routing.
+12) Testing
+   - Unit tests (node:test) covering helpers, normalization, quran data integrity,
+     tags store, export/import, chapter detection, and document indexing
+     (including multi-line ayah splitting and reversed-text cases).
+   - E2E tests run against headless Chrome via the DevTools protocol: boot, grid,
+     navigation, reader rendering (U+0649 preserved in DOM), search, tag flow,
+     theme, license modal, font size, hash routing, and the lab view.
 """
 
 REWRITE_INSTRUCTIONS = """\

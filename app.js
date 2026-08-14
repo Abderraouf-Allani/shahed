@@ -26,13 +26,20 @@
     theme: 'qaloon_theme',
     fontSize: 'qaloon_fontsize',
     last: 'qaloon_last',
+    lastAyah: 'qaloon_last_ayah',
     showTags: 'qaloon_show_tags',
     tags: 'qaloon_tags_v1',
     lab: 'qaloon_lab_v1',
-    labCat: 'qaloon_lab_cat'
+    labCat: 'qaloon_lab_cat',
+    riwaya: 'qaloon_riwaya'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
+
+  var RIWAYA = {
+    qaloon: { label: 'رواية قالون عن نافع', name: 'قالون' },
+    hafs: { label: 'رواية حفص عن عاصم', name: 'حفص' }
+  };
 
   var RELATIONSHIPS = [
     { name: 'التطابق (Identity)', items: [
@@ -95,6 +102,8 @@
   var state = {
     surahs: null,
     quran: null,
+    quranSets: null,
+    riwaya: 'qaloon',
     fontPx: parseInt(localStorage.getItem(LS.fontSize), 10) || 32,
     query: '',
     ayahQuery: '',
@@ -1254,6 +1263,35 @@
 
   applyTheme(localStorage.getItem(LS.theme) || 'light');
 
+  /* ---------- riwaya ---------- */
+
+  function currentRiwaya() {
+    return localStorage.getItem(LS.riwaya) === 'hafs' ? 'hafs' : 'qaloon';
+  }
+
+  function applyRiwaya() {
+    var r = currentRiwaya();
+    state.riwaya = r;
+    if (state.quranSets && state.quranSets[r]) {
+      state.quran = state.quranSets[r];
+      normVersesCache = null;
+    }
+    document.documentElement.setAttribute('data-riwaya', r);
+    var btn = document.getElementById('riwayaToggle');
+    if (btn) btn.textContent = RIWAYA[r].label;
+  }
+
+  function toggleRiwaya() {
+    localStorage.setItem(LS.riwaya, state.riwaya === 'hafs' ? 'qaloon' : 'hafs');
+    applyRiwaya();
+    render();
+  }
+
+  var riwayaBtn = document.getElementById('riwayaToggle');
+  if (riwayaBtn) riwayaBtn.addEventListener('click', toggleRiwaya);
+
+  applyRiwaya();
+
   /* ---------- helpers ---------- */
 
   function esc(s) {
@@ -1276,8 +1314,41 @@
     return state.surahs[n - 1];
   }
 
-  function persistLast(n) {
+  function persistLast(n, ayah) {
     localStorage.setItem(LS.last, n);
+    if (ayah) localStorage.setItem(LS.lastAyah, ayah);
+  }
+
+  function computeLastReadAyah() {
+    var header = document.querySelector('.app-header');
+    var vt = header ? header.offsetHeight : 0;
+    var vh = window.innerHeight;
+    var firstFully = null;
+    var firstVisible = null;
+    var verses = document.querySelectorAll('#mushaf .verse');
+    for (var i = 0; i < verses.length; i++) {
+      var r = verses[i].getBoundingClientRect();
+      if (r.height === 0 || r.bottom <= vt) continue;
+      if (firstVisible === null) firstVisible = +verses[i].dataset.ayah;
+      if (firstFully === null && r.top >= vt && r.bottom <= vh) firstFully = +verses[i].dataset.ayah;
+    }
+    return firstFully !== null ? firstFully : firstVisible;
+  }
+
+  function updateHeaderReading() {
+    var el = document.getElementById('headerReading');
+    if (!el) return;
+    var n = parseInt(localStorage.getItem(LS.last), 10);
+    var s = n && surahByNumber(n);
+    if (!s) {
+      el.setAttribute('hidden', '');
+      el.href = '#/';
+      return;
+    }
+    var a = parseInt(localStorage.getItem(LS.lastAyah), 10) || null;
+    el.textContent = s.nameAr;
+    el.href = '#/surah/' + n + (a ? '/' + a : '');
+    el.removeAttribute('hidden');
   }
 
   function tagChip(t) {
@@ -1522,6 +1593,20 @@
       closeLabEdgePopup();
     }
   });
+
+  var readScrollTimer = null;
+  window.addEventListener('scroll', function () {
+    var route = parseHash();
+    if (!route.surah || !document.getElementById('mushaf')) return;
+    if (readScrollTimer) clearTimeout(readScrollTimer);
+    readScrollTimer = setTimeout(function () {
+      var a = computeLastReadAyah();
+      if (a) {
+        persistLast(route.surah, a);
+        updateHeaderReading();
+      }
+    }, 250);
+  }, true);
 
   /* ---------- session tag filter menu ---------- */
 
@@ -1845,9 +1930,10 @@
   /* ---------- index view ---------- */
 
   function renderIndex() {
-    document.title = 'القرآن الكريم — رواية قالون عن نافع';
+    document.title = 'شاهد من القرآن — رواية قالون عن نافع';
     var last = parseInt(localStorage.getItem(LS.last), 10);
     var lastSurah = last && surahByNumber(last);
+    var lastAyah = parseInt(localStorage.getItem(LS.lastAyah), 10) || null;
 
     var html = '';
     html += '<div class="index-toolbar">';
@@ -1870,8 +1956,9 @@
     html += '</div>';
 
     if (lastSurah) {
-      html += '<a class="continue-banner" href="#/surah/' + last + '">';
-      html += '<strong>متابعة القراءة:</strong> ' + esc(lastSurah.nameAr) + ' — <em>' + esc(lastSurah.nameEn) + '</em>';
+      html += '<a class="continue-banner" href="#/surah/' + last + (lastAyah ? '/' + lastAyah : '') + '">';
+      html += '<strong>متابعة القراءة:</strong> سورة ' + esc(lastSurah.nameAr) + ' — <em>' + esc(lastSurah.nameEn) + '</em>';
+      if (lastAyah) html += ' <span class="continue-ayah">الآية ' + toAr(lastAyah) + '</span>';
       html += '</a>';
     }
 
@@ -1969,10 +2056,14 @@
     var stats = document.getElementById('indexStats');
     if (!grid) return;
     var list = filterSurahs(state.query);
-    var totalVerses = list.reduce(function (a, s) { return a + s.ayahCount; }, 0);
+    var grandTotal = state.quran.reduce(function (a, c) { return a + c.verses.length; }, 0);
+    var totalVerses = list.reduce(function (a, s) {
+      var c = state.quran[s.number - 1];
+      return a + (c ? c.verses.length : s.ayahCount);
+    }, 0);
 
     if (stats) {
-      stats.textContent = toAr(list.length) + ' سورة' + (state.query ? ' — ' + toAr(totalVerses) + ' آية' : ' — ' + toAr(6214) + ' آية');
+      stats.textContent = toAr(list.length) + ' سورة' + (state.query ? ' — ' + toAr(totalVerses) + ' آية' : ' — ' + toAr(grandTotal) + ' آية');
     }
 
     if (!list.length) {
@@ -1989,7 +2080,8 @@
       html += '<span class="surah-sub" dir="ltr">' + esc(s.nameEn) + ' · ' + esc(s.meaning) + '</span>';
       html += '<span class="surah-meta">';
       html += '<span class="tag type-' + esc(s.type) + '">' + (s.type === 'Meccan' ? 'مكية' : 'مدنية') + '</span>';
-      html += '<span class="tag">' + toAr(s.ayahCount) + ' آية</span>';
+      var c = state.quran[s.number - 1];
+      html += '<span class="tag">' + toAr(c ? c.verses.length : s.ayahCount) + ' آية</span>';
       html += '</span></span></a>';
     });
     grid.innerHTML = html;
@@ -2002,8 +2094,8 @@
     if (!s) { renderIndex(); return; }
 
     var q = state.quran[n - 1];
-    persistLast(n);
-    document.title = s.nameAr + ' — القرآن الكريم (قالون)';
+    persistLast(n, targetAyah || 1);
+    document.title = s.nameAr + ' — شاهد من القرآن (' + RIWAYA[state.riwaya].name + ')';
 
     var total = state.surahs.length;
     var prev = n > 1 ? surahByNumber(n - 1) : null;
@@ -2017,7 +2109,7 @@
     html += '<div class="reader-sub" dir="ltr">' + esc(s.nameEn) + ' — ' + esc(s.meaning) + '</div>';
     html += '<div class="reader-meta">';
     html += '<span class="tag type-' + esc(s.type) + '">' + (s.type === 'Meccan' ? 'سورة مكية' : 'سورة مدنية') + '</span>';
-    html += '<span class="tag">' + toAr(s.ayahCount) + ' آية</span>';
+    html += '<span class="tag">' + toAr(q.verses.length) + ' آية</span>';
     html += '<span class="tag">السورة ' + toAr(n) + ' من ' + toAr(total) + '</span>';
     html += '</div>';
     html += '</div>';
@@ -2127,7 +2219,7 @@
     if (targetAyah && targetAyah >= 1 && targetAyah <= q.verses.length) {
       var el = document.getElementById('ayah-' + n + '-' + targetAyah);
       if (el) {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.scrollIntoView({ block: 'start', behavior: 'smooth' });
         el.classList.add('flash');
         setTimeout(function () { el.classList.remove('flash'); }, 2200);
       }
@@ -2139,7 +2231,7 @@
   /* ---------- tags view ---------- */
 
   function renderTags() {
-    document.title = 'الوسوم — القرآن الكريم (قالون)';
+    document.title = 'الوسوم — شاهد من القرآن (قالون)';
 
     var html = '';
     html += '<div class="index-toolbar">';
@@ -2654,6 +2746,8 @@
   function render() {
     closeTagMenu();
     closeLabEdgePopup();
+    updateHeaderReading();
+    window.scrollTo(0, 0);
     var route = parseHash();
     if (route.tags && state.quran) {
       renderTags();
@@ -2668,7 +2762,7 @@
 
   function loadData() {
     var loaded = 0;
-    var total = 2 + BOOK_SEEDS.length;
+    var total = 3 + BOOK_SEEDS.length;
     var count = function (v) {
       loaded++;
       if (window.__quranLoader) window.__quranLoader.progress(loaded / total);
@@ -2676,7 +2770,8 @@
     };
     var core = Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count)
+      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/hafs.json').then(function (r) { return r.json(); }).then(count)
     ]);
     var seeds = Promise.all(BOOK_SEEDS.map(function (src) {
       return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
@@ -2685,7 +2780,8 @@
     }));
     return Promise.all([core, seeds]).then(function (res) {
       state.surahs = res[0][0];
-      state.quran = res[0][1];
+      state.quranSets = { qaloon: res[0][1], hafs: res[0][2] };
+      applyRiwaya();
     });
   }
 

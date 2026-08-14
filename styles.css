@@ -5,6 +5,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'qpc-hafs';
+  src: url('fonts/uthmanic-hafs-v18.woff2') format('woff2'),
+       url('fonts/uthmanic-hafs-v18.ttf') format('truetype');
+  font-display: swap;
+}
+
 :root {
   --bg: #f6f1e6;
   --surface: #fffdf8;
@@ -70,8 +77,37 @@ body {
 }
 
 .brand { display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+
+.header-reading {
+  flex: 1;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+.header-reading[hidden] { display: none; }
+.header-reading:hover { color: var(--accent); }
+@media (max-width: 560px) {
+  .header-reading { font-size: 0.78rem; }
+}
 .brand-title { font-size: 1.15rem; font-weight: 700; }
-.brand-sub { font-size: 0.8rem; color: var(--gold); }
+.brand-title { color: inherit; text-decoration: none; }
+.brand-sub {
+  font-size: 0.8rem;
+  color: var(--gold);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: right;
+}
+.brand-sub:hover { color: var(--accent); }
+.brand-sub::after { content: " ⇄"; font-size: 0.7rem; opacity: 0.7; }
 
 .icon-btn {
   display: inline-flex;
@@ -188,6 +224,12 @@ html.dark .icon-moon { display: block; }
   font-size: 1rem;
 }
 .continue-banner strong { color: var(--accent); }
+.continue-ayah {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
 
 .surah-grid {
   display: grid;
@@ -345,6 +387,11 @@ html.dark .icon-moon { display: block; }
   overflow-wrap: break-word;
 }
 
+html[data-riwaya="hafs"] .bismillah,
+html[data-riwaya="hafs"] .mushaf-text {
+  font-family: 'qpc-hafs', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+}
+
 .verse { white-space: normal; }
 
 .ayah-num {
@@ -481,7 +528,7 @@ html.dark .icon-moon { display: block; }
 
 /* ---------- tagging ---------- */
 
-.verse { position: relative; }
+.verse { position: relative; scroll-margin-top: 70px; }
 
 .tag-btn {
   display: inline-flex;
