@@ -27,7 +27,7 @@
     fontSize: 'qaloon_fontsize',
     last: 'qaloon_last',
     lastAyah: 'qaloon_last_ayah',
-    showTags: 'qaloon_show_tags',
+    showTags: 'qaloon_show_tags_v2',
     tags: 'qaloon_tags_v1',
     lab: 'qaloon_lab_v1',
     labCat: 'qaloon_lab_cat',
@@ -140,7 +140,7 @@
   /* ---------- tags store (localStorage) ---------- */
 
   var tagState = loadTags();
-  var showTags = localStorage.getItem(LS.showTags) !== '0';
+  var showTags = localStorage.getItem(LS.showTags) === '1';
   var sessionTagFilter = null;
 
   function newId(prefix) {
