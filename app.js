@@ -236,10 +236,12 @@
     var verses = raw && raw.verses && typeof raw.verses === 'object' ? raw.verses : {};
     var ayahMeta = raw && raw.ayahMeta && typeof raw.ayahMeta === 'object' ? raw.ayahMeta : {};
 
-    categories = categories.map(function (c) {
-      if (c && typeof c === 'object') c.color = safeColor(c.color);
-      return c;
-    });
+    if (categories) {
+      categories = categories.map(function (c) {
+        if (c && typeof c === 'object') c.color = safeColor(c.color);
+        return c;
+      });
+    }
     tags.forEach(function (t) {
       if (t && typeof t === 'object') t.color = safeColor(t.color);
     });
