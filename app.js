@@ -36,6 +36,44 @@
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
 
+  var COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+
+  function safeColor(color) {
+    if (typeof color === 'string' && COLOR_RE.test(color)) return color;
+    return TAG_COLORS[0];
+  }
+
+  function safeHttpUrl(u) {
+    if (typeof u !== 'string' || u.length > 800) return '';
+    try {
+      var parsed = new URL(u);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
+      return parsed.href;
+    } catch (e) { return ''; }
+  }
+
+  function clipStr(v, max) {
+    if (typeof v !== 'string') return '';
+    return v.slice(0, max);
+  }
+
+  function sanitizeAyahMeta(m) {
+    if (!m || typeof m !== 'object') return null;
+    var out = {};
+    if (m.rel) out.rel = clipStr(m.rel, 40);
+    if (m.note) out.note = clipStr(m.note, 500);
+    if (m.chapter) out.chapter = clipStr(m.chapter, 120);
+    if (typeof m.page === 'number' && isFinite(m.page)) out.page = m.page;
+    if (m.paragraph) out.paragraph = clipStr(m.paragraph, 2000);
+    if (m.url) {
+      var u = safeHttpUrl(m.url);
+      if (u) out.url = u;
+    }
+    if (m.videoTitle) out.videoTitle = clipStr(m.videoTitle, 200);
+    if (typeof m.duration === 'number' && isFinite(m.duration) && m.duration >= 0) out.duration = m.duration;
+    return Object.keys(out).length ? out : null;
+  }
+
   var RIWAYA = {
     qaloon: { label: 'رواية قالون عن نافع', name: 'قالون' },
     hafs: { label: 'رواية حفص عن عاصم', name: 'حفص' }
@@ -160,18 +198,21 @@
     Object.keys(seed.ayahMeta || {}).forEach(function (tagId) {
       if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
       Object.keys(seed.ayahMeta[tagId]).forEach(function (vkey) {
-        state.ayahMeta[tagId][vkey] = seed.ayahMeta[tagId][vkey];
+        var clean = sanitizeAyahMeta(seed.ayahMeta[tagId][vkey]);
+        if (clean) state.ayahMeta[tagId][vkey] = clean;
       });
     });
     if (tagState.byId[seedTagId]) return;
     seed.categories.forEach(function (c) {
       if (!tagState.byCatId[c.id]) {
+        c.color = safeColor(c.color);
         tagState.categories.push(c);
         tagState.byCatId[c.id] = c;
       }
     });
     seed.tags.forEach(function (t) {
       if (!tagState.byId[t.id]) {
+        t.color = safeColor(t.color);
         tagState.tags.push(t);
         tagState.byId[t.id] = t;
       }
@@ -194,6 +235,22 @@
     var tags = raw && Array.isArray(raw.tags) ? raw.tags : [];
     var verses = raw && raw.verses && typeof raw.verses === 'object' ? raw.verses : {};
     var ayahMeta = raw && raw.ayahMeta && typeof raw.ayahMeta === 'object' ? raw.ayahMeta : {};
+
+    categories = categories.map(function (c) {
+      if (c && typeof c === 'object') c.color = safeColor(c.color);
+      return c;
+    });
+    tags.forEach(function (t) {
+      if (t && typeof t === 'object') t.color = safeColor(t.color);
+    });
+    Object.keys(ayahMeta).forEach(function (tagId) {
+      var byVerse = ayahMeta[tagId];
+      if (!byVerse || typeof byVerse !== 'object') { delete ayahMeta[tagId]; return; }
+      Object.keys(byVerse).forEach(function (vkey) {
+        var clean = sanitizeAyahMeta(byVerse[vkey]);
+        if (clean) byVerse[vkey] = clean; else delete byVerse[vkey];
+      });
+    });
     state.ayahMeta = ayahMeta;
 
     var legacyDefault = categories && categories.length === 1 && categories[0].name === 'عام';
@@ -305,7 +362,7 @@
   }
 
   function createCategory(name, color) {
-    var cat = { id: newId('c'), name: name, color: color };
+    var cat = { id: newId('c'), name: name, color: safeColor(color) };
     tagState.categories.push(cat);
     tagState.byCatId[cat.id] = cat;
     saveTags();
@@ -316,7 +373,7 @@
     var tag = {
       id: newId('t'),
       name: name,
-      color: color || TAG_COLORS[tagState.tags.length % TAG_COLORS.length],
+      color: safeColor(color),
       categoryId: categoryId || (tagState.categories[0] ? tagState.categories[0].id : '')
     };
     if (description) tag.description = description;
@@ -331,7 +388,7 @@
     var c = tagState.byCatId[catId];
     if (!c) return;
     if (patch.name !== undefined) c.name = patch.name;
-    if (patch.color !== undefined) c.color = patch.color;
+    if (patch.color !== undefined) c.color = safeColor(patch.color);
     saveTags();
   }
 
@@ -355,7 +412,7 @@
     var t = tagState.byId[tagId];
     if (!t) return;
     if (patch.name !== undefined) t.name = patch.name;
-    if (patch.color !== undefined) t.color = patch.color;
+    if (patch.color !== undefined) t.color = safeColor(patch.color);
     if (patch.categoryId !== undefined) t.categoryId = patch.categoryId;
     if (patch.description !== undefined) t.description = patch.description;
     if (patch.metatag !== undefined) t.metatag = patch.metatag;
@@ -507,8 +564,11 @@
       var byVerse = metaIn[tagId] || {};
       if (!state.ayahMeta[newTagId]) state.ayahMeta[newTagId] = {};
       Object.keys(byVerse).forEach(function (vkey) {
-        state.ayahMeta[newTagId][vkey] = byVerse[vkey];
-        metaKeys++;
+        var clean = sanitizeAyahMeta(byVerse[vkey]);
+        if (clean) {
+          state.ayahMeta[newTagId][vkey] = clean;
+          metaKeys++;
+        }
       });
     });
 
@@ -1101,8 +1161,8 @@
       var cur = tagState.verses[key] || [];
       if (cur.indexOf(tag.id) === -1) cur.push(tag.id);
       tagState.verses[key] = cur;
-      var m = metaOf[key];
-      if (m && (m.chapter || m.page || m.paragraph)) {
+      var m = sanitizeAyahMeta(metaOf[key]);
+      if (m) {
         if (!state.ayahMeta[tag.id]) state.ayahMeta[tag.id] = {};
         state.ayahMeta[tag.id][key] = Object.assign({}, state.ayahMeta[tag.id][key], m);
       }
@@ -1876,8 +1936,9 @@
     var para = meta && meta.paragraph
       ? '<div class="tag-context-popup-para">' + esc(meta.paragraph) + '</div>'
       : '';
-    var video = meta && meta.url
-      ? '<div class="tag-context-popup-video"><a href="' + esc(meta.url) + '" target="_blank" rel="noopener">'
+    var safeVideoUrl = meta && meta.url ? safeHttpUrl(meta.url) : '';
+    var video = safeVideoUrl
+      ? '<div class="tag-context-popup-video"><a href="' + esc(safeVideoUrl) + '" target="_blank" rel="noopener">'
         + (meta.videoTitle ? esc(meta.videoTitle) : 'مشاهدة الشرح على يوتيوب') + ' ↗</a>'
         + (meta.duration ? '<span class="tag-context-popup-duration">' + fmtDuration(meta.duration) + '</span>' : '')
         + '</div>'
@@ -2746,7 +2807,6 @@
   function render() {
     closeTagMenu();
     closeLabEdgePopup();
-    updateHeaderReading();
     window.scrollTo(0, 0);
     var route = parseHash();
     if (route.tags && state.quran) {
@@ -2758,6 +2818,7 @@
     } else {
       renderIndex();
     }
+    updateHeaderReading();
   }
 
   function loadData() {
