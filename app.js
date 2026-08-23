@@ -255,6 +255,26 @@
     });
     state.ayahMeta = ayahMeta;
 
+    var removedIman = false;
+    var removedTagIdx = -1;
+    tags.forEach(function (t, i) { if (t && t.id === 't-iman') { removedTagIdx = i; } });
+    if (removedTagIdx !== -1) {
+      tags.splice(removedTagIdx, 1);
+      removedIman = true;
+    }
+    Object.keys(verses).forEach(function (key) {
+      var arr = verses[key];
+      var idx = arr.indexOf('t-iman');
+      if (idx !== -1) { arr.splice(idx, 1); removedIman = true; }
+      if (arr.length === 0) delete verses[key];
+    });
+    if (ayahMeta['t-iman']) { delete ayahMeta['t-iman']; removedIman = true; }
+    if (removedIman) {
+      try {
+        localStorage.setItem(LS.tags, JSON.stringify({ categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
+      } catch (e) {}
+    }
+
     var legacyDefault = categories && categories.length === 1 && categories[0].name === 'عام';
     if (!categories || !categories.length || legacyDefault) {
       var defs = defaultCategories();
@@ -2851,7 +2871,6 @@
   var BOOK_SEEDS = [
     'data/dawaa.json',
     'data/jam3.json',
-    'data/iman.json',
     'data/asarar.json',
     'data/adib.json',
     'data/dirasat.json'
