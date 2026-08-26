@@ -31,7 +31,8 @@
     tags: 'qaloon_tags_v1',
     lab: 'qaloon_lab_v1',
     labCat: 'qaloon_lab_cat',
-    riwaya: 'qaloon_riwaya'
+    riwaya: 'qaloon_riwaya',
+    memSession: 'qaloon_mem_session'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -3003,10 +3004,15 @@
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
     memState = memState || { active: false, level: 0, sections: [], peeking: false };
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
+    var defSurah = (saved && saved.surah) || 1;
+    var defFrom = (saved && saved.from) || 1;
+    var defTo = (saved && saved.to) || 5;
     var surahOptions = '';
     for (var i = 1; i <= 114; i++) {
       var s = surahByNumber(i);
-      surahOptions += '<option value="' + i + '">' + toAr(i) + '. ' + esc(s.nameAr) + '</option>';
+      surahOptions += '<option value="' + i + '"' + (i === defSurah ? ' selected' : '') + '>' + toAr(i) + '. ' + esc(s.nameAr) + '</option>';
     }
     var html = '';
     html += '<div class="mem-wrap">';
@@ -3017,8 +3023,8 @@
     html += '<label class="mem-label">السورة</label>';
     html += '<select id="memSurah" class="mem-select">' + surahOptions + '</select>';
     html += '<div class="mem-range">';
-    html += '<div><label class="mem-label">من آية</label><input id="memFrom" type="number" class="mem-input" min="1" value="1"></div>';
-    html += '<div><label class="mem-label">إلى آية</label><input id="memTo" type="number" class="mem-input" min="1" value="5"></div>';
+    html += '<div><label class="mem-label">من آية</label><input id="memFrom" type="number" class="mem-input" min="1" value="' + defFrom + '"></div>';
+    html += '<div><label class="mem-label">إلى آية</label><input id="memTo" type="number" class="mem-input" min="1" value="' + defTo + '"></div>';
     html += '</div>';
     html += '<button id="memStart" class="pill mem-start-btn">ابدأ الحفظ</button>';
     html += '</div>';
@@ -3094,6 +3100,7 @@
       memState.level = 0;
       memState.sections = sections;
       memState.peeking = false;
+      try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, from: from, to: to })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
