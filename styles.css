@@ -1339,3 +1339,82 @@ html.dark .loader-caption { color: #9a917f; }
 .lab-edge-actions button:hover { border-color: var(--accent); }
 .lab-edge-actions .lab-edge-save { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .lab-edge-actions .lab-edge-del:hover { border-color: #c0392b; color: #c0392b; }
+
+/* ---------- memorize ---------- */
+
+.mem-wrap { max-width: 800px; margin: 0 auto; }
+.mem-setup { text-align: center; padding: 2rem 0; }
+.mem-title { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem; }
+.mem-desc { color: var(--text-muted); margin: 0 0 1.5rem; font-size: 0.95rem; }
+.mem-form { display: flex; flex-direction: column; gap: 0.8rem; align-items: center; }
+.mem-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; text-align: right; width: 100%; }
+.mem-select, .mem-input {
+  width: 100%; max-width: 320px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 1rem; padding: 0.55rem 0.7rem;
+  outline: none;
+}
+.mem-select:focus, .mem-input:focus { border-color: var(--accent); }
+.mem-range { display: flex; gap: 1rem; width: 100%; max-width: 320px; }
+.mem-range > div { flex: 1; }
+.mem-start-btn {
+  background: var(--accent) !important; color: var(--surface) !important;
+  border-color: var(--accent) !important;
+  padding: 0.65rem 2rem !important; font-size: 1rem !important; font-weight: 700 !important;
+  margin-top: 0.5rem;
+}
+.mem-start-btn:hover { opacity: 0.9; }
+
+.mem-area { padding-top: 0.5rem; }
+.mem-progress {
+  height: 4px; background: var(--surface-2); border-radius: 2px;
+  overflow: hidden; margin-bottom: 0.6rem;
+}
+.mem-progress-bar {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  width: 0%; transition: width 0.3s ease;
+}
+.mem-level {
+  text-align: center; font-size: 0.9rem; font-weight: 600;
+  color: var(--text-muted); margin-bottom: 1rem;
+}
+.mem-word {
+  transition: color 0.25s ease, opacity 0.25s ease;
+}
+.mem-word.hidden {
+  color: transparent !important;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0.35;
+  background: var(--surface-2);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.mem-controls {
+  display: flex; flex-wrap: wrap; gap: 0.6rem;
+  justify-content: center; padding: 1.5rem 0 1rem;
+}
+.mem-ctrl-btn {
+  padding: 0.6rem 1.4rem !important;
+  font-size: 0.95rem !important; font-weight: 600 !important;
+}
+.mem-peek-btn {
+  background: var(--surface-2) !important;
+  border-color: var(--gold) !important; color: var(--gold) !important;
+}
+.mem-help-btn {
+  background: var(--surface-2) !important;
+  border-color: #e67e22 !important; color: #e67e22 !important;
+}
+.mem-help-btn:disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+.mem-reset-btn {
+  background: var(--surface-2) !important;
+  border-color: #c0392b !important; color: #c0392b !important;
+}
+.mem-done {
+  background: var(--accent) !important; color: var(--surface) !important;
+  border-color: var(--accent) !important;
+}

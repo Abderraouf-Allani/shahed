@@ -1458,6 +1458,7 @@
     if (m) return { surah: parseInt(m[1], 10), ayah: m[2] ? parseInt(m[2], 10) : null };
     if (/^#\/tags/.test(location.hash)) return { tags: true };
     if (/^#\/lab/.test(location.hash)) return { lab: true };
+    if (/^#\/memorize/.test(location.hash)) return { memorize: true };
     return {};
   }
 
@@ -2824,6 +2825,275 @@
     });
   }
 
+  /* ---------- memorize ---------- */
+
+  function getAyahCount(n) {
+    var c = state.quran && state.quran[n - 1];
+    return c ? c.verses.length : 0;
+  }
+
+  var memState = null;
+
+  function shuffleArray(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function buildMemWords(text) {
+    var words = text.split(/(\s+)/);
+    var result = [];
+    for (var i = 0; i < words.length; i++) {
+      if (/^\s+$/.test(words[i])) {
+        if (result.length) result[result.length - 1].trail = words[i];
+      } else {
+        result.push({ text: words[i], hidden: false, origIdx: result.length });
+      }
+    }
+    return result;
+  }
+
+  function applyMemLevel() {
+    if (!memState || !memState.active) return;
+    var allWords = [];
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
+    });
+    var visible = allWords.filter(function (w) { return !w.hidden; });
+    var hideCount = Math.floor(visible.length * 0.33);
+    if (hideCount < 1 && visible.length > 0) hideCount = 1;
+    var toHide = shuffleArray(visible).slice(0, hideCount);
+    toHide.forEach(function (w) { w.hidden = true; });
+    memState.level++;
+    renderMemWords();
+  }
+
+  function revealMemWords() {
+    if (!memState || !memState.active) return;
+    memState.peeking = true;
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) {
+        aw.words.forEach(function (w) { w._wasHidden = w.hidden; w.hidden = false; });
+      });
+    });
+    renderMemWords();
+  }
+
+  function unrevealMemWords() {
+    if (!memState || !memState.active) return;
+    memState.peeking = false;
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) {
+        aw.words.forEach(function (w) { w.hidden = w._wasHidden; delete w._wasHidden; });
+      });
+    });
+    renderMemWords();
+  }
+
+  function showMemHelp() {
+    if (!memState || !memState.active || memState.level <= 0) return;
+    var allWords = [];
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
+    });
+    var hidden = allWords.filter(function (w) { return w.hidden; });
+    var showCount = Math.ceil(hidden.length * 0.4);
+    if (showCount < 1 && hidden.length > 0) showCount = 1;
+    var toShow = shuffleArray(hidden).slice(0, showCount);
+    toShow.forEach(function (w) { w.hidden = false; });
+    memState.level--;
+    renderMemWords();
+  }
+
+  function renderMemWords() {
+    var mushaf = document.getElementById('memMushaf');
+    if (!mushaf || !memState) return;
+    var html = '';
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) {
+        html += '<span class="verse">';
+        html += '<span class="verse-text">';
+        aw.words.forEach(function (w) {
+          html += '<span class="mem-word' + (w.hidden ? ' hidden' : '') + '">' + esc(w.text) + '</span>' + (w.trail || '');
+        });
+        html += '</span>';
+        html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
+        html += '</span> ';
+      });
+    });
+    mushaf.innerHTML = html;
+    var lvl = document.getElementById('memLevel');
+    if (lvl) {
+      var total = memState.sections.reduce(function (s, sec) {
+        return s + sec.ayahWords.reduce(function (a, aw) { return a + aw.words.length; }, 0);
+      }, 0);
+      var hiddenCount = 0;
+      memState.sections.forEach(function (sec) {
+        sec.ayahWords.forEach(function (aw) {
+          aw.words.forEach(function (w) { if (w.hidden) hiddenCount++; });
+        });
+      });
+      var pct = total ? Math.round((hiddenCount / total) * 100) : 0;
+      lvl.textContent = 'المستوى ' + memState.level + ' — ' + pct + '% مخفي';
+    }
+    var bar = document.getElementById('memBar');
+    if (bar) {
+      var total2 = 0, hidden2 = 0;
+      memState.sections.forEach(function (sec) {
+        sec.ayahWords.forEach(function (aw) {
+          aw.words.forEach(function (w) { total2++; if (w.hidden) hidden2++; });
+        });
+      });
+      bar.style.width = total2 ? Math.round((hidden2 / total2) * 100) + '%' : '0%';
+    }
+    var helpBtn = document.getElementById('memHelpBtn');
+    if (helpBtn) helpBtn.disabled = memState.level <= 0;
+    var hideBtn = document.getElementById('memHideBtn');
+    if (hideBtn) {
+      var allDone = true;
+      memState.sections.forEach(function (sec) {
+        sec.ayahWords.forEach(function (aw) {
+          aw.words.forEach(function (w) { if (!w.hidden) allDone = false; });
+        });
+      });
+      if (allDone) {
+        hideBtn.textContent = '✓ حفظتُها';
+        hideBtn.classList.add('mem-done');
+      } else {
+        hideBtn.textContent = 'أخفِ المزيد';
+        hideBtn.classList.remove('mem-done');
+      }
+    }
+  }
+
+  function renderMemorize() {
+    document.title = 'الحفظ — شاهد من القرآن';
+    memState = memState || { active: false, level: 0, sections: [], peeking: false };
+    var surahOptions = '';
+    for (var i = 1; i <= 114; i++) {
+      var s = surahByNumber(i);
+      surahOptions += '<option value="' + i + '">' + toAr(i) + '. ' + esc(s.nameAr) + '</option>';
+    }
+    var html = '';
+    html += '<div class="mem-wrap">';
+    html += '<div class="mem-setup">';
+    html += '<h2 class="mem-title">الحفظ والتثبيت</h2>';
+    html += '<p class="mem-desc">اختر سورة ونطاق آيات، ثم ابدأ الحفظ تدريجياً بإخفاء الكلمات.</p>';
+    html += '<div class="mem-form">';
+    html += '<label class="mem-label">السورة</label>';
+    html += '<select id="memSurah" class="mem-select">' + surahOptions + '</select>';
+    html += '<div class="mem-range">';
+    html += '<div><label class="mem-label">من آية</label><input id="memFrom" type="number" class="mem-input" min="1" value="1"></div>';
+    html += '<div><label class="mem-label">إلى آية</label><input id="memTo" type="number" class="mem-input" min="1" value="5"></div>';
+    html += '</div>';
+    html += '<button id="memStart" class="pill mem-start-btn">ابدأ الحفظ</button>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="mem-area" id="memArea" style="display:none">';
+    html += '<div class="mem-progress">';
+    html += '<div class="mem-progress-bar" id="memBar"></div>';
+    html += '</div>';
+    html += '<div class="mem-level" id="memLevel"></div>';
+    html += '<div class="mushaf-text" id="memMushaf"></div>';
+    html += '<div class="mem-controls">';
+    html += '<button id="memHideBtn" class="pill mem-ctrl-btn">أخفِ المزيد</button>';
+    html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-peek-btn">أرني الكلمة</button>';
+    html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-help-btn">ساعدني</button>';
+    html += '<button id="memResetBtn" class="pill mem-ctrl-btn mem-reset-btn">من جديد</button>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+    appEl.innerHTML = html;
+
+    var surahEl = document.getElementById('memSurah');
+    var fromEl = document.getElementById('memFrom');
+    var toEl = document.getElementById('memTo');
+    var startBtn = document.getElementById('memStart');
+    var areaEl = document.getElementById('memArea');
+    var setupEl = document.querySelector('.mem-setup');
+
+    if (memState.active) {
+      setupEl.style.display = 'none';
+      areaEl.style.display = '';
+      renderMemWords();
+    }
+
+    surahEl.addEventListener('change', function () {
+      var n = parseInt(surahEl.value, 10);
+      var s = surahByNumber(n);
+      var count = getAyahCount(n);
+      toEl.max = count;
+      toEl.value = Math.min(parseInt(toEl.value, 10) || 5, count);
+      fromEl.max = count;
+    });
+
+    fromEl.addEventListener('input', function () {
+      var n = parseInt(surahEl.value, 10);
+      var count = getAyahCount(n);
+      var from = parseInt(fromEl.value, 10) || 1;
+      toEl.min = from;
+      if (parseInt(toEl.value, 10) < from) toEl.value = from;
+      if (parseInt(toEl.value, 10) > count) toEl.value = count;
+    });
+
+    startBtn.addEventListener('click', function () {
+      var surahNum = parseInt(surahEl.value, 10);
+      var from = parseInt(fromEl.value, 10) || 1;
+      var to = parseInt(toEl.value, 10) || 5;
+      var count = getAyahCount(surahNum);
+      if (from < 1) from = 1;
+      if (to > count) to = count;
+      if (from > to) { var tmp = from; from = to; to = tmp; }
+      var quran = state.quran;
+      var chapters = quran[surahNum - 1];
+      if (!chapters) return;
+      var sections = [];
+      var ayahWords = [];
+      for (var a = from; a <= to; a++) {
+        var text = chapters.verses[a - 1];
+        if (!text) continue;
+        ayahWords.push({ ayah: a, words: buildMemWords(text) });
+      }
+      if (!ayahWords.length) return;
+      sections.push({ surah: surahNum, from: from, to: to, ayahWords: ayahWords });
+      memState.active = true;
+      memState.level = 0;
+      memState.sections = sections;
+      memState.peeking = false;
+      setupEl.style.display = 'none';
+      areaEl.style.display = '';
+      renderMemWords();
+    });
+
+    document.getElementById('memHideBtn').addEventListener('click', function () {
+      if (memState.peeking) return;
+      applyMemLevel();
+    });
+
+    var peekBtn = document.getElementById('memPeekBtn');
+    peekBtn.addEventListener('mousedown', function () { revealMemWords(); });
+    peekBtn.addEventListener('mouseup', function () { unrevealMemWords(); });
+    peekBtn.addEventListener('mouseleave', function () { if (memState.peeking) unrevealMemWords(); });
+    peekBtn.addEventListener('touchstart', function (e) { e.preventDefault(); revealMemWords(); }, { passive: false });
+    peekBtn.addEventListener('touchend', function () { unrevealMemWords(); });
+
+    document.getElementById('memHelpBtn').addEventListener('click', function () {
+      showMemHelp();
+    });
+
+    document.getElementById('memResetBtn').addEventListener('click', function () {
+      memState.active = false;
+      memState.level = 0;
+      memState.sections = [];
+      memState.peeking = false;
+      setupEl.style.display = '';
+      areaEl.style.display = 'none';
+    });
+  }
+
   /* ---------- init ---------- */
 
   function render() {
@@ -2835,6 +3105,8 @@
       renderTags();
     } else if (route.lab && state.quran) {
       lazyLoadLab();
+    } else if (route.memorize && state.quran) {
+      renderMemorize();
     } else if (route.surah && state.surahs && surahByNumber(route.surah)) {
       renderReader(route.surah, route.ayah);
     } else {
