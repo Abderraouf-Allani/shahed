@@ -1428,6 +1428,7 @@ html.dark .loader-caption { color: #9a917f; }
 .mem-reset-btn {
   background: var(--surface-2) !important;
   border-color: #c0392b !important; color: #c0392b !important;
+  margin-inline-start: auto;
 }
 .mem-done {
   background: var(--accent) !important; color: var(--surface) !important;
