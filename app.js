@@ -2856,8 +2856,27 @@
     return result;
   }
 
+  function measureAllWords() {
+    var mushaf = document.getElementById('memMushaf');
+    if (!mushaf) return;
+    var spans = mushaf.querySelectorAll('.mem-word');
+    var idx = 0;
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) {
+        aw.words.forEach(function (w) {
+          if (idx < spans.length) {
+            w._width = spans[idx].offsetWidth;
+          }
+          idx++;
+        });
+      });
+    });
+  }
+
   function applyMemLevel() {
     if (!memState || !memState.active) return;
+    renderMemWords();
+    measureAllWords();
     var allWords = [];
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
@@ -2895,6 +2914,8 @@
 
   function showMemHelp() {
     if (!memState || !memState.active || memState.level <= 0) return;
+    renderMemWords();
+    measureAllWords();
     var allWords = [];
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
@@ -2917,7 +2938,9 @@
         html += '<span class="verse">';
         html += '<span class="verse-text">';
         aw.words.forEach(function (w) {
-          html += '<span class="mem-word' + (w.hidden ? ' hidden' : '') + '">' + esc(w.text) + '</span>' + (w.trail || '');
+          var cls = 'mem-word' + (w.hidden ? ' hidden' : '');
+          var style = (w.hidden && w._width) ? ' style="min-width:' + w._width + 'px"' : '';
+          html += '<span class="' + cls + '"' + style + '>' + esc(w.text) + '</span>' + (w.trail || '');
         });
         html += '</span>';
         html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
