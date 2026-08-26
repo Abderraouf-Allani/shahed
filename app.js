@@ -2923,9 +2923,14 @@
       sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
     });
     var hidden = allWords.filter(function (w) { return w.hidden; });
-    var showCount = Math.ceil(hidden.length * 0.4);
-    if (showCount < 1 && hidden.length > 0) showCount = 1;
-    var toShow = shuffleArray(hidden).slice(0, showCount);
+    if (!hidden.length) return;
+    var toShow;
+    if (memState.level <= 1) {
+      toShow = hidden;
+    } else {
+      var showCount = Math.ceil(hidden.length * 0.4);
+      toShow = shuffleArray(hidden).slice(0, showCount);
+    }
     toShow.forEach(function (w) { w.hidden = false; });
     memState.level--;
     renderMemWords();
