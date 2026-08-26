@@ -2882,7 +2882,8 @@
       sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
     });
     var visible = allWords.filter(function (w) { return !w.hidden; });
-    var hideCount = Math.max(1, Math.ceil(visible.length * 0.2));
+    var totalCount = allWords.length;
+    var hideCount = Math.max(1, Math.ceil(totalCount * 0.2));
     var toHide = shuffleArray(visible).slice(0, hideCount);
     toHide.forEach(function (w) { w.hidden = true; });
     memState.level++;
