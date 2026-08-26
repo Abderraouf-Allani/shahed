@@ -1404,6 +1404,12 @@ html.dark .loader-caption { color: #9a917f; }
   padding: 0.6rem 1.4rem !important;
   font-size: 0.95rem !important; font-weight: 600 !important;
 }
+.mem-icon-btn {
+  padding: 0.6rem !important;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.mem-ctrl-btn svg { flex-shrink: 0; }
+.mem-ctrl-btn:not(.mem-icon-btn) svg { margin-inline-end: 0.35rem; }
 .mem-peek-btn {
   background: var(--surface-2) !important;
   border-color: var(--gold) !important; color: var(--gold) !important;

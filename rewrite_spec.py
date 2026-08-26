@@ -31,7 +31,7 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
      Arabic RTL interface.
    - Views (hash routing): index grid of 114 surahs (#/), reader (#/surah/N,
      optional #/surah/N/M deep-link to ayah M), tags manager (#/tags), tag lab
-     graph canvas (#/lab).
+     graph canvas (#/lab), memorize (#/memorize).
    - Every route change scrolls the window to the top before rendering.
 
 2) Quran data
@@ -141,7 +141,33 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
      {render, closeEdgePopup, onDocClick, onDocScroll} and delegates document
      click/scroll handlers back to the main app.
 
-9) Continue reading
+9) Memorize (progressive word-hiding)
+   - #/memorize shows a setup form: surah picker (all 114), ayah range (from/to).
+     Last session surah + range is persisted in localStorage (qaloon_mem_session,
+     shape {surah, from, to}); defaults to surah 1, ayahs 1-5.
+   - "ابدأ الحفظ" loads the ayah range from the active riwaya dataset, splits each
+     ayah into words, and enters memorize mode.
+   - Progressive difficulty: each click of "أخفِ المزيد" hides 20% of the TOTAL
+     word count (randomly selected from currently visible words). After 5 clicks
+     all words are hidden.
+   - Hidden words use CSS class .mem-word.hidden: color:transparent, display:inline-block,
+     min-width locked to the word's original rendered offsetWidth (measured before
+     hide/unhide via measureAllWords). This prevents text-align:justify from
+     reflowing word positions when other words become invisible.
+   - "أرني الكلمة" (peek): hold mousedown/touchstart to temporarily reveal all
+     words; release to restore. Uses _wasHidden snapshot to restore exact prior state.
+   - "ساعدني" (help): reveals 40% of hidden words (random). On the last level
+     (level 1 -> 0), reveals ALL remaining hidden words so none stay permanently hidden.
+   - "منديد": resets to the setup form.
+   - Controls bar is position:fixed at the bottom of the viewport with
+     backdrop surface + shadow; .mem-area has padding-bottom:5rem to prevent
+     ayah text from hiding behind it.
+   - Button icons: hide button shows eye-off SVG (or checkmark SVG when all done);
+     peek button shows eye SVG; help shows question-circle SVG; reset shows
+     refresh-ccw SVG. Hide and peek buttons are icon-only (title attribute for
+     accessibility); help and reset show icon + text.
+
+10) Continue reading
    - The last read position is persisted as surah (qaloon_last) + ayah
      (qaloon_last_ayah), updated debounced (~250ms) while scrolling the reader.
    - The anchor ayah of a screen is computed from the viewport: the first ayah
@@ -153,27 +179,28 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
    - Deep-link navigation scrolls the target ayah to the top of the viewport
      (scrollIntoView block:start + scroll-margin-top) with a brief highlight.
 
-10) PWA / performance
-   - Service worker with versioned cache (currently quran-tag-v22). Navigation
+11) PWA / performance
+   - Service worker with versioned cache (currently quran-tag-v24). Navigation
      requests: network-first with cache fallback (index.html refreshed in cache).
      Static assets: cache-first, network update in the background
      (stale-while-revalidate). Precached core includes app.js, lab.js, styles.css,
-     fonts (both qaloun and hafs), manifest, icons, and the three data JSON files
+     fonts (both qaloun and hafs), manifest, icons, and the data JSON files
      (surahs, quran, hafs). Cache version must be bumped when assets change.
-   - Lazy loading: pdf.js / fflate loaded only when a document is imported; six
-     seed tag-books (dawaa, jam3, iman, asarar, adib, dirasat) fetched and merged
+   - Lazy loading: pdf.js / fflate loaded only when a document is imported; five
+     seed tag-books (dawaa, jam3, asarar, adib, dirasat) fetched and merged
      after the first render, never blocking startup; lab.js loaded only when the
      lab view is opened.
 
-11) UI / UX
+12) UI / UX
    - Light/dark theme toggle (persisted), font-size controls 16..46px (persisted),
      keyboard navigation (left/right arrows across surahs when no menu/input open),
      "continue reading" banner + header reading indicator from the last read
      surah/ayah, share/copy current surah (full text + ayah numbers), license/
      sources modal (Quran text source, pdf.js, fflate, font, build tools, opencode
      + LLM credits, and a technical note about the U+0649 rendering workaround).
+   - Header nav icons: tags (tag icon), lab (flask icon), memorize (book-open icon).
 
-12) Testing
+13) Testing
    - Unit tests (node:test) covering helpers, normalization, quran data integrity,
      tags store, export/import, chapter detection, and document indexing
      (including multi-line ayah splitting and reversed-text cases).
