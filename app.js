@@ -1305,6 +1305,9 @@
       + '<li>opencode — أداة تطوير برمجي بالذكاء الاصطناعي — <a href="https://opencode.ai" target="_blank" rel="noopener">opencode.ai</a></li>'
       + '<li>النموذج اللغوي المستخدم في هذه الجلسة: <code>big-pickle</code> (opencode/big-pickle)</li>';
 
+    var memRows =
+      '<li>تقنية الحفظ التدريجي (إخفاء الكلمات) مُعدّلة من أسلوب الأستاذ <strong>عيد الرزاق السقني</strong>.</li>';
+
     modal.innerHTML =
       '<div class="licenses-overlay"></div>'
       + '<div class="licenses-panel" role="dialog" aria-modal="true" aria-label="التراخيص والمصادر">'
@@ -1316,6 +1319,7 @@
       +     licensesSection('النص القرآني', quranRows)
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('أدوات البناء', toolRows)
+      +     licensesSection('تقنية الحفظ', memRows)
       +   '</div>'
       + '</div>';
 
