@@ -2875,13 +2875,15 @@
 
   function applyMemLevel() {
     if (!memState || !memState.active) return;
-    renderMemWords();
-    measureAllWords();
+    memState.peeking = false;
     var allWords = [];
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
     });
     var visible = allWords.filter(function (w) { return !w.hidden; });
+    if (!visible.length) return;
+    renderMemWords();
+    measureAllWords();
     var totalCount = allWords.length;
     var hideCount = Math.max(1, Math.ceil(totalCount * 0.2));
     var toHide = shuffleArray(visible).slice(0, hideCount);
@@ -2976,6 +2978,7 @@
     if (helpBtn) helpBtn.disabled = memState.level <= 0;
     var hideBtn = document.getElementById('memHideBtn');
     if (hideBtn) {
+      hideBtn.disabled = false;
       var allDone = true;
       memState.sections.forEach(function (sec) {
         sec.ayahWords.forEach(function (aw) {
