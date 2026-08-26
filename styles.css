@@ -1366,7 +1366,7 @@ html.dark .loader-caption { color: #9a917f; }
 }
 .mem-start-btn:hover { opacity: 0.9; }
 
-.mem-area { padding-top: 0.5rem; }
+.mem-area { padding-top: 0.5rem; padding-bottom: 5rem; }
 .mem-progress {
   height: 4px; background: var(--surface-2); border-radius: 2px;
   overflow: hidden; margin-bottom: 0.6rem;
@@ -1393,7 +1393,11 @@ html.dark .loader-caption { color: #9a917f; }
 }
 .mem-controls {
   display: flex; flex-wrap: wrap; gap: 0.6rem;
-  justify-content: center; padding: 1.5rem 0 1rem;
+  justify-content: center; padding: 1rem 0;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  z-index: 40;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
 }
 .mem-ctrl-btn {
   padding: 0.6rem 1.4rem !important;
