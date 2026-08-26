@@ -1367,6 +1367,7 @@ html.dark .loader-caption { color: #9a917f; }
 .mem-start-btn:hover { opacity: 0.9; }
 
 .mem-area { padding-top: 0.5rem; padding-bottom: 5rem; }
+#memMushaf { text-align: right !important; }
 .mem-progress {
   height: 4px; background: var(--surface-2); border-radius: 2px;
   overflow: hidden; margin-bottom: 0.6rem;
