@@ -1389,7 +1389,6 @@ html.dark .loader-caption { color: #9a917f; }
   opacity: 0.35;
   background: var(--surface-2);
   border-radius: 3px;
-  padding: 0 2px;
   display: inline-block;
 }
 .mem-controls {
