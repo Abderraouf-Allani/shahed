@@ -1413,7 +1413,26 @@ html.dark .loader-caption { color: #9a917f; }
   padding-inline-start: 1rem !important;
   border-inline-start: 2px solid var(--border);
 }
-.mem-done {
-  background: var(--accent) !important; color: var(--surface) !important;
-  border-color: var(--accent) !important;
+.mem-rep-btn {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important; color: var(--surface) !important;
+  display: inline-flex; flex-direction: column; align-items: center;
+  gap: 0.15rem;
+  min-width: 130px;
+  padding: 0.45rem 1.6rem !important;
 }
+.mem-rep-num {
+  font-size: 1.7rem; font-weight: 800; line-height: 1;
+}
+.mem-rep-label {
+  font-size: 0.75rem; font-weight: 600; opacity: 0.92;
+}
+.mem-rep-btn:disabled {
+  opacity: 0.9; cursor: default;
+}
+.mem-rep-btn.mem-rep-done {
+  background: var(--surface-2) !important;
+  border-color: var(--accent) !important; color: var(--accent) !important;
+  flex-direction: row; gap: 0.35rem;
+}
+.mem-rep-btn.mem-rep-done svg { flex-shrink: 0; }

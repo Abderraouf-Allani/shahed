@@ -147,9 +147,16 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
      shape {surah, from, to}); defaults to surah 1, ayahs 1-5.
    - "ابدأ الحفظ" loads the ayah range from the active riwaya dataset, splits each
      ayah into words, and enters memorize mode.
-   - Progressive difficulty: each click of "أخفِ المزيد" hides 20% of the TOTAL
-     word count (randomly selected from currently visible words). After 5 clicks
-     all words are hidden.
+- Progressive difficulty: each click of "أخفِ المزيد" hides 20% of the TOTAL
+      word count (randomly selected from currently visible words). After 5 clicks
+      all words are hidden, which enters the repetition phase (phase 2).
+    - Repetition phase: a prominent counter button appears (big Arabic numeral +
+      "اضغط بعد كل تلاوة للمقطع"), starting at 50. Each click after reciting the
+      section decrements it by 1. At 0 the button shows a checkmark + "أتممتَ
+      التكرار" and becomes disabled; the level text shows "أتممتَ الحفظ".
+      The "أخفِ المزيد" button is hidden and "ساعدني" is disabled during this phase
+      (the peek button stays available: it is transient, so it restores the
+      all-hidden state).
    - Hidden words use CSS class .mem-word.hidden: color:transparent, display:inline-block,
      min-width locked to the word's original rendered offsetWidth (measured before
      hide/unhide via measureAllWords). This prevents text-align:justify from

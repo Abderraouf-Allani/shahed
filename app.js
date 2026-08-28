@@ -1431,6 +1431,20 @@
   function updateHeaderReading() {
     var el = document.getElementById('headerReading');
     if (!el) return;
+    var route = parseHash();
+    if (route.memorize) {
+      var mem = null;
+      try { mem = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
+      if (mem && mem.surah) {
+        var ms = surahByNumber(mem.surah);
+        if (ms) {
+          el.textContent = 'الحفظ: ' + ms.nameAr + ' · ' + mem.from + '-' + mem.to;
+          el.href = '#/memorize';
+          el.removeAttribute('hidden');
+          return;
+        }
+      }
+    }
     var n = parseInt(localStorage.getItem(LS.last), 10);
     var s = n && surahByNumber(n);
     if (!s) {
@@ -2897,6 +2911,7 @@
 
   function applyMemLevel() {
     if (!memState || !memState.active) return;
+    if (memState.reps !== null) return;
     memState.peeking = false;
     var allWords = [];
     memState.sections.forEach(function (sec) {
@@ -2988,8 +3003,16 @@
           aw.words.forEach(function (w) { if (w.hidden) hiddenCount++; });
         });
       });
-      var pct = total ? Math.round((hiddenCount / total) * 100) : 0;
-      lvl.textContent = 'المستوى ' + memState.level + ' — ' + pct + '% مخفي';
+      var allDone = total > 0 && hiddenCount === total;
+      if (allDone && memState.reps === null) memState.reps = 50;
+      if (memState.reps !== null) {
+        lvl.textContent = memState.reps > 0
+          ? 'المرحلة الثانية — التكرار: تبقّى ' + memState.reps + ' من 50'
+          : 'أتممتَ الحفظ';
+      } else {
+        var pct = total ? Math.round((hiddenCount / total) * 100) : 0;
+        lvl.textContent = 'المرحلة الأولى — المستوى ' + memState.level + ' — ' + pct + '% مخفي';
+      }
     }
     var bar = document.getElementById('memBar');
     if (bar) {
@@ -3002,29 +3025,33 @@
       bar.style.width = total2 ? Math.round((hidden2 / total2) * 100) + '%' : '0%';
     }
     var helpBtn = document.getElementById('memHelpBtn');
-    if (helpBtn) helpBtn.disabled = memState.level <= 0;
+    if (helpBtn) helpBtn.disabled = memState.level <= 0 || memState.reps !== null;
     var hideBtn = document.getElementById('memHideBtn');
-    if (hideBtn) {
-      hideBtn.disabled = false;
-      var allDone = true;
-      memState.sections.forEach(function (sec) {
-        sec.ayahWords.forEach(function (aw) {
-          aw.words.forEach(function (w) { if (!w.hidden) allDone = false; });
-        });
-      });
-      if (allDone) {
-        hideBtn.innerHTML = MEM_ICON_DONE + ' حفظتُها';
-        hideBtn.classList.add('mem-done');
+    var repBtn = document.getElementById('memRepBtn');
+    if (hideBtn && repBtn) {
+      if (memState.reps !== null) {
+        hideBtn.style.display = 'none';
+        repBtn.style.display = '';
+        repBtn.disabled = memState.reps <= 0;
+        if (memState.reps > 0) {
+          repBtn.innerHTML = '<span class="mem-rep-num">' + memState.reps + '</span><span class="mem-rep-label">اضغط بعد كل تلاوة للمقطع</span>';
+          repBtn.classList.remove('mem-rep-done');
+        } else {
+          repBtn.innerHTML = MEM_ICON_DONE + ' أتممتَ التكرار';
+          repBtn.classList.add('mem-rep-done');
+        }
       } else {
+        hideBtn.style.display = '';
+        repBtn.style.display = 'none';
+        hideBtn.disabled = false;
         hideBtn.innerHTML = MEM_ICON_HIDE;
-        hideBtn.classList.remove('mem-done');
       }
     }
   }
 
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
-    memState = memState || { active: false, level: 0, sections: [], peeking: false };
+    memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null };
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
     var defSurah = (saved && saved.surah) || 1;
@@ -3060,6 +3087,7 @@
     html += '<div class="mem-level" id="memLevel"></div>';
     html += '</div>';
     html += '<div class="mem-ctrl-btns">';
+    html += '<button id="memRepBtn" class="pill mem-ctrl-btn mem-rep-btn" title="اضغط بعد كل تلاوة للمقطع" style="display:none"></button>';
     html += '<button id="memHideBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أخفِ المزيد">' + MEM_ICON_HIDE + '</button>';
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
     html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
@@ -3123,17 +3151,28 @@
       sections.push({ surah: surahNum, from: from, to: to, ayahWords: ayahWords });
       memState.active = true;
       memState.level = 0;
+      memState.reps = null;
       memState.sections = sections;
       memState.peeking = false;
       try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, from: from, to: to })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
+      updateHeaderReading();
     });
 
     document.getElementById('memHideBtn').addEventListener('click', function () {
       if (memState.peeking) return;
+      if (memState.reps !== null) return;
       applyMemLevel();
+    });
+
+    document.getElementById('memRepBtn').addEventListener('click', function () {
+      if (!memState || !memState.active || memState.reps === null) return;
+      if (memState.reps > 0) {
+        memState.reps--;
+        renderMemWords();
+      }
     });
 
     var peekBtn = document.getElementById('memPeekBtn');
@@ -3150,6 +3189,7 @@
     document.getElementById('memResetBtn').addEventListener('click', function () {
       memState.active = false;
       memState.level = 0;
+      memState.reps = null;
       memState.sections = [];
       memState.peeking = false;
       setupEl.style.display = '';
