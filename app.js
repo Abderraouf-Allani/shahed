@@ -2932,6 +2932,7 @@
   function revealMemWords() {
     if (!memState || !memState.active) return;
     memState.peeking = true;
+    if (memState.reps !== null) memState.reps = 50;
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) {
         aw.words.forEach(function (w) { w._wasHidden = w.hidden; w.hidden = false; });
