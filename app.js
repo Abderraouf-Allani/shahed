@@ -1295,7 +1295,8 @@
     var libRows =
       '<li>pdf.js <code>3.32.2</code> — رخصة Apache-2.0 — <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">github.com/mozilla/pdf.js</a></li>'
       + '<li>fflate <code>0.8.x</code> — رخصة MIT — <a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener">github.com/101arrowz/fflate</a></li>'
-      + '<li>خط «قالون» الحاسوبي (KFGQPC Qaloun Uthmanic Script <code>v2.1</code>) — <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — مرخّص بموجب ترخيص الملك فهد للمستخدم النهائي (يُسمح بالاستخدام والنسخ والتوزيع، دون التعديل أو البيع) — <a href="https://qul.tarteel.ai/resources/font/584" target="_blank" rel="noopener">qul.tarteel.ai/resources/font/584</a></li>';
+      + '<li>خط «قالون» الحاسوبي (KFGQPC Qaloun Uthmanic Script <code>v2.1</code>) — <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> — مرخّص بموجب ترخيص الملك فهد للمستخدم النهائي (يُسمح بالاستخدام والنسخ والتوزيع، دون التعديل أو البيع) — <a href="https://qul.tarteel.ai/resources/font/584" target="_blank" rel="noopener">qul.tarteel.ai/resources/font/584</a></li>'
+      + '<li>خط «الرقاع» للاستعاذة (Rakkas <code>v2.0</code>) — <strong>The Rakkas Project Authors</strong> — رخصة SIL Open Font License 1.1 (مُقطَّع ليشمل حروف الاستعاذة فقط) — <a href="https://github.com/zeynepakay/Rakkas" target="_blank" rel="noopener">github.com/zeynepakay/Rakkas</a></li>';
 
     var toolRows =
       '<li>Node.js <code>v22.23.2</code> — سكربتات بناء ومعالجة البيانات</li>'
@@ -1369,7 +1370,12 @@
   }
 
   function toggleRiwaya() {
-    localStorage.setItem(LS.riwaya, state.riwaya === 'hafs' ? 'qaloon' : 'hafs');
+    var next = currentRiwaya() === 'hafs' ? 'qaloon' : 'hafs';
+    localStorage.setItem(LS.riwaya, next);
+    if (next === 'hafs' && !(state.quranSets && state.quranSets.hafs)) {
+      ensureHafs().then(function () { render(); });
+      return;
+    }
     applyRiwaya();
     render();
   }
@@ -2495,6 +2501,11 @@
     var area = document.getElementById('tagArea');
     if (!area) return;
 
+    if (!seedTagsLoaded) {
+      area.innerHTML = '<div class="empty-state">جاري تحميل كتب الوسوم…</div>';
+      return;
+    }
+
     var nq = norm(state.tagQuery);
     var matches = function (t) { return !nq || norm(t.name).indexOf(nq) !== -1; };
 
@@ -3155,6 +3166,11 @@
     var route = parseHash();
     if (route.tags && state.quran) {
       renderTags();
+      if (!seedTagsLoaded) {
+        ensureSeeds().then(function () {
+          if (parseHash().tags) renderTags();
+        });
+      }
     } else if (route.lab && state.quran) {
       lazyLoadLab();
     } else if (route.memorize && state.quran) {
@@ -3169,7 +3185,7 @@
 
   function loadData() {
     var loaded = 0;
-    var total = 3 + BOOK_SEEDS.length;
+    var total = 2;
     var count = function (v) {
       loaded++;
       if (window.__quranLoader) window.__quranLoader.progress(loaded / total);
@@ -3177,18 +3193,13 @@
     };
     var core = Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/hafs.json').then(function (r) { return r.json(); }).then(count)
+      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count)
     ]);
-    var seeds = Promise.all(BOOK_SEEDS.map(function (src) {
-      return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
-        mergeSeedTag(seed);
-      }).catch(function () {}).then(count);
-    }));
-    return Promise.all([core, seeds]).then(function (res) {
-      state.surahs = res[0][0];
-      state.quranSets = { qaloon: res[0][1], hafs: res[0][2] };
+    return core.then(function (res) {
+      state.surahs = res[0];
+      state.quranSets = { qaloon: res[1] };
       applyRiwaya();
+      if (state.riwaya === 'hafs') return ensureHafs();
     });
   }
 
@@ -3199,6 +3210,34 @@
     'data/adib.json',
     'data/dirasat.json'
   ];
+
+  var seedTagsLoaded = false;
+  var seedTagsPromise = null;
+  function ensureSeeds() {
+    if (seedTagsLoaded) return Promise.resolve();
+    if (seedTagsPromise) return seedTagsPromise;
+    seedTagsPromise = Promise.all(BOOK_SEEDS.map(function (src) {
+      return fetch(src).then(function (r) { return r.json(); }).then(function (seed) {
+        mergeSeedTag(seed);
+      }).catch(function () {});
+    })).then(function () {
+      seedTagsLoaded = true;
+    });
+    return seedTagsPromise;
+  }
+
+  var hafsPromise = null;
+  function ensureHafs() {
+    if (state.quranSets && state.quranSets.hafs) return Promise.resolve();
+    if (hafsPromise) return hafsPromise;
+    hafsPromise = fetch('data/hafs.json').then(function (r) { return r.json(); }).then(function (data) {
+      state.quranSets.hafs = data;
+      state.quran = data;
+      normVersesCache = null;
+      applyRiwaya();
+    });
+    return hafsPromise;
+  }
 
   loadData().then(render).then(function () {
     if (window.__quranLoader) window.__quranLoader.done();

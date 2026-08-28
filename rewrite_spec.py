@@ -180,16 +180,31 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
      (scrollIntoView block:start + scroll-margin-top) with a brief highlight.
 
 11) PWA / performance
-   - Service worker with versioned cache (currently quran-tag-v24). Navigation
+   - Service worker with versioned cache (currently quran-tag-v28). Navigation
      requests: network-first with cache fallback (index.html refreshed in cache).
      Static assets: cache-first, network update in the background
      (stale-while-revalidate). Precached core includes app.js, lab.js, styles.css,
-     fonts (both qaloun and hafs), manifest, icons, and the data JSON files
-     (surahs, quran, hafs). Cache version must be bumped when assets change.
-   - Lazy loading: pdf.js / fflate loaded only when a document is imported; five
-     seed tag-books (dawaa, jam3, asarar, adib, dirasat) fetched and merged
-     after the first render, never blocking startup; lab.js loaded only when the
-     lab view is opened.
+     fonts (qaloun, hafs, rakkas-v1), manifest, icons, and the boot data JSON
+     files (surahs, quran). The hafs and seed-book JSONs are deliberately NOT
+     precached: they are pulled in lazily (runtime cache-first, then cached for
+     offline once fetched). Cache version must be bumped when assets change.
+   - Lazy loading: pdf.js / fflate loaded only when a document is imported; the
+     five seed tag-books (dawaa, jam3, asarar, adib, dirasat) are fetched and
+     merged only when the user first opens the tags view (ensureSeeds() guards
+     with an in-flight promise + loaded flag; renderTagArea shows a
+     "جاري تحميل كتب الوسوم…" placeholder until merge completes, then re-renders);
+     the hafs riwaya JSON is fetched lazily on first switch to حفص (ensureHafs()
+     caches it in state.quranSets.hafs; toggleRiwaya defers the re-render until
+     it resolves); the boot loader only counts the 2 core JSONs (surahs, quran);
+     lab.js loaded only when the lab view is opened.
+   - Boot loader: displays the istiaadha أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ
+     in the 'rakkas-qayrawani' font (fonts/rakkas-v1.ttf/.woff2, an OFL Kufi-style
+     face) framed in a gold Qayrawani calligraphy border. Each grapheme is a
+span.istiaadha-letter; window.__quranLoader.progress(frac) across the 2 boot
+      steps lights up letters (span.lit) left-to-right. .done() lights all letters,
+     clears the caption, adds .loader-ready, and removes the overlay after ~900ms.
+     The legacy 8-spike star loader is preserved as a self-contained snippet in
+     loader-star.html for future reuse.
 
 12) UI / UX
    - Light/dark theme toggle (persisted), font-size controls 16..46px (persisted),

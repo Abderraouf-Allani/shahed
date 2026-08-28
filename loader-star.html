@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>شاهد من القرآن — Star Loader (legacy snippet)</title>
+<style>
+  .loader {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.3rem;
+    background: #fbf7ec;
+    transition: opacity 0.7s ease, visibility 0.7s ease;
+  }
+  html.dark .loader { background: #171a1f; }
+  .loader-ready { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loader-star {
+    width: min(42vh, 220px);
+    height: auto;
+    animation: loader-breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes loader-breathe {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.97); opacity: 0.9; }
+  }
+  .loader-spike {
+    fill: rgba(206, 150, 55, 0.13);
+    stroke: rgba(206, 150, 55, 0.35);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    transition: fill 0.55s ease, stroke 0.55s ease, filter 0.55s ease;
+  }
+  .loader-spike.lit {
+    fill: #e4b25c;
+    stroke: #f2d9a0;
+    filter: drop-shadow(0 0 10px rgba(233, 178, 82, 0.75));
+  }
+  html.dark .loader-spike {
+    fill: rgba(232, 178, 82, 0.07);
+    stroke: rgba(232, 178, 82, 0.32);
+  }
+  html.dark .loader-spike.lit {
+    fill: #e4b25c;
+    stroke: #f7e3b3;
+  }
+  .loader-core {
+    fill: rgba(30, 90, 60, 0.14);
+    stroke: rgba(30, 90, 60, 0.35);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    transition: fill 0.7s ease;
+  }
+  .loader-core.lit {
+    fill: #1e5a3c;
+    stroke: #3a8a5e;
+  }
+  html.dark .loader-core { fill: rgba(78, 156, 110, 0.1); stroke: rgba(78, 156, 110, 0.35); }
+  html.dark .loader-core.lit { fill: #3f9a68; stroke: #5fbc87; }
+  .loader-ring {
+    fill: none;
+    stroke: rgba(30, 90, 60, 0.25);
+    stroke-width: 1;
+    stroke-dasharray: 3 7;
+    animation: loader-spin 30s linear infinite;
+  }
+  html.dark .loader-ring { stroke: rgba(78, 156, 110, 0.3); }
+  @keyframes loader-spin { to { transform: rotate(360deg); } }
+  .loader-caption {
+    color: #7a6f5d;
+    font-size: 0.95rem;
+    font-family: "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+  }
+  html.dark .loader-caption { color: #9a917f; }
+</style>
+</head>
+<body>
+  <div id="loader" class="loader" role="status" aria-live="polite">
+    <svg class="loader-star" viewBox="-120 -120 240 240" aria-hidden="true">
+      <circle class="loader-ring" cx="0" cy="0" r="108"/>
+      <g class="loader-spikes"></g>
+      <path class="loader-core"/>
+    </svg>
+    <div class="loader-caption">تُحمَّل البيانات…</div>
+  </div>
+
+  <script>
+    (function () {
+      var SPIKES = 8;
+      var RT = 100;
+      var RN = 100 * Math.sqrt(2 - Math.sqrt(2));
+      var NS = 'http://www.w3.org/2000/svg';
+      function pt(r, deg) {
+        var a = deg * Math.PI / 180;
+        return [r * Math.cos(a), r * Math.sin(a)];
+      }
+      function el(tag, attrs) {
+        var e = document.createElementNS(NS, tag);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        return e;
+      }
+      var svg = document.getElementById('loader').querySelector('.loader-star');
+      var spikesG = svg.querySelector('.loader-spikes');
+      var spikes = [];
+      for (var k = 0; k < SPIKES; k++) {
+        var deg = k * 45;
+        var tip = pt(RT, deg);
+        var n1 = pt(RN, deg - 22.5);
+        var n2 = pt(RN, deg + 22.5);
+        var p = el('path', {
+          'class': 'loader-spike',
+          'd': 'M0 0 L' + n1[0] + ' ' + n1[1] + ' L' + tip[0] + ' ' + tip[1] + ' L' + n2[0] + ' ' + n2[1] + ' Z'
+        });
+        spikesG.appendChild(p);
+        spikes.push(p);
+      }
+      var coreD = '';
+      for (var m = 0; m < SPIKES; m++) {
+        var n = pt(RN, m * 45 + 22.5);
+        coreD += (m ? ' L' : 'M') + n[0] + ' ' + n[1];
+      }
+      coreD += ' Z';
+      svg.querySelector('.loader-core').setAttribute('d', coreD);
+
+      var loader = document.getElementById('loader');
+      var caption = loader.querySelector('.loader-caption');
+      var done = false;
+      window.__quranLoader = {
+        progress: function (frac) {
+          if (done) return;
+          var n = Math.round(Math.max(0, Math.min(1, frac)) * SPIKES);
+          for (var i = 0; i < SPIKES; i++) spikes[i].classList.toggle('lit', i < n);
+        },
+        done: function () {
+          if (done) return;
+          done = true;
+          for (var i = 0; i < SPIKES; i++) spikes[i].classList.add('lit');
+          svg.querySelector('.loader-core').classList.add('lit');
+          if (caption) caption.textContent = '';
+          loader.classList.add('loader-ready');
+          setTimeout(function () {
+            if (loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 800);
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

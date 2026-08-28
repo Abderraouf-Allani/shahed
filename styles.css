@@ -12,6 +12,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'rakkas-qayrawani';
+  src: url('fonts/rakkas-v1.woff2') format('woff2'),
+       url('fonts/rakkas-v1.ttf') format('truetype');
+  font-display: swap;
+}
+
 :root {
   --bg: #f6f1e6;
   --surface: #fffdf8;
@@ -1081,63 +1088,38 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.3rem;
+  gap: 1.4rem;
   background: #fbf7ec;
   transition: opacity 0.7s ease, visibility 0.7s ease;
 }
 html.dark .loader { background: #171a1f; }
 .loader-ready { opacity: 0; visibility: hidden; pointer-events: none; }
-.loader-star {
-  width: min(42vh, 220px);
-  height: auto;
-  animation: loader-breathe 2.6s ease-in-out infinite;
+.loader-istiaadha {
+  font-family: 'rakkas-qayrawani', "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, serif;
+  font-size: clamp(2rem, 7.5vh, 4.2rem);
+  line-height: 2;
+  text-align: center;
+  padding: 1.2rem 2.6rem 0.9rem;
+  border: 2px solid rgba(168, 123, 47, 0.4);
+  border-radius: 14px;
+  outline: 1px solid rgba(168, 123, 47, 0.22);
+  outline-offset: 8px;
 }
-@keyframes loader-breathe {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.97); opacity: 0.9; }
+.istiaadha-letter {
+  color: rgba(168, 123, 47, 0.16);
+  transition: color 0.55s ease, text-shadow 0.55s ease;
 }
-.loader-spike {
-  fill: rgba(206, 150, 55, 0.13);
-  stroke: rgba(206, 150, 55, 0.35);
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-  transition: fill 0.55s ease, stroke 0.55s ease, filter 0.55s ease;
+.istiaadha-letter.lit {
+  color: #a87b2f;
+  text-shadow: 0 0 24px rgba(168, 123, 47, 0.55);
 }
-.loader-spike.lit {
-  fill: #e4b25c;
-  stroke: #f2d9a0;
-  filter: drop-shadow(0 0 10px rgba(233, 178, 82, 0.75));
+html.dark .istiaadha-letter {
+  color: rgba(233, 192, 101, 0.14);
 }
-html.dark .loader-spike {
-  fill: rgba(232, 178, 82, 0.07);
-  stroke: rgba(232, 178, 82, 0.32);
+html.dark .istiaadha-letter.lit {
+  color: #e9c065;
+  text-shadow: 0 0 26px rgba(233, 192, 101, 0.6);
 }
-html.dark .loader-spike.lit {
-  fill: #e4b25c;
-  stroke: #f7e3b3;
-}
-.loader-core {
-  fill: rgba(30, 90, 60, 0.14);
-  stroke: rgba(30, 90, 60, 0.35);
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-  transition: fill 0.7s ease;
-}
-.loader-core.lit {
-  fill: #1e5a3c;
-  stroke: #3a8a5e;
-}
-html.dark .loader-core { fill: rgba(78, 156, 110, 0.1); stroke: rgba(78, 156, 110, 0.35); }
-html.dark .loader-core.lit { fill: #3f9a68; stroke: #5fbc87; }
-.loader-ring {
-  fill: none;
-  stroke: rgba(30, 90, 60, 0.25);
-  stroke-width: 1;
-  stroke-dasharray: 3 7;
-  animation: loader-spin 30s linear infinite;
-}
-html.dark .loader-ring { stroke: rgba(78, 156, 110, 0.3); }
-@keyframes loader-spin { to { transform: rotate(360deg); } }
 .loader-caption {
   color: #7a6f5d;
   font-size: 0.95rem;
