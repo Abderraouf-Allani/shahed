@@ -1695,7 +1695,8 @@
   }
 
   document.addEventListener('click', function (e) {
-    if (tagMenu && !tagMenu.contains(e.target) && !e.target.closest('.tag-btn')) closeTagMenu();
+    if (tagMenu && !tagMenu.contains(e.target) && !e.target.closest('.tag-btn') &&
+        !(tagBtnLongPressAt && Date.now() - tagBtnLongPressAt < 400)) closeTagMenu();
     if (tagContextPopup && !tagContextPopup.contains(e.target)) closeTagContextPopup();
     if (tagContextEditor && !tagContextEditor.contains(e.target)) closeTagContextEditor();
     if (window.QuranLab) window.QuranLab.onDocClick(e.target);
@@ -2322,10 +2323,96 @@
 
     var tagBtnClickTimer = null;
     var tagBtnClick = null;
+    var tagBtnLongTimer = null;
+    var tagBtnLongPressAt = 0;
+    var tagBtnPressStart = null;
 
-    document.getElementById('mushaf').addEventListener('click', function (e) {
+    function applyQuickTag(surah, ayah, btn) {
+      var lastTagId = localStorage.getItem(LS.lastTag);
+      var lastTag = lastTagId && tagState.byId[lastTagId];
+      if (lastTag) {
+        addTagIfMissing(surah, ayah, lastTag.id);
+        refreshVerseDecorations(surah, ayah);
+      } else {
+        openTagMenu(surah, ayah, btn);
+      }
+    }
+
+    function cancelTagBtnLongPress() {
+      if (tagBtnLongTimer) { clearTimeout(tagBtnLongTimer); tagBtnLongTimer = null; }
+      tagBtnPressStart = null;
+    }
+
+    var tagBtnEvents = document.getElementById('mushaf');
+
+    tagBtnEvents.addEventListener('mousedown', function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn) return;
+      cancelTagBtnLongPress();
+      tagBtnPressStart = { x: e.clientX, y: e.clientY, btn: btn, surah: +btn.dataset.surah, ayah: +btn.dataset.ayah };
+      tagBtnLongTimer = setTimeout(function () {
+        var p = tagBtnPressStart;
+        cancelTagBtnLongPress();
+        if (!p) return;
+        tagBtnLongPressAt = Date.now();
+        clearTimeout(tagBtnClickTimer);
+        tagBtnClickTimer = null;
+        tagBtnClick = null;
+        applyQuickTag(p.surah, p.ayah, p.btn);
+      }, 500);
+    });
+
+    tagBtnEvents.addEventListener('mousemove', function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn || !tagBtnPressStart) return;
+      var dx = e.clientX - tagBtnPressStart.x;
+      var dy = e.clientY - tagBtnPressStart.y;
+      if (dx * dx + dy * dy > 64) cancelTagBtnLongPress();
+    });
+
+    tagBtnEvents.addEventListener('mouseup', function (e) {
+      if (e.target.closest('.tag-btn')) cancelTagBtnLongPress();
+    });
+
+    tagBtnEvents.addEventListener('mouseleave', function (e) {
+      if (e && e.target && e.target.closest && e.target.closest('.tag-btn')) cancelTagBtnLongPress();
+    });
+
+    tagBtnEvents.addEventListener('touchstart', function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn) return;
+      cancelTagBtnLongPress();
+      var t = e.changedTouches[0];
+      tagBtnPressStart = { x: t.clientX, y: t.clientY, btn: btn, surah: +btn.dataset.surah, ayah: +btn.dataset.ayah };
+      tagBtnLongTimer = setTimeout(function () {
+        var p = tagBtnPressStart;
+        cancelTagBtnLongPress();
+        if (!p) return;
+        tagBtnLongPressAt = Date.now();
+        clearTimeout(tagBtnClickTimer);
+        tagBtnClickTimer = null;
+        tagBtnClick = null;
+        applyQuickTag(p.surah, p.ayah, p.btn);
+      }, 500);
+    }, { passive: true });
+
+    tagBtnEvents.addEventListener('touchmove', function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn || !tagBtnPressStart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - tagBtnPressStart.x;
+      var dy = t.clientY - tagBtnPressStart.y;
+      if (dx * dx + dy * dy > 64) cancelTagBtnLongPress();
+    }, { passive: true });
+
+    tagBtnEvents.addEventListener('touchend', function (e) {
+      if (e.target.closest('.tag-btn')) cancelTagBtnLongPress();
+    }, { passive: true });
+
+    tagBtnEvents.addEventListener('click', function (e) {
       var btn = e.target.closest('.tag-btn');
       if (btn) {
+        if (tagBtnLongPressAt && Date.now() - tagBtnLongPressAt < 400) { tagBtnLongPressAt = 0; return; }
         var surah = +btn.dataset.surah;
         var ayah = +btn.dataset.ayah;
         if (tagBtnClickTimer && tagBtnClick &&
@@ -2333,14 +2420,7 @@
           clearTimeout(tagBtnClickTimer);
           tagBtnClickTimer = null;
           tagBtnClick = null;
-          var lastTagId = localStorage.getItem(LS.lastTag);
-          var lastTag = lastTagId && tagState.byId[lastTagId];
-          if (lastTag) {
-            addTagIfMissing(surah, ayah, lastTag.id);
-            refreshVerseDecorations(surah, ayah);
-          } else {
-            openTagMenu(surah, ayah, btn);
-          }
+          applyQuickTag(surah, ayah, btn);
           return;
         }
         clearTimeout(tagBtnClickTimer);
