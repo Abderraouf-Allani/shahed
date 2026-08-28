@@ -29,6 +29,7 @@
     lastAyah: 'qaloon_last_ayah',
     showTags: 'qaloon_show_tags_v2',
     tags: 'qaloon_tags_v1',
+    lastTag: 'qaloon_last_tag',
     lab: 'qaloon_lab_v1',
     labCat: 'qaloon_lab_cat',
     riwaya: 'qaloon_riwaya',
@@ -350,13 +351,28 @@
     openTagFilterMenu(btn);
   }
 
+  function rememberLastTag(tagId) {
+    try { localStorage.setItem(LS.lastTag, tagId); } catch (e) {}
+  }
+
   function toggleTagOnVerse(surah, ayah, tagId) {
     var key = surah + ':' + ayah;
     var ids = tagState.verses[key] || [];
     var i = ids.indexOf(tagId);
-    if (i >= 0) { ids.splice(i, 1); } else { ids.push(tagId); }
+    if (i >= 0) { ids.splice(i, 1); } else { ids.push(tagId); rememberLastTag(tagId); }
     if (!ids.length) { delete tagState.verses[key]; } else { tagState.verses[key] = ids; }
     saveTags();
+  }
+
+  function addTagIfMissing(surah, ayah, tagId) {
+    var key = surah + ':' + ayah;
+    var ids = tagState.verses[key] || [];
+    if (ids.indexOf(tagId) === -1) {
+      ids.push(tagId);
+      tagState.verses[key] = ids;
+      saveTags();
+    }
+    rememberLastTag(tagId);
   }
 
   function removeTagFromVerse(surah, ayah, tagId) {
@@ -2304,9 +2320,38 @@
       toggleTagFilterMenu(this);
     });
 
+    var tagBtnClickTimer = null;
+    var tagBtnClick = null;
+
     document.getElementById('mushaf').addEventListener('click', function (e) {
       var btn = e.target.closest('.tag-btn');
-      if (btn) openTagMenu(+btn.dataset.surah, +btn.dataset.ayah, btn);
+      if (btn) {
+        var surah = +btn.dataset.surah;
+        var ayah = +btn.dataset.ayah;
+        if (tagBtnClickTimer && tagBtnClick &&
+            tagBtnClick.surah === surah && tagBtnClick.ayah === ayah) {
+          clearTimeout(tagBtnClickTimer);
+          tagBtnClickTimer = null;
+          tagBtnClick = null;
+          var lastTagId = localStorage.getItem(LS.lastTag);
+          var lastTag = lastTagId && tagState.byId[lastTagId];
+          if (lastTag) {
+            addTagIfMissing(surah, ayah, lastTag.id);
+            refreshVerseDecorations(surah, ayah);
+          } else {
+            openTagMenu(surah, ayah, btn);
+          }
+          return;
+        }
+        clearTimeout(tagBtnClickTimer);
+        tagBtnClickTimer = setTimeout(function () {
+          tagBtnClickTimer = null;
+          tagBtnClick = null;
+          openTagMenu(surah, ayah, btn);
+        }, 250);
+        tagBtnClick = { surah: surah, ayah: ayah };
+        return;
+      }
       var chip = e.target.closest('.verse-tag-chip');
       if (chip) openVerseTagContext(chip);
     });
