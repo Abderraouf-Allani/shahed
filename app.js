@@ -33,7 +33,8 @@
     lab: 'qaloon_lab_v1',
     labCat: 'qaloon_lab_cat',
     riwaya: 'qaloon_riwaya',
-    memSession: 'qaloon_mem_session'
+    memSession: 'qaloon_mem_session',
+    intended: 'qaloon_intended_list_v1'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -1406,6 +1407,33 @@
 
   applyRiwaya();
 
+  document.addEventListener('click', function (e) {
+    var star = e.target.closest('.surah-star');
+    if (star) {
+      e.preventDefault();
+      var list = toggleIntendedSurah(+star.dataset.number);
+      updateGrid();
+      renderIntendedStrip();
+      showAppToast((list.indexOf(+star.dataset.number) !== -1 ? 'أُضيفت سورة ' : 'أُزيلت سورة ') + surahByNumber(+star.dataset.number).nameAr + (list.indexOf(+star.dataset.number) !== -1 ? ' إلى نيّات القراءة' : ' من نيّات القراءة'));
+      return;
+    }
+    var remove = e.target.closest('.intended-chip-remove');
+    if (remove) {
+      e.preventDefault();
+      toggleIntendedSurah(+remove.dataset.number);
+      updateGrid();
+      renderIntendedStrip();
+      showAppToast('أُزيلت سورة ' + surahByNumber(+remove.dataset.number).nameAr + ' من نيّات القراءة');
+      return;
+    }
+    if (e.target.id === 'intendedClear') {
+      localStorage.setItem(LS.intended, '[]');
+      updateGrid();
+      renderIntendedStrip();
+      showAppToast('تم مسح كل نيّات القراءة');
+    }
+  });
+
   /* ---------- helpers ---------- */
 
   function esc(s) {
@@ -1426,6 +1454,21 @@
 
   function surahByNumber(n) {
     return state.surahs[n - 1];
+  }
+
+  function getIntendedList() {
+    try {
+      var v = JSON.parse(localStorage.getItem(LS.intended) || '[]');
+      return Array.isArray(v) ? v.filter(function (n) { return n >= 1 && n <= 114; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function toggleIntendedSurah(n) {
+    var list = getIntendedList();
+    var i = list.indexOf(n);
+    if (i >= 0) list.splice(i, 1); else list.push(n);
+    localStorage.setItem(LS.intended, JSON.stringify(list));
+    return list;
   }
 
   function persistLast(n, ayah) {
@@ -2093,8 +2136,11 @@
       html += '</a>';
     }
 
+    html += '<div id="intendedStrip"></div>';
     html += '<div class="surah-grid" id="surahGrid"></div>';
     appEl.innerHTML = html;
+
+    renderIntendedStrip();
 
     var input = document.getElementById('surahSearch');
     input.addEventListener('input', function () {
@@ -2202,9 +2248,12 @@
       return;
     }
 
+    var intended = getIntendedList();
     var html = '';
     list.forEach(function (s) {
-      html += '<a class="surah-card" href="#/surah/' + s.number + '">';
+      var isInt = intended.indexOf(s.number) !== -1;
+      html += '<div class="surah-card surah-card-wrap" data-number="' + s.number + '">';
+      html += '<a class="surah-card-anchor" href="#/surah/' + s.number + '">';
       html += '<span class="surah-num">' + toAr(s.number) + '</span>';
       html += '<span class="surah-info">';
       html += '<span class="surah-name">' + esc(s.nameAr) + '</span>';
@@ -2214,8 +2263,36 @@
       var c = state.quran[s.number - 1];
       html += '<span class="tag">' + toAr(c ? c.verses.length : s.ayahCount) + ' آية</span>';
       html += '</span></span></a>';
+      html += '<button type="button" class="surah-star' + (isInt ? ' is-intended' : '') + '" data-number="' + s.number + '" aria-pressed="' + (isInt ? 'true' : 'false') + '" title="' + (isInt ? 'إزالة من نيّات القراءة' : 'إضافة إلى نيّات القراءة') + '" aria-label="' + (isInt ? 'إزالة' : 'إضافة') + ' ' + esc(s.nameAr) + ' إلى نيّات القراءة">';
+      html += '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2.5l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.6 6 21l1.2-6.7-4.9-4.7 6.7-1z"/></svg>';
+      html += '</button></div>';
     });
     grid.innerHTML = html;
+  }
+
+  function renderIntendedStrip() {
+    var box = document.getElementById('intendedStrip');
+    if (!box) return;
+    var intended = getIntendedList();
+    if (!intended.length) {
+      box.innerHTML = '';
+      box.className = '';
+      return;
+    }
+    var html = '<div class="intended-strip">';
+    html += '<span class="intended-label">نيّات القراءة:</span>';
+    intended.forEach(function (n) {
+      var s = surahByNumber(n);
+      if (!s) return;
+      html += '<span class="intended-chip" data-number="' + n + '">'
+        + '<a class="intended-chip-link" href="#/surah/' + n + '">' + esc(s.nameAr) + '</a>'
+        + '<button type="button" class="intended-chip-remove" data-number="' + n + '" title="إزالة ' + esc(s.nameAr) + '" aria-label="إزالة ' + esc(s.nameAr) + '">✕</button>'
+        + '</span>';
+    });
+    html += '<button type="button" class="intended-clear" id="intendedClear">مسح الكل</button>';
+    html += '</div>';
+    box.innerHTML = html;
+    box.className = 'intended-strip-wrap';
   }
 
   /* ---------- reader view ---------- */
@@ -3000,6 +3077,7 @@
   }
 
   var memState = null;
+  var memRO = null;
 
   function shuffleArray(arr) {
     var a = arr.slice();
@@ -3013,45 +3091,68 @@
   function buildMemWords(text) {
     var words = text.split(/(\s+)/);
     var result = [];
+    var offset = 0;
     for (var i = 0; i < words.length; i++) {
       if (/^\s+$/.test(words[i])) {
         if (result.length) result[result.length - 1].trail = words[i];
+        offset += words[i].length;
       } else {
-        result.push({ text: words[i], hidden: false, origIdx: result.length });
+        result.push({ text: words[i], hidden: false, origIdx: result.length, start: offset, end: offset + words[i].length });
+        offset += words[i].length;
       }
     }
+    result.total = words.join('');
     return result;
   }
 
-  function measureAllWords() {
+  function collectMemWords() {
+    var out = [];
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) { out = out.concat(aw.words); });
+    });
+    return out;
+  }
+
+  function positionMemBlanks() {
     var mushaf = document.getElementById('memMushaf');
-    if (!mushaf) return;
-    var spans = mushaf.querySelectorAll('.mem-word');
-    var idx = 0;
+    if (!mushaf || !memState) return;
+    var existing = mushaf.querySelectorAll('.mem-blank');
+    for (var i = 0; i < existing.length; i++) existing[i].remove();
+    var mr = mushaf.getBoundingClientRect();
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) {
+        var verse = mushaf.querySelector('.verse[data-ayah="' + aw.ayah + '"]');
+        if (!verse) return;
+        var tn = verse.firstElementChild && verse.firstElementChild.firstChild;
+        if (!tn || tn.nodeType !== Node.TEXT_NODE) return;
         aw.words.forEach(function (w) {
-          if (idx < spans.length) {
-            w._width = spans[idx].offsetWidth;
-          }
-          idx++;
+          if (!w.hidden) return;
+          var range = document.createRange();
+          range.setStart(tn, w.start);
+          range.setEnd(tn, w.end);
+          var r = range.getBoundingClientRect();
+          if (!r.width && !r.height) return;
+          var b = document.createElement('span');
+          b.className = 'mem-blank';
+          b.style.left = String(Math.round(r.left - mr.left)) + 'px';
+          b.style.top = String(Math.round(r.top - mr.top)) + 'px';
+          b.style.width = String(Math.round(r.width)) + 'px';
+          b.style.height = String(Math.round(r.height)) + 'px';
+          mushaf.appendChild(b);
         });
       });
     });
   }
 
+  function measureAllWords() { return; }
+
   function applyMemLevel() {
     if (!memState || !memState.active) return;
     if (memState.reps !== null) return;
     memState.peeking = false;
-    var allWords = [];
-    memState.sections.forEach(function (sec) {
-      sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
-    });
+    var allWords = collectMemWords();
     var visible = allWords.filter(function (w) { return !w.hidden; });
     if (!visible.length) return;
-    renderMemWords();
-    measureAllWords();
     var totalCount = allWords.length;
     var hideCount = Math.max(1, Math.ceil(totalCount * 0.2));
     var toHide = shuffleArray(visible).slice(0, hideCount);
@@ -3085,12 +3186,7 @@
 
   function showMemHelp() {
     if (!memState || !memState.active || memState.level <= 0) return;
-    renderMemWords();
-    measureAllWords();
-    var allWords = [];
-    memState.sections.forEach(function (sec) {
-      sec.ayahWords.forEach(function (aw) { allWords = allWords.concat(aw.words); });
-    });
+    var allWords = collectMemWords();
     var hidden = allWords.filter(function (w) { return w.hidden; });
     if (!hidden.length) return;
     var toShow;
@@ -3111,19 +3207,23 @@
     var html = '';
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) {
-        html += '<span class="verse">';
-        html += '<span class="verse-text">';
-        aw.words.forEach(function (w) {
-          var cls = 'mem-word' + (w.hidden ? ' hidden' : '');
-          var style = (w.hidden && w._width) ? ' style="min-width:' + w._width + 'px"' : '';
-          html += '<span class="' + cls + '"' + style + '>' + esc(w.text) + '</span>' + (w.trail || '');
-        });
-        html += '</span>';
+        var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
+        html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-ayah="' + aw.ayah + '">';
+        html += '<span class="verse-text">' + esc(fullText) + '</span>';
         html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
         html += '</span> ';
       });
     });
     mushaf.innerHTML = html;
+    positionMemBlanks();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { if (memState && memState.active) positionMemBlanks(); });
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      if (!memRO) memRO = new ResizeObserver(function () { positionMemBlanks(); });
+      memRO.disconnect();
+      memRO.observe(mushaf);
+    }
     var lvl = document.getElementById('memLevel');
     if (lvl) {
       var total = memState.sections.reduce(function (s, sec) {
