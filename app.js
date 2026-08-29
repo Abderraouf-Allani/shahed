@@ -1389,7 +1389,12 @@
     var next = currentRiwaya() === 'hafs' ? 'qaloon' : 'hafs';
     localStorage.setItem(LS.riwaya, next);
     if (next === 'hafs' && !(state.quranSets && state.quranSets.hafs)) {
-      ensureHafs().then(function () { render(); });
+      ensureHafs().then(function () { render(); }).catch(function () {
+        localStorage.setItem(LS.riwaya, 'qaloon');
+        applyRiwaya();
+        render();
+        showAppError('تعذّر تحميل مصحف رواية حفص — راجع اتصالك بالإنترنت وأعد المحاولة. تم الإبقاء على رواية قالون.');
+      });
       return;
     }
     applyRiwaya();
@@ -2333,6 +2338,7 @@
       if (lastTag) {
         addTagIfMissing(surah, ayah, lastTag.id);
         refreshVerseDecorations(surah, ayah);
+        showAppToast('وُسمت الآية ' + ayah + ' من ' + surahByNumber(surah).nameAr + ' بوسم «' + lastTag.name + '»');
       } else {
         openTagMenu(surah, ayah, btn);
       }
@@ -3365,7 +3371,12 @@
       state.surahs = res[0];
       state.quranSets = { qaloon: res[1] };
       applyRiwaya();
-      if (state.riwaya === 'hafs') return ensureHafs();
+      if (state.riwaya === 'hafs') {
+        return ensureHafs().catch(function () {
+          localStorage.setItem(LS.riwaya, 'qaloon');
+          applyRiwaya();
+        });
+      }
     });
   }
 
@@ -3396,13 +3407,47 @@
   function ensureHafs() {
     if (state.quranSets && state.quranSets.hafs) return Promise.resolve();
     if (hafsPromise) return hafsPromise;
-    hafsPromise = fetch('data/hafs.json').then(function (r) { return r.json(); }).then(function (data) {
+    hafsPromise = fetch('data/hafs.json').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (data) {
       state.quranSets.hafs = data;
       state.quran = data;
       normVersesCache = null;
       applyRiwaya();
+    }).catch(function (err) {
+      hafsPromise = null;
+      throw err;
     });
     return hafsPromise;
+  }
+
+  function showAppError(msg) {
+    var old = document.getElementById('appErrorBanner');
+    if (old) old.remove();
+    var el = document.createElement('div');
+    el.id = 'appErrorBanner';
+    el.className = 'app-error-banner';
+    el.textContent = msg;
+    el.addEventListener('click', function () { el.remove(); });
+    document.body.appendChild(el);
+    setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 7000);
+  }
+
+  function showAppToast(msg) {
+    var old = document.getElementById('appToast');
+    if (old) old.remove();
+    var el = document.createElement('div');
+    el.id = 'appToast';
+    el.className = 'app-toast';
+    el.textContent = msg;
+    el.addEventListener('click', function () { el.remove(); });
+    document.body.appendChild(el);
+    setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 3200);
   }
 
   loadData().then(render).then(function () {
