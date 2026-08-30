@@ -1306,6 +1306,9 @@
       + ' <a href="https://qurancomplex.gov.sa/en/techquran/dev/" target="_blank" rel="noopener">qurancomplex.gov.sa — صفحة المطورين</a>'
       + ' (ملف البيانات الرسمي: <code>QaloonData</code>).'
       + '</li>'
+      + '<li>النص القرآني كاملاً (٦٢٣٦ آية) برواية <strong>حفص عن عاصم</strong> منشور من <strong>مجمع الملك فهد لطباعة المصحف الشريف</strong> (ملف البيانات: <code>hafsData_v18</code> من المصدر نفسه):'
+      + ' <a href="https://qurancomplex.gov.sa/en/techquran/dev/" target="_blank" rel="noopener">qurancomplex.gov.sa — صفحة المطورين</a>.'
+      + '</li>'
       + '<li>تعذر الاتصال بموقع المجمع أثناء الإعداد، فجُلب النص من نسخة مطابقة منشورة على GitHub:'
       + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>';
 
