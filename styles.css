@@ -1180,6 +1180,51 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 }
 .tayah-remove:hover { color: #c0392b; border-color: #c0392b; }
 
+.tayah-ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--border);
+}
+.tayah-ctx + .tayah-link { border-top: 1px dashed var(--border); padding-top: 0.6rem; }
+.tayah-link + .tayah-ctx { margin-top: 0.6rem; border-right: 2px solid var(--border); border-left: none; padding-left: 0; padding-right: 0.9rem; }
+.tayah-ctxayah {
+  display: block;
+  font-family: 'qpc-qaloun', "Geeza Pro", "Noto Naskh Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.9;
+  text-align: justify;
+  color: var(--text-muted);
+}
+.tayah-ctxayah .ayah-num { color: var(--text-muted); opacity: 0.65; }
+.tayah-scope {
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-start;
+}
+.tayah-scope-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tayah-scope-btn:disabled { opacity: 0.4; cursor: default; }
+.tayah-range { font-size: 0.75rem; color: var(--text-muted); }
+
 /* ---------- loading overlay ---------- */
 
 .loader {

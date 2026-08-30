@@ -34,7 +34,8 @@
     labCat: 'qaloon_lab_cat',
     riwaya: 'qaloon_riwaya',
     memSession: 'qaloon_mem_session',
-    intended: 'qaloon_intended_list_v1'
+    intended: 'qaloon_intended_list_v1',
+    tagScope: 'qaloon_tayahscope_v1'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -2804,7 +2805,7 @@
       html += '<div class="tayah-list">';
       if (ayahs.length) {
         ayahs.forEach(function (a) {
-          html += renderAyahCard(a);
+          html += renderAyahCard(a, true);
         });
       } else {
         html += '<div class="empty-state">لا توجد آيات تحت هذا الوسم</div>';
@@ -2928,6 +2929,21 @@
     if (rem) {
       removeTagFromVerse(+rem.dataset.surah, +rem.dataset.ayah, rem.dataset.tagid);
       renderTagArea();
+      return;
+    }
+
+    var plus = e.target.closest('.tayah-scope-plus');
+    if (plus) {
+      saveTagScope(+plus.dataset.surah, +plus.dataset.ayah, getTagScope(+plus.dataset.surah, +plus.dataset.ayah) + 1);
+      renderTagArea();
+      return;
+    }
+
+    var minus = e.target.closest('.tayah-scope-minus');
+    if (minus) {
+      saveTagScope(+minus.dataset.surah, +minus.dataset.ayah, getTagScope(+minus.dataset.surah, +minus.dataset.ayah) - 1);
+      renderTagArea();
+      return;
     }
   }
 
@@ -2947,16 +2963,61 @@
     return out;
   }
 
-  function renderAyahCard(a) {
+  function getTagScope(surah, ayah) {
+    try {
+      var m = JSON.parse(localStorage.getItem(LS.tagScope) || '{}') || {};
+      var v = m[surah + ':' + ayah];
+      return typeof v === 'number' && v >= 0 ? v : 0;
+    } catch (e) { return 0; }
+  }
+
+  function saveTagScope(surah, ayah, n) {
+    try {
+      var m = JSON.parse(localStorage.getItem(LS.tagScope) || '{}') || {};
+      if (n <= 0) delete m[surah + ':' + ayah]; else m[surah + ':' + ayah] = n;
+      localStorage.setItem(LS.tagScope, JSON.stringify(m));
+    } catch (e) {}
+  }
+
+  function renderCtxAyah(surah, ayah) {
+    var q = state.quran && state.quran[surah - 1];
+    var text = q && q.verses[ayah - 1];
+    if (!text) return '';
+    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + toAr(ayah) + '</span></span>';
+  }
+
+  function renderAyahCard(a, withScope) {
     var surah = surahByNumber(a.surah);
     var tags = getVerseTags(a.surah, a.ayah);
+    var before = '', after = '', scope = '';
+    if (withScope) {
+      var q = state.quran && state.quran[a.surah - 1];
+      var count = q && q.verses ? q.verses.length : 0;
+      var n = getTagScope(a.surah, a.ayah);
+      var from = Math.max(1, a.ayah - n);
+      var to = Math.min(count || a.ayah, a.ayah + n);
+      var b = [], af = [];
+      for (var i = from; i < a.ayah; i++) b.push(renderCtxAyah(a.surah, i));
+      for (var i = a.ayah + 1; i <= to; i++) af.push(renderCtxAyah(a.surah, i));
+      if (b.length) before = '<div class="tayah-ctx">' + b.join('') + '</div>';
+      if (af.length) after = '<div class="tayah-ctx">' + af.join('') + '</div>';
+      var canGrow = count > 0 && (n < (a.ayah - 1) || n < (count - a.ayah));
+      scope = '<div class="tayah-scope">'
+        + '<button type="button" class="tayah-scope-btn tayah-scope-minus" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" title="تقليص النطاق — إزالة أول وآخر آية" aria-label="تقليص النطاق"' + (n > 0 ? '' : ' disabled') + '>−</button>'
+        + '<span class="tayah-range">' + (count ? toAr(from) + '–' + toAr(to) : '') + '</span>'
+        + '<button type="button" class="tayah-scope-btn tayah-scope-plus" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" title="توسيع النطاق — إضافة آية قبل وبعد" aria-label="توسيع النطاق"' + (canGrow ? '' : ' disabled') + '>+</button>'
+        + '</div>';
+    }
     return '<div class="tayah-card">'
+      + before
       + '<a class="tayah-link" href="#/surah/' + a.surah + '/' + a.ayah + '">'
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
       + '<div class="tayah-text">' + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></div>'
       + '</a>'
+      + after
       + (tags.length ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
       + '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>'
+      + scope
       + '</div>';
   }
 
