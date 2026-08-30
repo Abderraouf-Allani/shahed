@@ -1183,6 +1183,7 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 .tayah-ctxayah { display: inline; }
 .tayah-ayahlink { text-decoration: none; color: inherit; }
 .tayah-ayahlink:hover { text-decoration: underline; }
+.tayah-principal { color: var(--accent, #1e5a3c); }
 .tayah-scope {
   margin-bottom: 0.5rem;
   padding-bottom: 0.45rem;

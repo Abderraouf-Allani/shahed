@@ -2983,17 +2983,18 @@
     var q = state.quran && state.quran[surah - 1];
     var text = q && q.verses[ayah - 1];
     if (!text) return '';
-    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + toAr(ayah) + '</span></span>';
+    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + toAr(ayah) + '</span></span> ';
   }
 
   function renderAyahCard(a, withScope) {
     var surah = surahByNumber(a.surah);
     var tags = getVerseTags(a.surah, a.ayah);
     var before = '', after = '', scope = '';
+    var n = 0;
     if (withScope) {
       var q = state.quran && state.quran[a.surah - 1];
       var count = q && q.verses ? q.verses.length : 0;
-      var n = getTagScope(a.surah, a.ayah);
+      n = getTagScope(a.surah, a.ayah);
       var from = Math.max(1, a.ayah - n);
       var to = Math.min(count || a.ayah, a.ayah + n);
       var b = [], af = [];
@@ -3008,8 +3009,8 @@
         + '<button type="button" class="tayah-scope-btn tayah-scope-plus" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" title="توسيع النطاق — إضافة آية قبل وبعد" aria-label="توسيع النطاق"' + (canGrow ? '' : ' disabled') + '>+</button>'
         + '</div>';
     }
-    var tagged = '<a class="tayah-ayahlink" href="#/surah/' + a.surah + '/' + a.ayah + '">'
-      + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></a>';
+    var tagged = '<a class="tayah-ayahlink' + (withScope && n > 0 ? ' tayah-principal' : '') + '" href="#/surah/' + a.surah + '/' + a.ayah + '">'
+      + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></a> ';
     return '<div class="tayah-card">'
       + scope
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
