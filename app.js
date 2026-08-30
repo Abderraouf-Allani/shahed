@@ -3014,8 +3014,8 @@
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
       + '<div class="tayah-text">' + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></div>'
       + '</a>'
-      + after
       + (tags.length ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
+      + after
       + '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>'
       + scope
       + '</div>';
