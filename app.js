@@ -2326,7 +2326,6 @@
     html += '<div class="nav-pills">';
     html += '<a class="pill" href="#/"><span>الفهرس</span></a>';
     html += '<a class="pill" href="#/tags"><span>الوسوم</span></a>';
-    html += '<a class="pill" href="#/lab"><span>المختبر</span></a>';
     html += '<button class="pill" id="shareBtn" type="button"><span>نسخ الآيات</span></button>';
     html += '</div>';
     html += '<div class="font-size-ctl">';
