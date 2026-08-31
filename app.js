@@ -174,98 +174,145 @@
     try { return JSON.parse(localStorage.getItem(LS.lab) || '{}'); } catch (e) { return {}; }
   }
 
-  /* Recommend tags for a category. Returns up to `max` candidates:
-     { tag, score, coOcc, lab, name, rel } sorted by descending score. */
-  function suggestTagsForCategory(catId, max) {
-    max = max || 10;
-    var catTags = tagState.tags.filter(function (t) { return t.categoryId === catId; });
-    var catIds = catTags.map(function (t) { return t.id; });
-    var existing = {}; catIds.forEach(function (id) { existing[id] = true; });
+  /* ---------- ontology (language-model) tag suggestions ----------
+     Suggests NEW Arabic concepts (lexicon words) judged close to a
+     category. The category's meaning is grounded by its bound ayahs
+     (verses carrying a tag that belongs to the category) plus the
+     category and its tag names. Candidate words come from the bundled
+     ontology (data/ontology.json). Already-existing tag names are
+     never suggested. */
+  var ontologyData = null;          /* parsed data/ontology.json */
+  var ontologyIndex = null;         /* { root -> [conceptIdx] } */
+  var ontologyStatus = 'idle';      /* 'idle'|'loading'|'ready'|'error' */
+  var ontologyListeners = [];
 
-    /* None in category: fall back to globally most-used tags so the list is useful. */
-    if (!catTags.length) {
-      return tagState.tags
-        .filter(function (t) { return !existing[t.id]; })
-        .map(function (t) { return { tag: t, score: Math.min(1, tagCount(t.id) / 10), coOcc: 0, lab: 0, name: 0, rel: 'related-to' }; })
-        .sort(function (x, y) { return y.score - x.score; })
-        .slice(0, max);
-    }
+  function normalizeWordForMatch(s) {
+    return (s || '')
+      .replace(/[\u064B-\u0652\u0670\u0640\u08F0-\u08FF]/g, '')   /* remove diacritics + tatweel */
+      .replace(/[^\u0621-\u064A\u0660-\u0669]/g, ' ')             /* keep letters + digits only */
+      .replace(/[^\u0600-\u06FF]/g, ' ');
+  }
 
-    /* Verses covered by the category's tags (for co-occurrence). */
-    var versesOfCat = {};
+  function loadOntology() {
+    if (ontologyStatus === 'ready' || ontologyStatus === 'loading') return;
+    ontologyStatus = 'loading';
+    fetch('data/ontology.json')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        ontologyData = data && Array.isArray(data.concepts) ? data.concepts : [];
+        ontologyIndex = {};
+        ontologyData.forEach(function (c, i) {
+          var root = arabicRoot(c.w);
+          if (!root) return;
+          (ontologyIndex[root] = ontologyIndex[root] || []).push(i);
+        });
+        ontologyStatus = 'ready';
+        ontologyListeners.forEach(function (fn) { fn(); });
+        ontologyListeners = [];
+      })
+      .catch(function () {
+        ontologyStatus = 'error';
+        ontologyListeners.forEach(function (fn) { fn(); });
+        ontologyListeners = [];
+      });
+  }
+
+  /* Text of all verses bound to the category (via its tags). */
+  function categoryBoundAyahsText(catId) {
+    var catTagId = {};
+    tagState.tags.forEach(function (t) { if (t.categoryId === catId) catTagId[t.id] = true; });
+    var parts = [];
     Object.keys(tagState.verses).forEach(function (vkey) {
       var ids = tagState.verses[vkey] || [];
       for (var i = 0; i < ids.length; i++) {
-        if (existing[ids[i]]) { versesOfCat[vkey] = true; break; }
+        if (catTagId[ids[i]]) {
+          var sp = vkey.split(':');
+          var q = state.quran && state.quran[(+sp[0]) - 1];
+          var tx = q && q.verses[(+sp[1]) - 1];
+          if (tx) parts.push(normalizeWordForMatch(tx));
+          break;
+        }
       }
     });
-    var totalCatVerses = Object.keys(versesOfCat).length || 1;
+    return parts.join(' ');
+  }
 
-    /* Tag Lab edges connecting to the category's tags. */
-    var lab = readLabGraph();
-    var adjacent = {};   /* tagId -> { weight, relTally } */
-    var catLabIds = {};  catIds.forEach(function (id) { catLabIds[id] = true; });
-    var perCat = lab[catId];
-    var edges = (perCat && Array.isArray(perCat.edges)) ? perCat.edges : [];
-    edges.forEach(function (e) {
-      var other = null;
-      if (catLabIds[e.from] && !catLabIds[e.to]) other = e.to;
-      else if (catLabIds[e.to] && !catLabIds[e.from]) other = e.from;
-      if (!other) return;
-      var w = REL_WEIGHT[e.rel] || 0.5;
-      var a = adjacent[other] || (adjacent[other] = { weight: 0, tally: {} });
-      a.weight += w;
-      a.tally[e.rel] = (a.tally[e.rel] || 0) + w;
-    });
+  /* How relevant an ontology concept is to a category (0..1). */
+  function matchConceptToCategory(concept, nameText, ayahText, existingRoots) {
+    var root = arabicRoot(concept.w);
+    if (!root) return 0;
+    if (existingRoots[root]) return 0;
 
-    var results = [];
+    /* full conjunct phrase match has priority (e.g. "توحيد الألوهية") */
+    var normW = normalizeWordForMatch(concept.w).replace(/\s+/g, ' ').trim();
+
+    var inName = nameText.indexOf(normW) !== -1 || nameText.indexOf(root) !== -1;
+    var inAyah = ayahText ? (ayahText.indexOf(normW) !== -1 || ayahText.indexOf(root) !== -1) : false;
+
+    var score = 0;
+    if (inName) score += 0.55;
+    if (inAyah) score += 0.85;
+    if (score === 0) return 0;
+    return Math.min(1, score);
+  }
+
+  /* Recommend new ontology concepts for a category.
+     Returns [{ word, score, rel, domain }] sorted descending. */
+  function suggestTagsForCategory(catId, max) {
+    max = max || 10;
+    var cat = tagState.byCatId[catId];
+    if (!cat) return [];
+
+    if (ontologyStatus !== 'ready') {
+      loadOntology();
+      return [];
+    }
+
+    var catTagId = {}, existingRoots = {};
+    var nameText = cat.name;
     tagState.tags.forEach(function (t) {
-      if (existing[t.id]) return;
+      if (t.categoryId === catId) catTagId[t.id] = true;
+      existingRoots[arabicRoot(t.name)] = true;
+      if (catTagId[t.id]) nameText += ' ' + t.name;
+    });
+    /* also exclude concepts already used as a tag in ANY category */
+    tagState.tags.forEach(function (t) { existingRoots[arabicRoot(t.name)] = true; });
 
-      /* co-occurrence: how many of the category's verses this tag also covers */
-      var shared = 0, lim = 0;
-      var tTagged = false;
-      Object.keys(tagState.verses).forEach(function (vkey) {
-        var ids = tagState.verses[vkey] || [];
-        if (ids.indexOf(t.id) === -1) return;
-        tTagged = true;
-        if (++lim > 1200) return;
-        if (versesOfCat[vkey]) shared++;
-      });
-      var coOcc = totalCatVerses ? shared / totalCatVerses : 0;
+    var ayahText = categoryBoundAyahsText(catId);
+    nameText = normalizeWordForMatch(nameText);
 
-      /* lab graph weight */
-      var labW = 0, bestRel = null, bestRelW = 0;
-      if (adjacent[t.id]) {
-        var maxEdge = totalCatVerses > 1 ? (catTags.length * 1.0) : 1; /* normalization */
-        labW = Math.min(1, adjacent[t.id].weight / (maxEdge || 1));
-        var tally = adjacent[t.id].tally;
-        Object.keys(tally).forEach(function (r) {
-          if (tally[r] > bestRelW) { bestRelW = tally[r]; bestRel = r; }
-        });
-      }
-
-      /* name similarity to any category tag */
-      var bestName = 0;
-      catTags.forEach(function (ct) {
-        var s = nameSimilarity(ct.name, t.name);
-        if (s > bestName) bestName = s;
-      });
-
-      /* combined relevance */
-      var labSignal = labW * 0.35;
-      var nameSignal = bestName * 0.20;
-      var coSignal = coOcc * 0.45;
-      var score = coSignal + labSignal + nameSignal;
-      /* drop candidates with no real signal (nothing to base a suggestion on) */
-      if (score < 0.06) return;
-
-      var rel = bestRel || (tTagged ? 'related-to' : 'similar-to');
-      results.push({ tag: t, score: score, coOcc: coOcc, lab: labW, name: bestName, rel: rel });
+    var scored = [];
+    ontologyData.forEach(function (c) {
+      var s = matchConceptToCategory(c, nameText, ayahText, existingRoots);
+      if (s > 0) scored.push({ word: c.w, score: s, domain: c.d, rel: inferRel(wordKey(c.w)) });
     });
 
-    results.sort(function (x, y) { return (y.score - x.score) || (tagCount(y.tag.id) - tagCount(x.tag.id)); });
-    return results.slice(0, max);
+    /* fall back: if grounding found nothing, still suggest a stable set of
+       generic concepts so the panel is never empty for a fresh category. */
+    if (!scored.length) {
+      var base = ['الإيمان', 'العبادة', 'التقوى', 'الصبر', 'الشكر', 'الرحمة',
+        'الجزاء', 'الصلاة', 'الزكاة', 'التوبة'];
+      base.forEach(function (w) {
+        if (existingRoots[arabicRoot(w)]) return;
+        scored.push({ word: w, score: 0.35, domain: [], rel: 'related-to' });
+      });
+    }
+
+    scored.sort(function (x, y) { return y.score - x.score; });
+    return scored.slice(0, max);
+  }
+
+  function wordKey(w) {
+    return w.replace(/^(ال|إ|أ)/, '');
+  }
+
+  function inferRel(w) {
+    var opp = ['الكفر', 'الشرك', 'الظلم', 'الكذب', 'النفاق', 'الرياء', 'الجهل',
+      'الضلال', 'البخل', 'الفساد', 'الطغيان', 'العذاب', 'الهلاك', 'الكبر'];
+    if (opp.indexOf(w) !== -1) return 'opposite-of';
+    var part = ['الصلاة', 'الزكاة', 'الصيام', 'الحج', 'الشهادتان', 'السجود', 'الركوع', 'الذكر', 'الدعاء'];
+    if (part.indexOf(w) !== -1) return 'part-of';
+    return 'related-to';
   }
 
 
@@ -2882,21 +2929,21 @@
     if (!candidates.length) {
       return '<div class="suggest-panel" data-catid="' + cat.id + '">'
         + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
-        + '<div class="suggest-empty">لا توجد وسوم مقترحة كافية — أضف وسوماً في تصنيفات أخرى أولاً.</div>'
+        + '<div class="suggest-empty">جارٍ تحميل المفردات أو لا توجد اقتراحات مطابقة — أضف وسوماً وربطها بآيات أولاً.</div>'
         + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
         + '</div>';
     }
     var items = candidates.map(function (r) {
-      var sel = state.suggestSel[r.tag.id] || 'related-to';
+      var sel = state.suggestSel[r.word] || r.rel;
       var opts = RELATIONSHIPS.map(function (g) {
         return g.items.map(function (it) {
           return '<option value="' + it.id + '"' + (it.id === sel ? ' selected' : '') + '>' + esc(it.label) + '</option>';
         }).join('');
       }).join('');
       return '<label class="suggest-item">'
-        + '<input type="checkbox" class="suggest-check" data-tagid="' + r.tag.id + '" checked>'
-        + tagChip(r.tag)
-        + '<select class="suggest-rel-select" data-tagid="' + r.tag.id + '" title="نوع العلاقة">' + opts + '</select>'
+        + '<input type="checkbox" class="suggest-check" data-word="' + esc(r.word) + '" data-catid="' + cat.id + '" checked>'
+        + '<span class="tag-chip suggest-word">' + esc(r.word) + '</span>'
+        + '<select class="suggest-rel-select" data-word="' + esc(r.word) + '" title="نوع العلاقة">' + opts + '</select>'
         + '<span class="suggest-score" title="قوة الارتباط ' + Math.round(r.score * 100) + '%">' + toAr(Math.round(r.score * 100)) + '%</span>'
         + '</label>';
     }).join('');
@@ -2917,7 +2964,7 @@
     if (!area) return;
 
     if (!seedTagsLoaded) {
-      area.innerHTML = '<div class="empty-state">جاري تحميل كتب الوسوم…</div>';
+      area.innerHTML = '<div class="empty-state">جار تحميل كتب الوسوم…</div>';
       return;
     }
 
@@ -3105,7 +3152,7 @@
 
     var suggestRel = e.target.closest('.suggest-rel-select');
     if (suggestRel) {
-      state.suggestSel[suggestRel.dataset.tagid] = suggestRel.value;
+      state.suggestSel[suggestRel.dataset.word] = suggestRel.value;
       return;
     }
 
@@ -3125,24 +3172,15 @@
       if (!checks.length) { state.suggestCatId = null; state.suggestSel = {}; renderTagArea(); return; }
       var added = 0;
       checks.forEach(function (chk) {
-        var tagId = chk.dataset.tagid;
-        var srcTag = tagState.byId[tagId];
-        if (!srcTag) return;
-        var rel = state.suggestSel[tagId] || 'related-to';
-        var copy = createTag(srcTag.name, srcTag.color, scid, srcTag.description || '', 'suggest:' + scid);
-        /* carry over the source tag's verses */
-        Object.keys(tagState.verses).forEach(function (vkey) {
-          var ids = tagState.verses[vkey] || [];
-          if (ids.indexOf(tagId) !== -1) addTagIfMissingStateOnly(vkey, copy.id);
-        });
-        /* record the relationship in the Tag Lab graph */
-        recordSuggestionEdge(scid, copy.id, srcTag.id, rel);
+        var word = chk.dataset.word;
+        if (!word || !word.trim()) return;
+        /* create a brand-new tag named after the suggested ontology word */
+        createTag(word.trim(), TAG_COLORS[tagState.tags.length % TAG_COLORS.length], scid, '', 'suggest:' + scid);
         added++;
       });
       state.suggestCatId = null;
       state.suggestSel = {};
       renderTagArea();
-      if (added) console.log('suggest: added ' + added + ' tag(s)');
       return;
     }
 
