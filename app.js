@@ -1527,6 +1527,13 @@
     var memRows =
       '<li>تقنية الحفظ التدريجي (إخفاء الكلمات) مُعدّلة من أسلوب الأستاذ <strong>عيد الرزاق السقني</strong>.</li>';
 
+    var ontologyRows =
+      '<li>قائمة المفاهيم المستخدمة في اقتراح الوسوم مُشتقّة من كتاب'
+      + ' <strong>«التفسير الموضوعي لسور القرآن الكريم»</strong> (تأليف الأستاذ الدكتور مصطفى مسلم).'
+      + ' جزء منها مستلهم ومشتق من تصنيفات الكتاب للمفاهيم الموضوعية.'
+      + ' <a href="https://archive.org/details/20240429_20240429_1045" target="_blank" rel="noopener">الكتاب على أرشيف الإنترنت</a>.'
+      + '</li>';
+
     var projectRow =
       '<li>مستودع المشروع (الكود المصدري):'
       + ' <a href="https://github.com/Abderraouf-Allani/shahed" target="_blank" rel="noopener">github.com/Abderraouf-Allani/shahed</a>.</li>';
@@ -1542,6 +1549,7 @@
       +     licensesSection('النص القرآني', quranRows)
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('مستودع المشروع', projectRow)
+      +     licensesSection('مفردات اقتراح الوسوم', ontologyRows)
       +     licensesSection('أدوات البناء', toolRows)
       +     licensesSection('تقنية الحفظ', memRows)
       +   '</div>'
@@ -2934,16 +2942,9 @@
         + '</div>';
     }
     var items = candidates.map(function (r) {
-      var sel = state.suggestSel[r.word] || r.rel;
-      var opts = RELATIONSHIPS.map(function (g) {
-        return g.items.map(function (it) {
-          return '<option value="' + it.id + '"' + (it.id === sel ? ' selected' : '') + '>' + esc(it.label) + '</option>';
-        }).join('');
-      }).join('');
       return '<label class="suggest-item">'
         + '<input type="checkbox" class="suggest-check" data-word="' + esc(r.word) + '" data-catid="' + cat.id + '" checked>'
         + '<span class="tag-chip suggest-word">' + esc(r.word) + '</span>'
-        + '<select class="suggest-rel-select" data-word="' + esc(r.word) + '" title="نوع العلاقة">' + opts + '</select>'
         + '<span class="suggest-score" title="قوة الارتباط ' + Math.round(r.score * 100) + '%">' + toAr(Math.round(r.score * 100)) + '%</span>'
         + '</label>';
     }).join('');
@@ -3147,12 +3148,6 @@
     var suggestCheck = e.target.closest('.suggest-check');
     if (suggestCheck) {
       /* visual only; checked state is read at add time */
-      return;
-    }
-
-    var suggestRel = e.target.closest('.suggest-rel-select');
-    if (suggestRel) {
-      state.suggestSel[suggestRel.dataset.word] = suggestRel.value;
       return;
     }
 
