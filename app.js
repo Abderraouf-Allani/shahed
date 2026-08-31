@@ -136,6 +136,138 @@
     g.items.forEach(function (it) { REL_BY_ID[it.id] = it.label; });
   });
 
+  /* ---------- tag suggestion engine ---------- */
+  var REL_WEIGHT = {
+    'same-as': 1.0, 'equivalent': 0.95, 'synonym': 0.9,
+    'is-a': 1.0, 'subclass': 0.95, 'instance-of': 0.85,
+    'part-of': 0.9, 'has-part': 0.85, 'member-of': 0.8,
+    'causes': 0.85, 'depends-on': 0.8, 'precondition-for': 0.75, 'enables': 0.75,
+    'opposite-of': 0.7, 'complementary-to': 0.8, 'implies': 0.8, 'contradicts': 0.7,
+    'related-to': 0.55, 'similar-to': 0.7,
+    'used-for': 0.6, 'capable-of': 0.5, 'performs': 0.5,
+    'has-property': 0.65, 'property-of': 0.6,
+    'located-in': 0.5, 'before': 0.4, 'after': 0.4
+  };
+
+  var AR_PREFIX_RE = /^(إ|أ|ا|ال|وال|بال|لل|فال|و|ب|ل|ف|ك)/;
+
+  function arabicRoot(name) {
+    var s = (name || '').replace(/[^\u0600-\u06FF]/g, '');
+    s = s.replace(AR_PREFIX_RE, '');
+    var cons = s.replace(/[\u064E-\u0652\u0670\u0640]/g, '');
+    if (cons.length < 3) return cons;
+    return cons.slice(0, 3);
+  }
+
+  function nameSimilarity(a, b) {
+    a = (a || '').trim(); b = (b || '').trim();
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    var ra = arabicRoot(a), rb = arabicRoot(b);
+    if (ra && rb && ra === rb) return 0.85;
+    if (a.indexOf(b) !== -1 || b.indexOf(a) !== -1) return 0.5;
+    if (!/\s/.test(a) && !/\s/.test(b) && ra && rb && ra[0] === rb[0] && ra[1] === rb[1]) return 0.35;
+    return 0;
+  }
+
+  function readLabGraph() {
+    try { return JSON.parse(localStorage.getItem(LS.lab) || '{}'); } catch (e) { return {}; }
+  }
+
+  /* Recommend tags for a category. Returns up to `max` candidates:
+     { tag, score, coOcc, lab, name, rel } sorted by descending score. */
+  function suggestTagsForCategory(catId, max) {
+    max = max || 10;
+    var catTags = tagState.tags.filter(function (t) { return t.categoryId === catId; });
+    var catIds = catTags.map(function (t) { return t.id; });
+    var existing = {}; catIds.forEach(function (id) { existing[id] = true; });
+
+    /* None in category: fall back to globally most-used tags so the list is useful. */
+    if (!catTags.length) {
+      return tagState.tags
+        .filter(function (t) { return !existing[t.id]; })
+        .map(function (t) { return { tag: t, score: Math.min(1, tagCount(t.id) / 10), coOcc: 0, lab: 0, name: 0, rel: 'related-to' }; })
+        .sort(function (x, y) { return y.score - x.score; })
+        .slice(0, max);
+    }
+
+    /* Verses covered by the category's tags (for co-occurrence). */
+    var versesOfCat = {};
+    Object.keys(tagState.verses).forEach(function (vkey) {
+      var ids = tagState.verses[vkey] || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (existing[ids[i]]) { versesOfCat[vkey] = true; break; }
+      }
+    });
+    var totalCatVerses = Object.keys(versesOfCat).length || 1;
+
+    /* Tag Lab edges connecting to the category's tags. */
+    var lab = readLabGraph();
+    var adjacent = {};   /* tagId -> { weight, relTally } */
+    var catLabIds = {};  catIds.forEach(function (id) { catLabIds[id] = true; });
+    var perCat = lab[catId];
+    var edges = (perCat && Array.isArray(perCat.edges)) ? perCat.edges : [];
+    edges.forEach(function (e) {
+      var other = null;
+      if (catLabIds[e.from] && !catLabIds[e.to]) other = e.to;
+      else if (catLabIds[e.to] && !catLabIds[e.from]) other = e.from;
+      if (!other) return;
+      var w = REL_WEIGHT[e.rel] || 0.5;
+      var a = adjacent[other] || (adjacent[other] = { weight: 0, tally: {} });
+      a.weight += w;
+      a.tally[e.rel] = (a.tally[e.rel] || 0) + w;
+    });
+
+    var results = [];
+    tagState.tags.forEach(function (t) {
+      if (existing[t.id]) return;
+
+      /* co-occurrence: how many of the category's verses this tag also covers */
+      var shared = 0, lim = 0;
+      var tTagged = false;
+      Object.keys(tagState.verses).forEach(function (vkey) {
+        var ids = tagState.verses[vkey] || [];
+        if (ids.indexOf(t.id) === -1) return;
+        tTagged = true;
+        if (++lim > 1200) return;
+        if (versesOfCat[vkey]) shared++;
+      });
+      var coOcc = totalCatVerses ? shared / totalCatVerses : 0;
+
+      /* lab graph weight */
+      var labW = 0, bestRel = null, bestRelW = 0;
+      if (adjacent[t.id]) {
+        var maxEdge = totalCatVerses > 1 ? (catTags.length * 1.0) : 1; /* normalization */
+        labW = Math.min(1, adjacent[t.id].weight / (maxEdge || 1));
+        var tally = adjacent[t.id].tally;
+        Object.keys(tally).forEach(function (r) {
+          if (tally[r] > bestRelW) { bestRelW = tally[r]; bestRel = r; }
+        });
+      }
+
+      /* name similarity to any category tag */
+      var bestName = 0;
+      catTags.forEach(function (ct) {
+        var s = nameSimilarity(ct.name, t.name);
+        if (s > bestName) bestName = s;
+      });
+
+      /* combined relevance */
+      var labSignal = labW * 0.35;
+      var nameSignal = bestName * 0.20;
+      var coSignal = coOcc * 0.45;
+      var score = coSignal + labSignal + nameSignal;
+      /* drop candidates with no real signal (nothing to base a suggestion on) */
+      if (score < 0.06) return;
+
+      var rel = bestRel || (tTagged ? 'related-to' : 'similar-to');
+      results.push({ tag: t, score: score, coOcc: coOcc, lab: labW, name: bestName, rel: rel });
+    });
+
+    results.sort(function (x, y) { return (y.score - x.score) || (tagCount(y.tag.id) - tagCount(x.tag.id)); });
+    return results.slice(0, max);
+  }
+
 
   var FORMAT_VERSION = 2;
   var FORMAT_TAG = 'quran-tag/v' + FORMAT_VERSION;
@@ -152,6 +284,8 @@
     surahQuery: '',
     tagQuery: '',
     selectedTagId: null,
+    suggestCatId: null,
+    suggestSel: {},
     edit: null,
     ayahMeta: {}
   };
@@ -375,6 +509,22 @@
       saveTags();
     }
     rememberLastTag(tagId);
+  }
+
+  /* Add a verse key to a tag's set WITHOUT re-saving each time (batched). */
+  function addTagIfMissingStateOnly(vkey, tagId) {
+    var ids = tagState.verses[vkey] || [];
+    if (ids.indexOf(tagId) === -1) { ids.push(tagId); tagState.verses[vkey] = ids; }
+  }
+
+  /* Record a tag-to-tag relationship edge in the Tag Lab graph storage. */
+  function recordSuggestionEdge(catId, fromId, toId, rel) {
+    var lab = readLabGraph();
+    var perCat = lab[catId] || (lab[catId] = { nodes: {}, edges: [] });
+    if (perCat.nodes && !perCat.nodes[fromId]) perCat.nodes[fromId] = { x: 0, y: 0, showAyahs: false };
+    perCat.edges.push({ from: fromId, to: toId, rel: rel || 'related-to' });
+    saveTags();
+    try { localStorage.setItem(LS.lab, JSON.stringify(lab)); } catch (e) {}
   }
 
   function removeTagFromVerse(surah, ayah, tagId) {
@@ -1330,6 +1480,10 @@
     var memRows =
       '<li>تقنية الحفظ التدريجي (إخفاء الكلمات) مُعدّلة من أسلوب الأستاذ <strong>عيد الرزاق السقني</strong>.</li>';
 
+    var projectRow =
+      '<li>مستودع المشروع (الكود المصدري):'
+      + ' <a href="https://github.com/Abderraouf-Allani/shahed" target="_blank" rel="noopener">github.com/Abderraouf-Allani/shahed</a>.</li>';
+
     modal.innerHTML =
       '<div class="licenses-overlay"></div>'
       + '<div class="licenses-panel" role="dialog" aria-modal="true" aria-label="التراخيص والمصادر">'
@@ -1340,6 +1494,7 @@
       +   '<div class="licenses-body">'
       +     licensesSection('النص القرآني', quranRows)
       +     licensesSection('المكتبات', libRows)
+      +     licensesSection('مستودع المشروع', projectRow)
       +     licensesSection('أدوات البناء', toolRows)
       +     licensesSection('تقنية الحفظ', memRows)
       +   '</div>'
@@ -2722,6 +2877,41 @@
       + '</span>';
   }
 
+  function renderSuggestPanel(cat) {
+    var candidates = suggestTagsForCategory(cat.id, 10);
+    if (!candidates.length) {
+      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
+        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
+        + '<div class="suggest-empty">لا توجد وسوم مقترحة كافية — أضف وسوماً في تصنيفات أخرى أولاً.</div>'
+        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
+        + '</div>';
+    }
+    var items = candidates.map(function (r) {
+      var sel = state.suggestSel[r.tag.id] || 'related-to';
+      var opts = RELATIONSHIPS.map(function (g) {
+        return g.items.map(function (it) {
+          return '<option value="' + it.id + '"' + (it.id === sel ? ' selected' : '') + '>' + esc(it.label) + '</option>';
+        }).join('');
+      }).join('');
+      return '<label class="suggest-item">'
+        + '<input type="checkbox" class="suggest-check" data-tagid="' + r.tag.id + '" checked>'
+        + tagChip(r.tag)
+        + '<select class="suggest-rel-select" data-tagid="' + r.tag.id + '" title="نوع العلاقة">' + opts + '</select>'
+        + '<span class="suggest-score" title="قوة الارتباط ' + Math.round(r.score * 100) + '%">' + toAr(Math.round(r.score * 100)) + '%</span>'
+        + '</label>';
+    }).join('');
+    return '<div class="suggest-panel" data-catid="' + cat.id + '">'
+      + '<div class="suggest-header">'
+      + '<span class="suggest-title">اقتراح وسوم — ' + esc(cat.name) + '</span>'
+      + '<span class="suggest-count">اقتراحات</span>'
+      + '</div>'
+      + '<div class="suggest-list">' + items + '</div>'
+      + '<div class="suggest-actions">'
+      + '<button type="button" class="suggest-add-selected" data-catid="' + cat.id + '">إضافة المحدد</button>'
+      + '<button type="button" class="suggest-close">إغلاق</button>'
+      + '</div></div>';
+  }
+
   function renderTagArea() {
     var area = document.getElementById('tagArea');
     if (!area) return;
@@ -2767,10 +2957,14 @@
       html += '<span class="cat-name">' + esc(c.name) + '</span>';
       html += '<b class="cat-count">' + toAr(catTags.length) + '</b>';
       html += '<button type="button" class="cat-tag-add" data-catid="' + c.id + '" title="إضافة وسم">+</button>';
+      html += '<button type="button" class="cat-suggest" data-catid="' + c.id + '" title="اقتراح وسوم لهذا التصنيف">✦</button>';
       html += '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>';
       html += '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
       html += '</div>';
       html += '<div class="cat-tags">' + catTags.map(renderTagChipBtn).join('') + '</div>';
+      if (state.suggestCatId === c.id) {
+        html += renderSuggestPanel(c);
+      }
       if (state.edit && state.edit.type === 'newtag' && state.edit.catId === c.id) {
         html += '<div class="tag-new-inline">'
           + '<input type="text" class="edit-name tag-new-name" placeholder="اسم الوسم الجديد…" maxlength="40">'
@@ -2891,6 +3085,64 @@
         deleteCategory(c.id);
         renderTagArea();
       }
+      return;
+    }
+
+    var catSuggest = e.target.closest('.cat-suggest');
+    if (catSuggest) {
+      var scid = catSuggest.dataset.catid;
+      state.suggestCatId = state.suggestCatId === scid ? null : scid;
+      state.suggestSel = {};
+      renderTagArea();
+      return;
+    }
+
+    var suggestCheck = e.target.closest('.suggest-check');
+    if (suggestCheck) {
+      /* visual only; checked state is read at add time */
+      return;
+    }
+
+    var suggestRel = e.target.closest('.suggest-rel-select');
+    if (suggestRel) {
+      state.suggestSel[suggestRel.dataset.tagid] = suggestRel.value;
+      return;
+    }
+
+    var suggestClose = e.target.closest('.suggest-close');
+    if (suggestClose) {
+      state.suggestCatId = null;
+      state.suggestSel = {};
+      renderTagArea();
+      return;
+    }
+
+    var suggestAdd = e.target.closest('.suggest-add-selected');
+    if (suggestAdd) {
+      var scid = suggestAdd.dataset.catid;
+      var panel = suggestAdd.closest('.suggest-panel');
+      var checks = panel.querySelectorAll('.suggest-check:checked');
+      if (!checks.length) { state.suggestCatId = null; state.suggestSel = {}; renderTagArea(); return; }
+      var added = 0;
+      checks.forEach(function (chk) {
+        var tagId = chk.dataset.tagid;
+        var srcTag = tagState.byId[tagId];
+        if (!srcTag) return;
+        var rel = state.suggestSel[tagId] || 'related-to';
+        var copy = createTag(srcTag.name, srcTag.color, scid, srcTag.description || '', 'suggest:' + scid);
+        /* carry over the source tag's verses */
+        Object.keys(tagState.verses).forEach(function (vkey) {
+          var ids = tagState.verses[vkey] || [];
+          if (ids.indexOf(tagId) !== -1) addTagIfMissingStateOnly(vkey, copy.id);
+        });
+        /* record the relationship in the Tag Lab graph */
+        recordSuggestionEdge(scid, copy.id, srcTag.id, rel);
+        added++;
+      });
+      state.suggestCatId = null;
+      state.suggestSel = {};
+      renderTagArea();
+      if (added) console.log('suggest: added ' + added + ' tag(s)');
       return;
     }
 
