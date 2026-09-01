@@ -494,6 +494,7 @@ html.dark .icon-moon { display: block; }
   direction: rtl;
   color: var(--text);
   overflow-wrap: break-word;
+  user-select: none;
 }
 
 html[data-riwaya="hafs"] .bismillah,

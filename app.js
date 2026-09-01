@@ -2317,9 +2317,12 @@
   function renderVerse(q, surah, ayah, text) {
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
     var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(function (t) { return verseTagChip(t, surah, ayah); }).join('') + '</span>' : '';
+    var tagBtn = showTags
+      ? '<button type="button" class="tag-btn" data-surah="' + surah + '" data-ayah="' + ayah + '" title="وسم هذه الآية" aria-label="وسم هذه الآية">' + TAG_ICON + '</button>'
+      : '';
     return '<span class="verse" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
       + '<span class="verse-text">' + esc(text) + '</span>'
-      + '<button type="button" class="tag-btn" data-surah="' + surah + '" data-ayah="' + ayah + '" title="وسم هذه الآية" aria-label="وسم هذه الآية">' + TAG_ICON + '</button>'
+      + tagBtn
       + chips
       + '<span class="ayah-num">' + toAr(ayah) + '</span>'
       + '</span> ';
