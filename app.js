@@ -149,18 +149,17 @@
     'located-in': 0.5, 'before': 0.4, 'after': 0.4
   };
 
-  var AR_PREFIX_RE = /^(إ|أ|ا|ال|وال|بال|لل|فال|و|ب|ل|ف|ك)/;
-
   function arabicRoot(name) {
-    var s = (name || '').replace(/[^\u0600-\u06FF]/g, '');
-    /* strip definite article + conjunction/preposition, longest first */
-    s = s
-      .replace(/^(وال|بال|لل|فال|ال)/, '')   /* و+ال / ب+ال / ل+ال / ف+ال / ال */
-      .replace(/^(وأ|إ|أ|ا)/, '')             /* و+hamzat, isolated hamzat/alif */
-      .replace(/^(و|ب|ك|ف|ل)/, '');
-    /* remove diacritics + tatweel */
-    var cons = s.replace(/[\u064E-\u0652\u0670\u0640]/g, '');
-    return cons;
+    var s = (name || '')
+      .replace(/[\u064E-\u0652\u0670\u0640]/g, '')
+      .replace(/[^\u0600-\u06FF]/g, '')
+      .replace(/^\u0671/, '\u0627');
+    /* the proper noun الله has no root mutation; keep it intact */
+    if (s === 'الله' || s === 'اللهم') return s;
+    /* strip only the definite article and its conjunction/preposition joins.
+       NEVER strip single-letter و/ب/ك/ف/ل — those are genuine root letters
+       (الكفر, الوحي, البر, اللطيف). */
+    return s.replace(/^(وال|بال|فال|لل|ال)/, '');
   }
 
   /* normalized word tokens of a phrase (for boundary matching). */
@@ -198,8 +197,9 @@
 
   function normalizeWordForMatch(s) {
     return (s || '')
-      .replace(/[\u064B-\u0652\u0670\u0640\u08F0-\u08FF]/g, '')   /* remove diacritics + tatweel */
-      .replace(/[^\u0621-\u064A\u0660-\u0669]/g, ' ')             /* keep letters + digits only */
+      .replace(/[\u0671]/g, '\u0627')                                /* wasla alef (ٱ) -> plain alef */
+      .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u08F0-\u08FF]/g, '')  /* remove all diacritics + quranic annotation signs */
+      .replace(/[^\u0621-\u064A\u0660-\u0669\u06D0-\u06D3]/g, ' ') /* keep letters + digits only */
       .replace(/[^\u0600-\u06FF]/g, ' ');
   }
 
@@ -247,21 +247,48 @@
     return parts.join(' ');
   }
 
-  /* How relevant an ontology concept is to a category (0..1). */
+  /* Set of whole-word tokens (raw + stripped root) in a text. */
+  function tokenSet(text) {
+    var set = {};
+    arabicTokens(text).forEach(function (t) {
+      set['tok:' + t] = true;
+      var r = arabicRoot(t);
+      if (r && r !== t) set['root:' + r] = true;
+    });
+    return set;
+  }
+
+  /* Fraction (0..1) of the concept's tokens found as whole words in `sets`. */
+  function conceptCover(tokens, sets) {
+    if (!tokens.length) return 0;
+    var matched = 0;
+    tokens.forEach(function (t) {
+      if (sets['tok:' + t]) { matched++; return; }
+      var r = arabicRoot(t);
+      if (r && sets['root:' + r]) matched++;
+    });
+    return matched / tokens.length;
+  }
+
+  /* How relevant an ontology concept is to a category (0..1).
+     Token-boundary matching: a concept scores only when its normalized
+     tokens (or their stripped roots) appear as WHOLE words inside the
+     category name or its bound ayah texts. No substring indexOf — the
+     old matcher's indexOf(root) hit inside unrelated words (e.g.
+     إسماعيل / الطغيان for a التوحيد category). */
   function matchConceptToCategory(concept, nameText, ayahText, existingRoots) {
     var root = arabicRoot(concept.w);
-    if (!root) return 0;
-    if (existingRoots[root]) return 0;
+    if (!root || existingRoots[root]) return 0;
 
-    /* full conjunct phrase match has priority (e.g. "توحيد الألوهية") */
-    var normW = normalizeWordForMatch(concept.w).replace(/\s+/g, ' ').trim();
+    var cTokens = arabicTokens(concept.w);
+    if (!cTokens.length) return 0;
 
-    var inName = nameText.indexOf(normW) !== -1 || nameText.indexOf(root) !== -1;
-    var inAyah = ayahText ? (ayahText.indexOf(normW) !== -1 || ayahText.indexOf(root) !== -1) : false;
+    var nameCov = conceptCover(cTokens, tokenSet(nameText));
+    var ayahCov = conceptCover(cTokens, tokenSet(ayahText));
 
     var score = 0;
-    if (inName) score += 0.55;
-    if (inAyah) score += 0.85;
+    if (nameCov > 0) score += 0.55 * nameCov;
+    if (ayahCov > 0) score += 0.85 * ayahCov;
     if (score === 0) return 0;
     return Math.min(1, score);
   }
