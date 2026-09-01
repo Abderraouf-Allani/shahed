@@ -153,10 +153,20 @@
 
   function arabicRoot(name) {
     var s = (name || '').replace(/[^\u0600-\u06FF]/g, '');
-    s = s.replace(AR_PREFIX_RE, '');
+    /* strip definite article + conjunction/preposition, longest first */
+    s = s
+      .replace(/^(وال|بال|لل|فال|ال)/, '')   /* و+ال / ب+ال / ل+ال / ف+ال / ال */
+      .replace(/^(وأ|إ|أ|ا)/, '')             /* و+hamzat, isolated hamzat/alif */
+      .replace(/^(و|ب|ك|ف|ل)/, '');
+    /* remove diacritics + tatweel */
     var cons = s.replace(/[\u064E-\u0652\u0670\u0640]/g, '');
-    if (cons.length < 3) return cons;
-    return cons.slice(0, 3);
+    return cons;
+  }
+
+  /* normalized word tokens of a phrase (for boundary matching). */
+  function arabicTokens(x) {
+    x = normalizeWordForMatch(x).replace(/\s+/g, ' ').trim();
+    return x ? x.split(' ') : [];
   }
 
   function nameSimilarity(a, b) {
