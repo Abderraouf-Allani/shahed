@@ -1666,6 +1666,13 @@ html.dark .loader-caption { color: #9a917f; }
   border-radius: 0; box-shadow: none;
   scroll-margin: 0.75rem;
 }
+.reader-audio { margin: 0.25rem auto 0.6rem; }
+.reader-audio-opts { margin-bottom: 0.4rem; }
+.mushaf-text .verse.rdr-playing {
+  color: var(--accent);
+  box-shadow: none;
+  scroll-margin: 0.75rem;
+}
 
 /* ---------- app error banner ---------- */
 
