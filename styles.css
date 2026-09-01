@@ -1632,6 +1632,41 @@ html.dark .loader-caption { color: #9a917f; }
 }
 .mem-rep-btn.mem-rep-done svg { flex-shrink: 0; }
 
+.mem-audio {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+  align-items: center; justify-content: center;
+  max-width: 760px; margin: 0 auto 0.45rem;
+}
+.mem-audio-play {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important; color: var(--surface) !important;
+}
+.mem-audio-status {
+  flex: 1 1 240px; min-width: 0; text-align: center;
+  font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
+}
+.mem-audio-opts {
+  display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem;
+  align-items: center; justify-content: center;
+  margin-bottom: 0.5rem;
+}
+.mem-audio-opt {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+}
+.mem-audio-sel {
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 0.85rem; padding: 0.3rem 0.45rem;
+  outline: none;
+}
+.mem-audio-sel:focus { border-color: var(--accent); }
+.mushaf-text .verse.mem-playing {
+  color: var(--accent);
+  border-radius: 0; box-shadow: none;
+  scroll-margin: 0.75rem;
+}
+
 /* ---------- app error banner ---------- */
 
 .app-error-banner {

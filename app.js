@@ -34,6 +34,8 @@
     labCat: 'qaloon_lab_cat',
     riwaya: 'qaloon_riwaya',
     memSession: 'qaloon_mem_session',
+    memAyahRep: 'qaloon_mem_ayahrep',
+    memSurahRep: 'qaloon_mem_surahrep',
     intended: 'qaloon_intended_list_v1',
     tagScope: 'qaloon_tayahscope_v1'
   };
@@ -82,6 +84,8 @@
     qaloon: { label: 'رواية قالون عن نافع', name: 'قالون' },
     hafs: { label: 'رواية حفص عن عاصم', name: 'حفص' }
   };
+
+  var AUDIO_RECITATION_QALOON = 257;
 
   var RELATIONSHIPS = [
     { name: 'التطابق (Identity)', items: [
@@ -3457,6 +3461,21 @@
   var MEM_ICON_HELP = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
   var MEM_ICON_RESET = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
   var MEM_ICON_DONE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  var MEM_ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  var MEM_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  var MEM_ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-9 6 9 6z"/></svg>';
+  var MEM_ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/></svg>';
+  var MEM_REP_PRIMES = [];
+  (function () {
+    var n, q, isPrime;
+    for (n = 2; n <= 47; n++) {
+      isPrime = true;
+      for (q = 2; q * q <= n; q++) {
+        if (n % q === 0) { isPrime = false; break; }
+      }
+      if (isPrime) MEM_REP_PRIMES.push(n);
+    }
+  })();
 
   function getAyahCount(n) {
     var c = state.quran && state.quran[n - 1];
@@ -3465,6 +3484,20 @@
 
   var memState = null;
   var memRO = null;
+
+  var memAudio = {
+    el: null,
+    active: false,
+    playing: false,
+    idx: 0,
+    ayahRepLeft: 1,
+    ayahRep: 1,
+    ayahInf: false,
+    pass: 1,
+    surahRep: 1,
+    surahInf: false,
+    errorStreak: 0
+  };
 
   function shuffleArray(arr) {
     var a = arr.slice();
@@ -3666,6 +3699,7 @@
         hideBtn.innerHTML = MEM_ICON_HIDE;
       }
     }
+    memUpdateAudioHighlight();
   }
 
   function renderMemorize() {
@@ -3676,6 +3710,8 @@
     var defSurah = (saved && saved.surah) || 1;
     var defFrom = (saved && saved.from) || 1;
     var defTo = (saved && saved.to) || 5;
+    var ayahRepDef = memRepDefault(LS.memAyahRep, '1');
+    var surahRepDef = memRepDefault(LS.memSurahRep, '1');
     var surahOptions = '';
     for (var i = 1; i <= 114; i++) {
       var s = surahByNumber(i);
@@ -3704,6 +3740,16 @@
     html += '<div class="mem-progress-bar" id="memBar"></div>';
     html += '</div>';
     html += '<div class="mem-level" id="memLevel"></div>';
+    html += '</div>';
+    html += '<div class="mem-audio">';
+    html += '<button id="memPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
+    html += '<button id="memPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
+    html += '<button id="memNextBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية التالية">' + MEM_ICON_NEXT + '</button>';
+    html += '<span id="memAudioStatus" class="mem-audio-status"></span>';
+    html += '</div>';
+    html += '<div class="mem-audio-opts">';
+    html += '<label class="mem-audio-opt">تكرار الآية<select id="memAyahRep" class="mem-audio-sel">' + memRepOptions(ayahRepDef) + '</select></label>';
+    html += '<label class="mem-audio-opt">تكرار السورة<select id="memSurahRep" class="mem-audio-sel">' + memRepOptions(surahRepDef) + '</select></label>';
     html += '</div>';
     html += '<div class="mem-ctrl-btns">';
     html += '<button id="memRepBtn" class="pill mem-ctrl-btn mem-rep-btn" title="اضغط بعد كل تلاوة للمقطع" style="display:none"></button>';
@@ -3749,6 +3795,7 @@
     });
 
     startBtn.addEventListener('click', function () {
+      memStopAudio();
       var surahNum = parseInt(surahEl.value, 10);
       var from = parseInt(fromEl.value, 10) || 1;
       var to = parseInt(toEl.value, 10) || 5;
@@ -3806,6 +3853,7 @@
     });
 
     document.getElementById('memResetBtn').addEventListener('click', function () {
+      memStopAudio();
       memState.active = false;
       memState.level = 0;
       memState.reps = null;
@@ -3814,6 +3862,245 @@
       setupEl.style.display = '';
       areaEl.style.display = 'none';
     });
+
+    document.getElementById('memPlayBtn').addEventListener('click', memTogglePlay);
+
+    document.getElementById('memPrevBtn').addEventListener('click', function () {
+      if (!memState || !memState.active || !memState.sections.length) return;
+      memJumpTo(Math.max(0, memAudio.idx - 1));
+    });
+
+    document.getElementById('memNextBtn').addEventListener('click', function () {
+      if (!memState || !memState.active || !memState.sections.length) return;
+      memJumpTo(Math.min(memState.sections[0].ayahWords.length - 1, memAudio.idx + 1));
+    });
+
+    var ayahRepSel = document.getElementById('memAyahRep');
+    var surahRepSel = document.getElementById('memSurahRep');
+    if (ayahRepSel) {
+      ayahRepSel.addEventListener('change', function () {
+        localStorage.setItem(LS.memAyahRep, ayahRepSel.value);
+        memReadAudioPrefs();
+      });
+    }
+    if (surahRepSel) {
+      surahRepSel.addEventListener('change', function () {
+        localStorage.setItem(LS.memSurahRep, surahRepSel.value);
+        memReadAudioPrefs();
+      });
+    }
+  }
+
+  /* ---------- memorize audio ---------- */
+
+  function pad3(n) {
+    n = Number(n) || 0;
+    return n < 100 ? (n < 10 ? '00' : '0') + n : String(n);
+  }
+
+  function memAudioUrl(surah, ayah) {
+    return 'https://files.quranpedia.net/recitations/' + AUDIO_RECITATION_QALOON + '/' + pad3(surah) + pad3(ayah) + '.mp3';
+  }
+
+  function memAudioEl() {
+    if (!memAudio.el) {
+      memAudio.el = new Audio();
+      memAudio.el.preload = 'auto';
+      memAudio.el.addEventListener('ended', memAyahEnded);
+      memAudio.el.addEventListener('error', memAyahFailed);
+    }
+    return memAudio.el;
+  }
+
+  function memSafePlay(fn) {
+    var p = null;
+    try { p = fn(); } catch (e) {
+      memAudio.playing = false;
+      memUpdateAudioUI();
+      return;
+    }
+    if (p && typeof p.catch === 'function') {
+      p.catch(function () {
+        memAudio.playing = false;
+        memUpdateAudioUI();
+      });
+    }
+  }
+
+  function memPlayAyah(idx, replay) {
+    var sec = memState && memState.sections && memState.sections[0];
+    var ayahObj = sec && sec.ayahWords[idx];
+    if (!ayahObj) { memStopAudio(); return; }
+    var el = memAudioEl();
+    memAudio.errorStreak = 0;
+    if (replay && el.src) {
+      el.currentTime = 0;
+      memAudio.playing = true;
+      memSafePlay(function () { el.play(); });
+    } else {
+      el.src = memAudioUrl(sec.surah, ayahObj.ayah);
+      memAudio.playing = true;
+      memSafePlay(function () { el.play(); });
+    }
+    memUpdateAudioUI();
+  }
+
+  function memReadAudioPrefs() {
+    var a = document.getElementById('memAyahRep');
+    var s = document.getElementById('memSurahRep');
+    memAudio.ayahInf = !!(a && a.value === 'inf');
+    memAudio.ayahRep = (!memAudio.ayahInf && a) ? (parseInt(a.value, 10) || 1) : 1;
+    memAudio.surahInf = !!(s && s.value === 'inf');
+    memAudio.surahRep = (!memAudio.surahInf && s) ? (parseInt(s.value, 10) || 1) : 1;
+  }
+
+  function memStartAudio() {
+    if (!memState || !memState.active || !memState.sections.length) return;
+    if (!memState.sections[0].ayahWords.length) return;
+    memAudioEl();
+    memReadAudioPrefs();
+    memAudio.active = true;
+    memAudio.idx = 0;
+    memAudio.pass = 1;
+    memAudio.ayahRepLeft = memAudio.ayahInf ? -1 : memAudio.ayahRep;
+    memPlayAyah(0, false);
+  }
+
+  function memTogglePlay() {
+    if (!memState || !memState.active || !memState.sections.length) return;
+    if (!memState.sections[0].ayahWords.length) return;
+    if (!memAudio.active) { memStartAudio(); return; }
+    var el = memAudioEl();
+    if (memAudio.playing) {
+      el.pause();
+      memAudio.playing = false;
+    } else {
+      memAudio.playing = true;
+      memSafePlay(function () { el.play(); });
+    }
+    memUpdateAudioUI();
+  }
+
+  function memStopAudio() {
+    memAudio.active = false;
+    memAudio.playing = false;
+    if (memAudio.el) {
+      try { memAudio.el.pause(); } catch (e) {}
+      try { memAudio.el.removeAttribute('src'); } catch (e) {}
+      try { memAudio.el.load(); } catch (e) {}
+    }
+    memUpdateAudioUI();
+  }
+
+  function memJumpTo(idx) {
+    if (!memState || !memState.active || !memState.sections.length) return;
+    var len = memState.sections[0].ayahWords.length;
+    if (!len) return;
+    memAudioEl();
+    memReadAudioPrefs();
+    memAudio.active = true;
+    memAudio.idx = Math.max(0, Math.min(len - 1, idx));
+    memAudio.ayahRepLeft = memAudio.ayahInf ? -1 : memAudio.ayahRep;
+    memPlayAyah(memAudio.idx, false);
+  }
+
+  function memAyahEnded() {
+    if (!memAudio.active) return;
+    if (memAudio.ayahInf) { memPlayAyah(memAudio.idx, true); return; }
+    memAudio.ayahRepLeft--;
+    if (memAudio.ayahRepLeft > 0) { memPlayAyah(memAudio.idx, true); return; }
+    var sec = memState.sections[0];
+    var next = memAudio.idx + 1;
+    if (next < sec.ayahWords.length) {
+      memAudio.idx = next;
+      memAudio.ayahRepLeft = memAudio.ayahRep;
+      memPlayAyah(next, false);
+      return;
+    }
+    if (memAudio.surahInf) {
+      memAudio.pass++;
+      memAudio.idx = 0;
+      memAudio.ayahRepLeft = memAudio.ayahRep;
+      memPlayAyah(0, false);
+      return;
+    }
+    if (memAudio.pass >= memAudio.surahRep) { memStopAudio(); return; }
+    memAudio.pass++;
+    memAudio.idx = 0;
+    memAudio.ayahRepLeft = memAudio.ayahRep;
+    memPlayAyah(0, false);
+  }
+
+  function memAyahFailed() {
+    if (!memAudio.active) return;
+    memAudio.errorStreak++;
+    if (memAudio.errorStreak > 3) { memStopAudio(); return; }
+    memAyahEnded();
+  }
+
+  function memRepDefault(key, fallback) {
+    var v = localStorage.getItem(key);
+    if (v === '1' || v === 'inf') return v;
+    for (var i = 0; i < MEM_REP_PRIMES.length; i++) {
+      if (v === String(MEM_REP_PRIMES[i])) return v;
+    }
+    return fallback;
+  }
+
+  function memRepOptions(selected) {
+    var opts = [['1', 'مرة واحدة']];
+    for (var i = 0; i < MEM_REP_PRIMES.length; i++) {
+      var n = MEM_REP_PRIMES[i];
+      var label = (n === 2) ? 'مرتين' : (n <= 10 ? n + ' مرات' : n + ' مرة');
+      opts.push([String(n), label]);
+    }
+    opts.push(['inf', 'تكرار دائم']);
+    var out = '';
+    for (var j = 0; j < opts.length; j++) {
+      out += '<option value="' + opts[j][0] + '"' + (String(selected) === opts[j][0] ? ' selected' : '') + '>' + opts[j][1] + '</option>';
+    }
+    return out;
+  }
+
+  function memUpdateAudioHighlight() {
+    var mushaf = document.getElementById('memMushaf');
+    if (!mushaf || !memState || !memState.active) return;
+    var existing = mushaf.querySelectorAll('.mem-playing');
+    for (var i = 0; i < existing.length; i++) existing[i].classList.remove('mem-playing');
+    if (!memAudio.active) return;
+    var sec = memState.sections && memState.sections[0];
+    var ayahObj = sec && sec.ayahWords[memAudio.idx];
+    if (!ayahObj) return;
+    var verse = mushaf.querySelector('.verse[data-ayah="' + ayahObj.ayah + '"]');
+    if (verse) {
+      verse.classList.add('mem-playing');
+      try { verse.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { verse.scrollIntoView(); }
+    }
+  }
+
+  function memUpdateAudioStatus() {
+    var st = document.getElementById('memAudioStatus');
+    if (!st) return;
+    if (!memAudio.active || !memState || !memState.active) { st.textContent = ''; return; }
+    var sec = memState.sections[0];
+    var ayahObj = sec.ayahWords[memAudio.idx];
+    var parts = [];
+    parts.push('سورة ' + surahByNumber(sec.surah).nameAr);
+    parts.push('الآية ' + toAr(ayahObj.ayah) + ' من ' + toAr(sec.ayahWords.length));
+    parts.push('تكرار الآية ' + (memAudio.ayahInf ? '∞' : String(memAudio.ayahRepLeft) + ' / ' + String(memAudio.ayahRep)));
+    if (memAudio.surahInf) parts.push('تكرار السورة ∞');
+    else if (memAudio.surahRep > 1) parts.push('تكرار السورة ' + toAr(memAudio.pass) + ' / ' + toAr(memAudio.surahRep));
+    st.textContent = parts.join(' — ');
+  }
+
+  function memUpdateAudioUI() {
+    var playBtn = document.getElementById('memPlayBtn');
+    if (playBtn) {
+      playBtn.innerHTML = memAudio.playing ? MEM_ICON_PAUSE : MEM_ICON_PLAY;
+      playBtn.title = memAudio.playing ? 'إيقاف مؤقت' : 'تشغيل التلاوة';
+    }
+    memUpdateAudioStatus();
+    memUpdateAudioHighlight();
   }
 
   /* ---------- init ---------- */
@@ -3823,6 +4110,7 @@
     closeLabEdgePopup();
     window.scrollTo(0, 0);
     var route = parseHash();
+    if (!route.memorize) memStopAudio();
     if (route.tags && state.quran) {
       renderTags();
       if (!seedTagsLoaded) {
