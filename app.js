@@ -88,6 +88,71 @@
   var AUDIO_RECITATION_QALOON = 257;
   var AUDIO_HAFS_HUSARY = 'https://everyayah.com/data/Husary_128kbps/';
 
+  /* ---------- intro basmala ---------- */
+
+  var INTRO_AUDIO_URL = AUDIO_HAFS_HUSARY + '001000.mp3';
+  var INTRO_B64_KEY = 'intro_basmala_b64';
+  var INTRO_B64_MAX = 1000000;
+
+  function playIntroBasmala() {
+    var cached = localStorage.getItem(INTRO_B64_KEY) || '';
+    var audio = new Audio();
+    audio.preload = 'auto';
+    var playing = false;
+    function tryPlay() {
+      if (playing) return;
+      var p = null;
+      try { p = audio.play(); } catch (e) {}
+      if (p && typeof p.then === 'function') {
+        p.then(function () { playing = true; }).catch(function () {});
+      } else {
+        playing = true;
+      }
+    }
+    audio.addEventListener('canplay', tryPlay);
+    audio.addEventListener('play', function () { playing = true; });
+    if (!cached) {
+      fetch(INTRO_AUDIO_URL).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      }).then(function (blob) {
+        if (blob.size > Math.floor(INTRO_B64_MAX * 0.75)) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var b64 = String(reader.result).split(',')[1];
+          try { localStorage.setItem(INTRO_B64_KEY, b64); } catch (e) {}
+        };
+        reader.onerror = function () {};
+        reader.readAsDataURL(blob);
+      }).catch(function () {});
+    }
+    audio.src = cached ? 'data:audio/mpeg;base64,' + cached : INTRO_AUDIO_URL;
+    tryPlay();
+    var unlocked = false;
+    function cleanupUnlock() {
+      introDoc.removeEventListener('pointerdown', unlock);
+      introDoc.removeEventListener('keydown', unlock);
+      introDoc.removeEventListener('touchstart', unlock);
+    }
+    function isNavGesture(e) {
+      var t = e && e.target;
+      return !!((t && t.closest) && t.closest('.brand-title, a[href^="#/"]'));
+    }
+    function unlock(e) {
+      if (unlocked) { cleanupUnlock(); return; }
+      if (isNavGesture(e)) return;
+      unlocked = true;
+      cleanupUnlock();
+      tryPlay();
+    }
+    var introDoc = document;
+    introDoc.addEventListener('pointerdown', unlock);
+    introDoc.addEventListener('keydown', unlock);
+    introDoc.addEventListener('touchstart', unlock);
+  }
+
+  playIntroBasmala();
+
   var RELATIONSHIPS = [
     { name: 'التطابق (Identity)', items: [
       { id: 'same-as', label: 'مطابق — نفس المعنى' },
@@ -359,7 +424,6 @@
 
 
   var FORMAT_VERSION = 2;
-  var FORMAT_TAG = 'quran-tag/v' + FORMAT_VERSION;
   var FORMAT_PREFIX = 'quran-tag/v';
 
   var state = {
@@ -458,6 +522,7 @@
   function loadTags() {
     var raw = null;
     try { raw = JSON.parse(localStorage.getItem(LS.tags)); } catch (e) { raw = null; }
+    var storedVersion = raw && typeof raw.version === 'number' ? raw.version : null;
     var categories = raw && Array.isArray(raw.categories) ? raw.categories : null;
     var tags = raw && Array.isArray(raw.tags) ? raw.tags : [];
     var verses = raw && raw.verses && typeof raw.verses === 'object' ? raw.verses : {};
@@ -498,7 +563,7 @@
     if (ayahMeta['t-iman']) { delete ayahMeta['t-iman']; removedIman = true; }
     if (removedIman) {
       try {
-        localStorage.setItem(LS.tags, JSON.stringify({ categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
+        localStorage.setItem(LS.tags, JSON.stringify({ version: FORMAT_VERSION, categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
       } catch (e) {}
     }
 
@@ -513,7 +578,7 @@
       }
       categories = defs;
       try {
-        localStorage.setItem(LS.tags, JSON.stringify({ categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
+        localStorage.setItem(LS.tags, JSON.stringify({ version: FORMAT_VERSION, categories: categories, tags: tags, verses: verses, ayahMeta: ayahMeta }));
       } catch (e) {}
     } else {
       var catIds = {};
@@ -528,11 +593,12 @@
     tags.forEach(function (t) { byId[t.id] = t; });
     var byCatId = {};
     categories.forEach(function (c) { byCatId[c.id] = c; });
-    return { tags: tags, byId: byId, categories: categories, byCatId: byCatId, verses: verses };
+    return { tags: tags, byId: byId, categories: categories, byCatId: byCatId, verses: verses, version: storedVersion };
   }
 
   function saveTags() {
     localStorage.setItem(LS.tags, JSON.stringify({
+      version: FORMAT_VERSION,
       categories: tagState.categories,
       tags: tagState.tags,
       verses: tagState.verses,
@@ -716,9 +782,12 @@
       var m = state.ayahMeta[tagId];
       if (m && Object.keys(m).length) ayahMetaOut[tagId] = m;
     });
+    var effVersion = (typeof tagState.version === 'number' && !isNaN(tagState.version))
+      ? tagState.version
+      : FORMAT_VERSION;
     return {
-      format: FORMAT_TAG,
-      version: FORMAT_VERSION,
+      format: FORMAT_PREFIX + effVersion,
+      version: effVersion,
       exportedAt: new Date().toISOString(),
       categories: tagState.categories.map(function (c) {
         return { id: c.id, name: c.name, color: c.color };
@@ -2619,15 +2688,17 @@
     if (showTags) html += '<button type="button" class="pill" id="tagFilterToggle">تصفية الوسوم</button>';
     html += '</div>';
 
+    html += '<div class="mem-audio-row">';
     html += '<div class="mem-audio reader-audio">';
-    html += '<button id="rdrPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="rdrPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
+    html += '<button id="rdrPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="rdrNextBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية التالية">' + MEM_ICON_NEXT + '</button>';
     html += '<span id="rdrAudioStatus" class="mem-audio-status"></span>';
     html += '</div>';
     html += '<div class="mem-audio-opts reader-audio-opts">';
     html += '<label class="mem-audio-opt">تكرار الآية<select id="rdrAyahRep" class="mem-audio-sel">' + memRepOptions(memRepDefault(LS.memAyahRep, '1')) + '</select></label>';
     html += '<label class="mem-audio-opt">تكرار السورة<select id="rdrSurahRep" class="mem-audio-sel">' + memRepOptions(memRepDefault(LS.memSurahRep, '1')) + '</select></label>';
+    html += '</div>';
     html += '</div>';
 
     if (q.bismillah) {
@@ -3505,8 +3576,8 @@
   var MEM_ICON_DONE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   var MEM_ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   var MEM_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
-  var MEM_ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-9 6 9 6z"/></svg>';
-  var MEM_ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/></svg>';
+  var MEM_ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/></svg>';
+  var MEM_ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-9 6 9 6z"/></svg>';
   var MEM_REP_PRIMES = [];
   (function () {
     var n, q, isPrime;
@@ -3783,15 +3854,17 @@
     html += '</div>';
     html += '<div class="mem-level" id="memLevel"></div>';
     html += '</div>';
+    html += '<div class="mem-audio-row">';
     html += '<div class="mem-audio">';
-    html += '<button id="memPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="memPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
+    html += '<button id="memPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="memNextBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية التالية">' + MEM_ICON_NEXT + '</button>';
     html += '<span id="memAudioStatus" class="mem-audio-status"></span>';
     html += '</div>';
     html += '<div class="mem-audio-opts">';
     html += '<label class="mem-audio-opt">تكرار الآية<select id="memAyahRep" class="mem-audio-sel">' + memRepOptions(ayahRepDef) + '</select></label>';
     html += '<label class="mem-audio-opt">تكرار السورة<select id="memSurahRep" class="mem-audio-sel">' + memRepOptions(surahRepDef) + '</select></label>';
+    html += '</div>';
     html += '</div>';
     html += '<div class="mem-ctrl-btns">';
     html += '<button id="memRepBtn" class="pill mem-ctrl-btn mem-rep-btn" title="اضغط بعد كل تلاوة للمقطع" style="display:none"></button>';
