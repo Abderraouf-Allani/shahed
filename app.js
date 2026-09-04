@@ -3596,6 +3596,25 @@
   }
 
   var memState = null;
+  var MEM_VIS_BTN_IDS = ['memHideBtn', 'memHelpBtn', 'memPeekBtn'];
+  function memLockBtns() {
+    memState.busy = true;
+    MEM_VIS_BTN_IDS.forEach(function (id) { var b = document.getElementById(id); if (b) b.disabled = true; });
+  }
+  function memUnlockBtns() {
+    memState.busy = false;
+    MEM_VIS_BTN_IDS.forEach(function (id) { var b = document.getElementById(id); if (b) b.disabled = false; });
+  }
+  function memCommit(onDone) {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        if (memState && memState.active) positionMemBlanks();
+        onDone();
+      });
+    } else {
+      onDone();
+    }
+  }
   var memRO = null;
 
   var memAudio = {
@@ -3682,16 +3701,19 @@
   function applyMemLevel() {
     if (!memState || !memState.active) return;
     if (memState.reps !== null) return;
+    if (memState.busy) return;
+    memLockBtns();
     memState.peeking = false;
     var allWords = collectMemWords();
     var visible = allWords.filter(function (w) { return !w.hidden; });
-    if (!visible.length) return;
+    if (!visible.length) { memUnlockBtns(); return; }
     var totalCount = allWords.length;
     var hideCount = Math.max(1, Math.ceil(totalCount * 0.2));
     var toHide = shuffleArray(visible).slice(0, hideCount);
     toHide.forEach(function (w) { w.hidden = true; });
     memState.level++;
     renderMemWords();
+    memCommit(memUnlockBtns);
   }
 
   function revealMemWords() {
@@ -3719,9 +3741,11 @@
 
   function showMemHelp() {
     if (!memState || !memState.active || memState.level <= 0) return;
+    if (memState.busy) return;
+    memLockBtns();
     var allWords = collectMemWords();
     var hidden = allWords.filter(function (w) { return w.hidden; });
-    if (!hidden.length) return;
+    if (!hidden.length) { memUnlockBtns(); return; }
     var toShow;
     if (memState.level <= 1) {
       toShow = hidden;
@@ -3732,6 +3756,7 @@
     toShow.forEach(function (w) { w.hidden = false; });
     memState.level--;
     renderMemWords();
+    memCommit(memUnlockBtns);
   }
 
   function renderMemWords() {
@@ -3817,7 +3842,7 @@
 
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
-    memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null };
+    memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, busy: false };
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
     var defSurah = (saved && saved.surah) || 1;
@@ -3943,13 +3968,14 @@
     });
 
     document.getElementById('memHideBtn').addEventListener('click', function () {
+      if (memState.busy) return;
       if (memState.peeking) return;
       if (memState.reps !== null) return;
       applyMemLevel();
     });
 
     document.getElementById('memRepBtn').addEventListener('click', function () {
-      if (!memState || !memState.active || memState.reps === null) return;
+      if (!memState || !memState.active || memState.reps === null || memState.busy) return;
       if (memState.reps > 0) {
         memState.reps--;
         renderMemWords();
@@ -3957,13 +3983,14 @@
     });
 
     var peekBtn = document.getElementById('memPeekBtn');
-    peekBtn.addEventListener('mousedown', function () { revealMemWords(); });
-    peekBtn.addEventListener('mouseup', function () { unrevealMemWords(); });
+    peekBtn.addEventListener('mousedown', function () { if (!memState.busy) revealMemWords(); });
+    peekBtn.addEventListener('mouseup', function () { if (memState.peeking) unrevealMemWords(); });
     peekBtn.addEventListener('mouseleave', function () { if (memState.peeking) unrevealMemWords(); });
-    peekBtn.addEventListener('touchstart', function (e) { e.preventDefault(); revealMemWords(); }, { passive: false });
-    peekBtn.addEventListener('touchend', function () { unrevealMemWords(); });
+    peekBtn.addEventListener('touchstart', function (e) { e.preventDefault(); if (!memState.busy) revealMemWords(); }, { passive: false });
+    peekBtn.addEventListener('touchend', function () { if (memState.peeking) unrevealMemWords(); });
 
     document.getElementById('memHelpBtn').addEventListener('click', function () {
+      if (memState.busy) return;
       showMemHelp();
     });
 
@@ -3974,6 +4001,7 @@
       memState.reps = null;
       memState.sections = [];
       memState.peeking = false;
+      memUnlockBtns();
       setupEl.style.display = '';
       areaEl.style.display = 'none';
     });

@@ -1590,6 +1590,9 @@ html.dark .loader-caption { color: #9a917f; }
 }
 .mem-ctrl-btn svg { flex-shrink: 0; }
 .mem-ctrl-btn:not(.mem-icon-btn) svg { margin-inline-end: 0.35rem; }
+.mem-ctrl-btn:disabled {
+  opacity: 0.35; cursor: not-allowed; pointer-events: none;
+}
 .mem-peek-btn {
   background: var(--surface-2) !important;
   border-color: var(--gold) !important; color: var(--gold) !important;
