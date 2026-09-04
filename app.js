@@ -3671,6 +3671,7 @@
     var existing = mushaf.querySelectorAll('.mem-blank');
     for (var i = 0; i < existing.length; i++) existing[i].remove();
     var mr = mushaf.getBoundingClientRect();
+    var rects = [];
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) {
         var verse = mushaf.querySelector('.verse[data-ayah="' + aw.ayah + '"]');
@@ -3684,16 +3685,26 @@
           range.setEnd(tn, w.end);
           var r = range.getBoundingClientRect();
           if (!r.width && !r.height) return;
-          var b = document.createElement('span');
-          b.className = 'mem-blank';
-          b.style.left = String(Math.round(r.left - mr.left)) + 'px';
-          b.style.top = String(Math.round(r.top - mr.top)) + 'px';
-          b.style.width = String(Math.round(r.width)) + 'px';
-          b.style.height = String(Math.round(r.height)) + 'px';
-          mushaf.appendChild(b);
+          rects.push({
+            left: Math.round(r.left - mr.left),
+            top: Math.round(r.top - mr.top),
+            width: Math.round(r.width),
+            height: Math.round(r.height)
+          });
         });
       });
     });
+    var frag = document.createDocumentFragment();
+    for (var j = 0; j < rects.length; j++) {
+      var b = document.createElement('span');
+      b.className = 'mem-blank';
+      b.style.left = String(rects[j].left) + 'px';
+      b.style.top = String(rects[j].top) + 'px';
+      b.style.width = String(rects[j].width) + 'px';
+      b.style.height = String(rects[j].height) + 'px';
+      frag.appendChild(b);
+    }
+    mushaf.appendChild(frag);
   }
 
   function measureAllWords() { return; }
