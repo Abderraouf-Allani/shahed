@@ -153,6 +153,29 @@
 
   playIntroBasmala();
 
+  /* ---------- screen wake lock ---------- */
+
+  var wakeSentinel = null;
+  var screenWakeSupported = !!(navigator.wakeLock && navigator.wakeLock.request);
+
+  function requestScreenWake() {
+    if (!screenWakeSupported) return;
+    if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return;
+    if (wakeSentinel) return;
+    var p = null;
+    try { p = navigator.wakeLock.request('screen'); } catch (e) { wakeSentinel = null; return; }
+    if (p && typeof p.then === 'function') {
+      p.then(function (s) { wakeSentinel = s; }).catch(function () { wakeSentinel = null; });
+    }
+  }
+
+  requestScreenWake();
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') requestScreenWake();
+    });
+  }
+
   var RELATIONSHIPS = [
     { name: 'التطابق (Identity)', items: [
       { id: 'same-as', label: 'مطابق — نفس المعنى' },
@@ -3508,6 +3531,61 @@
     applyFontSize();
   }
 
+  /* ---------- pinch to resize mushaf ---------- */
+
+  var pinch = { on: false, startDist: 0, acc: 0 };
+
+  function pinchDist(t) {
+    var dx = t[0].clientX - t[1].clientX;
+    var dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function pinchTouchStart(e) {
+    if (e.touches.length === 2) {
+      pinch.on = true;
+      pinch.startDist = pinchDist(e.touches);
+      pinch.acc = 0;
+      if (e.cancelable) e.preventDefault();
+    } else if (pinch.on) {
+      pinch.on = false;
+      pinch.acc = 0;
+    }
+  }
+
+  function pinchTouchMove(e) {
+    if (!pinch.on || e.touches.length !== 2) return;
+    if (e.cancelable) e.preventDefault();
+    var dist = pinchDist(e.touches);
+    var step = Math.max(24, pinch.startDist * 0.12);
+    pinch.acc += dist - pinch.startDist;
+    pinch.startDist = dist;
+    var steps = 0;
+    while (pinch.acc >= step) { steps++; pinch.acc -= step; }
+    while (pinch.acc <= -step) { steps--; pinch.acc += step; }
+    if (steps) changeFontSize(steps);
+  }
+
+  function pinchTouchEnd(e) {
+    if (e.touches.length < 2 && pinch.on) {
+      pinch.on = false;
+      pinch.acc = 0;
+    }
+  }
+
+  document.addEventListener('touchstart', pinchTouchStart, { passive: false });
+  document.addEventListener('touchmove', pinchTouchMove, { passive: false });
+  document.addEventListener('touchend', pinchTouchEnd, { passive: false });
+  document.addEventListener('touchcancel', pinchTouchEnd, { passive: false });
+  document.addEventListener('wheel', function (e) {
+    if (!e.ctrlKey) return;
+    if (e.cancelable) e.preventDefault();
+    var d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) || 0;
+    var steps = 0;
+    if (d < 0) steps = 1; else if (d > 0) steps = -1;
+    if (steps) changeFontSize(steps);
+  }, { passive: false });
+
   /* ---------- keyboard nav ---------- */
 
   document.addEventListener('keydown', function (e) {
@@ -3815,16 +3893,6 @@
         lvl.textContent = 'المرحلة الأولى — المستوى ' + memState.level + ' — ' + pct + '% مخفي';
       }
     }
-    var bar = document.getElementById('memBar');
-    if (bar) {
-      var total2 = 0, hidden2 = 0;
-      memState.sections.forEach(function (sec) {
-        sec.ayahWords.forEach(function (aw) {
-          aw.words.forEach(function (w) { total2++; if (w.hidden) hidden2++; });
-        });
-      });
-      bar.style.width = total2 ? Math.round((hidden2 / total2) * 100) + '%' : '0%';
-    }
     var helpBtn = document.getElementById('memHelpBtn');
     if (helpBtn) helpBtn.disabled = memState.level <= 0 || memState.reps !== null;
     var hideBtn = document.getElementById('memHideBtn');
@@ -3885,9 +3953,6 @@
     html += '<div class="mushaf-text" id="memMushaf"></div>';
     html += '<div class="mem-controls">';
     html += '<div class="mem-ctrl-top">';
-    html += '<div class="mem-progress">';
-    html += '<div class="mem-progress-bar" id="memBar"></div>';
-    html += '</div>';
     html += '<div class="mem-level" id="memLevel"></div>';
     html += '</div>';
     html += '<div class="mem-audio-row">';
