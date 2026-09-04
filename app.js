@@ -3112,12 +3112,37 @@
       + '</span>';
   }
 
+  function retrySuggestWhenReady() {
+    loadOntology();
+    ontologyListeners.push(function () {
+      if (ontologyStatus !== 'ready' && ontologyStatus !== 'error') return;
+      if (!parseHash().tags || !state.suggestCatId) return;
+      var area = document.getElementById('tagArea');
+      if (area) renderTagArea();
+    });
+  }
+
   function renderSuggestPanel(cat) {
+    if (ontologyStatus === 'idle' || ontologyStatus === 'loading') {
+      retrySuggestWhenReady();
+      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
+        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
+        + '<div class="suggest-empty">جارٍ تحميل المفردات…</div>'
+        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
+        + '</div>';
+    }
+    if (ontologyStatus === 'error') {
+      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
+        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
+        + '<div class="suggest-empty">تعذّر تحميل المفردات — تحقق من اتصالك وأعد المحاولة.</div>'
+        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
+        + '</div>';
+    }
     var candidates = suggestTagsForCategory(cat.id, 10);
     if (!candidates.length) {
       return '<div class="suggest-panel" data-catid="' + cat.id + '">'
         + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
-        + '<div class="suggest-empty">جارٍ تحميل المفردات أو لا توجد اقتراحات مطابقة — أضف وسوماً وربطها بآيات أولاً.</div>'
+        + '<div class="suggest-empty">لا توجد اقتراحات مطابقة — أضف وسوماً وربطها بآيات أولاً.</div>'
         + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
         + '</div>';
     }
@@ -3921,6 +3946,7 @@
 
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
+    memStopAudio();
     memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, busy: false };
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
@@ -4117,8 +4143,15 @@
     return n < 100 ? (n < 10 ? '00' : '0') + n : String(n);
   }
 
-  function memAudioUrl(surah, ayah) {
+  function riwayaAudioUrl(surah, ayah) {
+    if (currentRiwaya() === 'hafs') {
+      return AUDIO_HAFS_HUSARY + pad3(surah) + pad3(ayah) + '.mp3';
+    }
     return 'https://files.quranpedia.net/recitations/' + AUDIO_RECITATION_QALOON + '/' + pad3(surah) + pad3(ayah) + '.mp3';
+  }
+
+  function memAudioUrl(surah, ayah) {
+    return riwayaAudioUrl(surah, ayah);
   }
 
   function memAudioEl() {
@@ -4337,10 +4370,7 @@
   }
 
   function rdrAudioUrl(surah, ayah) {
-    if (currentRiwaya() === 'hafs') {
-      return AUDIO_HAFS_HUSARY + pad3(surah) + pad3(ayah) + '.mp3';
-    }
-    return 'https://files.quranpedia.net/recitations/' + AUDIO_RECITATION_QALOON + '/' + pad3(surah) + pad3(ayah) + '.mp3';
+    return riwayaAudioUrl(surah, ayah);
   }
 
   function rdrAudioEl() {
