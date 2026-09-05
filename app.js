@@ -11,6 +11,10 @@
     return String(s).replace(/[٠-٩]/g, function (d) { return String(AR_DIGITS.indexOf(d)); });
   }
 
+  /* basmala preface for copied surahs; surah 9 (التوبة) has none */
+  var BASMALA_TXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+  var NO_BASMALA_SURAH = 9;
+
   function norm(s) {
     return String(s || '')
       .toLowerCase()
@@ -2922,8 +2926,8 @@
     applySurahAyahFilter();
 
     document.getElementById('shareBtn').addEventListener('click', function () {
-      var txt = q.verses.map(function (v, i) { return v + ' ' + toAr(i + 1); }).join(' ');
-      copyText('سُورَةُ ' + s.nameAr + '\n' + txt);
+      var txt = q.verses.map(function (v, i) { return v + ' ﴿' + toAr(i + 1) + '﴾'; }).join(' ');
+      copyText('سُورَةُ ' + s.nameAr + '\n' + (n === NO_BASMALA_SURAH ? '' : BASMALA_TXT + '\n') + txt);
     });
 
     if (targetAyah && targetAyah >= 1 && targetAyah <= q.verses.length) {
@@ -3873,20 +3877,22 @@
     memCommit(memUnlockBtns);
   }
 
-  function renderMemWords() {
+  function renderMemWords(force) {
     var mushaf = document.getElementById('memMushaf');
     if (!mushaf || !memState) return;
-    var html = '';
-    memState.sections.forEach(function (sec) {
-      sec.ayahWords.forEach(function (aw) {
-        var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
-        html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-ayah="' + aw.ayah + '">';
-        html += '<span class="verse-text">' + esc(fullText) + '</span>';
-        html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
-        html += '</span> ';
+    if (force || !mushaf.querySelector('.verse')) {
+      var html = '';
+      memState.sections.forEach(function (sec) {
+        sec.ayahWords.forEach(function (aw) {
+          var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
+          html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-ayah="' + aw.ayah + '">';
+          html += '<span class="verse-text">' + esc(fullText) + '</span>';
+          html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
+          html += '</span> ';
+        });
       });
-    });
-    mushaf.innerHTML = html;
+      mushaf.innerHTML = html;
+    }
     positionMemBlanks();
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(function () { if (memState && memState.active) positionMemBlanks(); });
@@ -4065,7 +4071,7 @@
       try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, from: from, to: to })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
-      renderMemWords();
+      renderMemWords(true);
       updateHeaderReading();
     });
 
