@@ -334,8 +334,9 @@
       for (var i = 0; i < ids.length; i++) {
         if (catTagId[ids[i]]) {
           var sp = vkey.split(':');
+          var aa = activeAyahOf(+sp[0], +sp[1]);
           var q = state.quran && state.quran[(+sp[0]) - 1];
-          var tx = q && q.verses[(+sp[1]) - 1];
+          var tx = q && q.verses[aa - 1];
           if (tx) parts.push(normalizeWordForMatch(tx));
           break;
         }
@@ -517,7 +518,11 @@
       if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
       Object.keys(seed.ayahMeta[tagId]).forEach(function (vkey) {
         var clean = sanitizeAyahMeta(seed.ayahMeta[tagId][vkey]);
-        if (clean) state.ayahMeta[tagId][vkey] = clean;
+        if (!clean) return;
+        var sp = vkey.split(':');
+        var s = +sp[0], a = +sp[1];
+        var nk = (s && a) ? s + ':' + canonAyahFromQaloon(s, a) : vkey;
+        state.ayahMeta[tagId][nk] = clean;
       });
     });
     if (tagState.byId[seedTagId]) return;
@@ -537,11 +542,14 @@
     });
     Object.keys(seed.verses || {}).forEach(function (key) {
       var ids = seed.verses[key] || [];
-      var cur = tagState.verses[key] || [];
+      var sp = key.split(':');
+      var s = +sp[0], a = +sp[1];
+      var nk = (s && a) ? s + ':' + canonAyahFromQaloon(s, a) : key;
+      var cur = tagState.verses[nk] || [];
       ids.forEach(function (id) {
         if (cur.indexOf(id) === -1) cur.push(id);
       });
-      if (cur.length) tagState.verses[key] = cur;
+      if (cur.length) tagState.verses[nk] = cur;
     });
     saveTags();
   }
@@ -626,6 +634,7 @@
   function saveTags() {
     localStorage.setItem(LS.tags, JSON.stringify({
       version: FORMAT_VERSION,
+      num: 'hafs',
       categories: tagState.categories,
       tags: tagState.tags,
       verses: tagState.verses,
@@ -633,8 +642,30 @@
     }));
   }
 
+  /* Tag ids whose canonical key corresponds to this active-riwaya verse
+     (includes hafs keys inside a merged qaloon range). */
+  function storedIdsForActive(surah, ayah) {
+    var keys = [canonVerseKey(surah, ayah)];
+    if (state.riwaya !== 'hafs') {
+      var t = numberingForSurah(surah);
+      if (t && t[ayah - 1]) {
+        var r = t[ayah - 1];
+        for (var h = r[0]; h <= r[1]; h++) {
+          var k = surah + ':' + h;
+          if (keys.indexOf(k) === -1) keys.push(k);
+        }
+      }
+    }
+    var ids = [];
+    keys.forEach(function (k) {
+      var cur = tagState.verses[k] || [];
+      ids = ids.concat(cur);
+    });
+    return ids.filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+  }
+
   function getVerseTags(surah, ayah) {
-    var ids = tagState.verses[surah + ':' + ayah] || [];
+    var ids = storedIdsForActive(surah, ayah);
     return ids.map(function (id) { return tagState.byId[id]; }).filter(Boolean);
   }
 
@@ -643,7 +674,7 @@
   }
 
   function setAyahContext(surah, ayah, tagId, rel, note) {
-    var key = surah + ':' + ayah;
+    var key = canonVerseKey(surah, ayah);
     if (!state.ayahMeta[tagId]) state.ayahMeta[tagId] = {};
     var m = state.ayahMeta[tagId][key] = state.ayahMeta[tagId][key] || {};
     if (rel) m.rel = rel; else delete m.rel;
@@ -674,7 +705,7 @@
   }
 
   function toggleTagOnVerse(surah, ayah, tagId) {
-    var key = surah + ':' + ayah;
+    var key = canonVerseKey(surah, ayah);
     var ids = tagState.verses[key] || [];
     var i = ids.indexOf(tagId);
     if (i >= 0) { ids.splice(i, 1); } else { ids.push(tagId); rememberLastTag(tagId); }
@@ -683,7 +714,7 @@
   }
 
   function addTagIfMissing(surah, ayah, tagId) {
-    var key = surah + ':' + ayah;
+    var key = canonVerseKey(surah, ayah);
     var ids = tagState.verses[key] || [];
     if (ids.indexOf(tagId) === -1) {
       ids.push(tagId);
@@ -695,8 +726,10 @@
 
   /* Add a verse key to a tag's set WITHOUT re-saving each time (batched). */
   function addTagIfMissingStateOnly(vkey, tagId) {
-    var ids = tagState.verses[vkey] || [];
-    if (ids.indexOf(tagId) === -1) { ids.push(tagId); tagState.verses[vkey] = ids; }
+    var sp = vkey.split(':');
+    var nk = canonVerseKey(+sp[0], +sp[1]);
+    var ids = tagState.verses[nk] || [];
+    if (ids.indexOf(tagId) === -1) { ids.push(tagId); tagState.verses[nk] = ids; }
   }
 
   /* Record a tag-to-tag relationship edge in the Tag Lab graph storage. */
@@ -710,7 +743,7 @@
   }
 
   function removeTagFromVerse(surah, ayah, tagId) {
-    var key = surah + ':' + ayah;
+    var key = canonVerseKey(surah, ayah);
     var ids = tagState.verses[key] || [];
     var i = ids.indexOf(tagId);
     if (i >= 0) { ids.splice(i, 1); }
@@ -826,6 +859,7 @@
         return o;
       }),
       associations: tagState.verses,
+      num: 'hafs',
       ayahMeta: ayahMetaOut
     };
   }
@@ -883,6 +917,32 @@
       ? data.associations
       : (data.verses && typeof data.verses === 'object' ? data.verses : {});
     var metaIn = data.ayahMeta && typeof data.ayahMeta === 'object' ? data.ayahMeta : {};
+    if (data.num !== 'hafs' && numberingTable) {
+      var canonAssoc = {};
+      Object.keys(assoc).forEach(function (key) {
+        var sp = key.split(':');
+        var s = +sp[0], a = +sp[1];
+        var nk = (s && a) ? s + ':' + canonAyahFromQaloon(s, a) : key;
+        if (canonAssoc[nk]) canonAssoc[nk] = canonAssoc[nk].concat(assoc[key]);
+        else canonAssoc[nk] = assoc[key];
+      });
+      assoc = canonAssoc;
+      var canonMeta = {};
+      Object.keys(metaIn).forEach(function (tagId) {
+        var mv = metaIn[tagId];
+        if (!mv || typeof mv !== 'object') return;
+        var nn = {};
+        Object.keys(mv).forEach(function (vkey) {
+          var sp = vkey.split(':');
+          var s = +sp[0], a = +sp[1];
+          var nk = (s && a) ? s + ':' + canonAyahFromQaloon(s, a) : vkey;
+          if (nn[nk]) nn[nk] = Object.assign({}, nn[nk], mv[vkey]);
+          else nn[nk] = mv[vkey];
+        });
+        canonMeta[tagId] = nn;
+      });
+      metaIn = canonMeta;
+    }
 
     var catMap = {};
     var mergedCats = 0;
@@ -1534,13 +1594,16 @@
     tagState.tags.push(tag);
     tagState.byId[tag.id] = tag;
     matched.forEach(function (key) {
-      var cur = tagState.verses[key] || [];
+      var sp = key.split(':');
+      var s = +sp[0], a = +sp[1];
+      var nk = (s && a) ? canonVerseKey(s, a) : key;
+      var cur = tagState.verses[nk] || [];
       if (cur.indexOf(tag.id) === -1) cur.push(tag.id);
-      tagState.verses[key] = cur;
+      tagState.verses[nk] = cur;
       var m = sanitizeAyahMeta(metaOf[key]);
       if (m) {
         if (!state.ayahMeta[tag.id]) state.ayahMeta[tag.id] = {};
-        state.ayahMeta[tag.id][key] = Object.assign({}, state.ayahMeta[tag.id][key], m);
+        state.ayahMeta[tag.id][nk] = Object.assign({}, state.ayahMeta[tag.id][nk], m);
       }
     });
     saveTags();
@@ -1837,7 +1900,7 @@
 
   function persistLast(n, ayah) {
     localStorage.setItem(LS.last, n);
-    if (ayah) localStorage.setItem(LS.lastAyah, ayah);
+    if (ayah) localStorage.setItem(LS.lastAyah, canonAyah(n, ayah));
   }
 
   function computeLastReadAyah() {
@@ -1895,7 +1958,7 @@
   function verseTagChip(t, surah, ayah) {
     var catName = t.categoryId && tagState.byCatId[t.categoryId]
       ? tagState.byCatId[t.categoryId].name : 'بدون تصنيف';
-    var hasCtx = !!(state.ayahMeta[t.id] && state.ayahMeta[t.id][surah + ':' + ayah]);
+    var hasCtx = !!(state.ayahMeta[t.id] && state.ayahMeta[t.id][canonVerseKey(surah, ayah)]);
     return '<button type="button" class="tag-chip verse-tag-chip' + (hasCtx ? ' has-context' : '') + '"'
       + ' style="--tagc:' + t.color + '" data-tagid="' + t.id + '" data-ayah="' + surah + ':' + ayah + '"'
       + ' data-cat="' + esc(catName) + '" title="' + (hasCtx ? 'اضغط لعرض سياق الاستشهاد' : 'اضغط لعرض تفاصيل الوسم') + '">'
@@ -1923,7 +1986,7 @@
 
   function openTagMenu(surah, ayah, anchor) {
     closeTagMenu();
-    var currentIds = tagState.verses[surah + ':' + ayah] || [];
+    var currentIds = storedIdsForActive(surah, ayah);
     var surahName = surahByNumber(surah).nameAr;
 
     var menu = document.createElement('div');
@@ -2325,7 +2388,7 @@
     closeTagContextPopup();
     var t = tagState.byId[tagId];
     if (!t) return;
-    var key = surah + ':' + ayah;
+    var key = canonVerseKey(surah, ayah);
     var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][key];
     var surahName = surahByNumber(surah).nameAr;
 
@@ -2384,7 +2447,8 @@
     closeTagContextEditor();
     var verse = chip.dataset.ayah;
     var tagId = chip.dataset.tagid;
-    var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][verse];
+    var vp = verse.split(':');
+    var meta = state.ayahMeta[tagId] && state.ayahMeta[tagId][canonVerseKey(+vp[0], +vp[1])];
     var t = tagState.byId[tagId];
     if (!t) return;
     var parts = verse.split(':');
@@ -2497,9 +2561,10 @@
     html += '</div>';
 
     if (lastSurah) {
-      html += '<a class="continue-banner" href="#/surah/' + last + (lastAyah ? '/' + lastAyah : '') + '">';
+      var contAyah = last && lastAyah ? activeAyahOf(last, lastAyah) : null;
+      html += '<a class="continue-banner" href="#/surah/' + last + (contAyah ? '/' + contAyah : '') + '">';
       html += '<strong>متابعة القراءة:</strong> سورة ' + esc(lastSurah.nameAr) + ' — <em>' + esc(lastSurah.nameEn) + '</em>';
-      if (lastAyah) html += ' <span class="continue-ayah">الآية ' + toAr(lastAyah) + '</span>';
+      if (contAyah) html += ' <span class="continue-ayah">الآية ' + toAr(contAyah) + '</span>';
       html += '</a>';
     }
 
@@ -3447,10 +3512,10 @@
       if (tagState.verses[key].indexOf(tagId) !== -1) {
         var parts = key.split(':');
         var surah = +parts[0];
-        var ayah = +parts[1];
+        var aa = activeAyahOf(surah, +parts[1]);
         var q = state.quran && state.quran[surah - 1];
-        if (!q || !q.verses[ayah - 1]) return;
-        out.push({ surah: surah, ayah: ayah, text: q.verses[ayah - 1] });
+        if (!q || !q.verses[aa - 1]) return;
+        out.push({ surah: surah, ayah: aa, text: q.verses[aa - 1] });
       }
     });
     out.sort(function (a, b) { return a.surah - b.surah || a.ayah - b.ayah; });
@@ -3957,8 +4022,12 @@
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
     var defSurah = (saved && saved.surah) || 1;
-    var defFrom = (saved && saved.from) || 1;
-    var defTo = (saved && saved.to) || 5;
+    var memCanon = !!(saved && saved.num === 'hafs');
+    var defFrom = memCanon && saved.from ? activeAyahOf(defSurah, saved.from) : (saved && saved.from) || 1;
+    var defTo = memCanon && saved.to ? activeAyahOf(defSurah, saved.to) : (saved && saved.to) || 5;
+    var memCnt = getAyahCount(defSurah);
+    if (defFrom > memCnt) defFrom = memCnt;
+    if (defTo > memCnt) defTo = memCnt;
     var ayahRepDef = memRepDefault(LS.memAyahRep, '1');
     var surahRepDef = memRepDefault(LS.memSurahRep, '1');
     var surahOptions = '';
@@ -4068,7 +4137,7 @@
       memState.reps = null;
       memState.sections = sections;
       memState.peeking = false;
-      try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, from: from, to: to })); } catch (e) {}
+      try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords(true);
@@ -4549,6 +4618,84 @@
     rdrHighlight();
   }
 
+  /* ---------- cross-riwaya canonical numbering ---------- */
+
+  var numberingTable = null;
+
+  function numberingForSurah(surah) {
+    if (!numberingTable || !numberingTable.qaloon) return null;
+    var t = numberingTable.qaloon[surah];
+    return Array.isArray(t) ? t : null;
+  }
+
+  /* Canonical (hafs) ayah covering a qaloon-numbered ayah. */
+  function canonAyahFromQaloon(surah, ayah) {
+    var t = numberingForSurah(surah);
+    if (!t || !t[ayah - 1]) return ayah;
+    return t[ayah - 1][0];
+  }
+
+  /* Canonical (hafs-numbered) ayah for a verse shown in the active riwaya. */
+  function canonAyah(surah, ayah) {
+    if (state.riwaya === 'hafs') return ayah;
+    return canonAyahFromQaloon(surah, ayah);
+  }
+
+  /* First active-riwaya ayah whose content covers canonical `h` (hafs). */
+  function activeAyahOf(surah, h) {
+    if (state.riwaya === 'hafs') return h;
+    var t = numberingForSurah(surah);
+    if (!t) return h;
+    for (var i = 0; i < t.length; i++) {
+      if (h >= t[i][0] && h <= t[i][1]) return i + 1;
+    }
+    return Math.min(h, t.length || h);
+  }
+
+  /* Canonical storage key for an active-riwaya verse. */
+  function canonVerseKey(surah, ayah) {
+    return surah + ':' + canonAyah(surah, ayah);
+  }
+
+  /* One-time migration: keys written before canonical numbering are qaloon-based. */
+  function migrateLegacyNumbering() {
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(LS.tags)); } catch (e) { raw = null; }
+    if (raw && raw.num === 'hafs') return;
+    var changed = false;
+    var rekeyObject = function (obj, isVerses) {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(function (key) {
+        var sp = key.split(':');
+        var s = +sp[0];
+        var a = +sp[1];
+        if (!s || !a) return;
+        var qn = state.quranSets && state.quranSets.qaloon && state.quranSets.qaloon[s - 1]
+          ? state.quranSets.qaloon[s - 1].verses.length : 0;
+        var c;
+        if (qn && a > qn) { c = a; } else { c = canonAyahFromQaloon(s, a); }
+        if (c === a) return;
+        var nk = s + ':' + c;
+        if (isVerses) {
+          var cur = obj[nk] || [];
+          obj[nk] = cur.concat(obj[key]).filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+        } else {
+          obj[nk] = obj[key];
+        }
+        delete obj[key];
+        changed = true;
+      });
+    };
+    rekeyObject(tagState.verses, true);
+    state.ayahMeta = state.ayahMeta || {};
+    Object.keys(state.ayahMeta).forEach(function (tagId) {
+      rekeyObject(state.ayahMeta[tagId], false);
+    });
+    if (changed || !(raw && typeof raw.num === 'string')) {
+      try { saveTags(); } catch (e) {}
+    }
+  }
+
   /* ---------- init ---------- */
 
   function render() {
@@ -4579,7 +4726,7 @@
 
   function loadData() {
     var loaded = 0;
-    var total = 2;
+    var total = 3;
     var count = function (v) {
       loaded++;
       if (window.__quranLoader) window.__quranLoader.progress(loaded / total);
@@ -4587,12 +4734,21 @@
     };
     var core = Promise.all([
       fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count)
+      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
+      fetch('data/numbering.json').then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(count).catch(function () {
+        loaded++;
+        return null;
+      })
     ]);
     return core.then(function (res) {
       state.surahs = res[0];
       state.quranSets = { qaloon: res[1] };
+      if (res[2] && res[2].qaloon && typeof res[2].qaloon === 'object') numberingTable = res[2];
       applyRiwaya();
+      migrateLegacyNumbering();
       if (state.riwaya === 'hafs') {
         return ensureHafs().catch(function () {
           localStorage.setItem(LS.riwaya, 'qaloon');
