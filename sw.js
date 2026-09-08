@@ -1,10 +1,11 @@
-const CACHE = 'quran-tag-v52';
+const CACHE = 'quran-tag-v55';
 const CORE_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './lab.js',
+  './plans.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

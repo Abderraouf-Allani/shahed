@@ -41,7 +41,8 @@
     memAyahRep: 'qaloon_mem_ayahrep',
     memSurahRep: 'qaloon_mem_surahrep',
     intended: 'qaloon_intended_list_v1',
-    tagScope: 'qaloon_tayahscope_v1'
+    tagScope: 'qaloon_tayahscope_v1',
+    plans: 'qaloon_plans_v1'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -1975,6 +1976,7 @@
     if (/^#\/tags/.test(location.hash)) return { tags: true };
     if (/^#\/lab/.test(location.hash)) return { lab: true };
     if (/^#\/memorize/.test(location.hash)) return { memorize: true };
+    if (/^#\/plans/.test(location.hash)) return { plans: true };
     return {};
   }
 
@@ -2761,6 +2763,7 @@
     html += '<div class="nav-pills">';
     html += '<a class="pill" href="#/"><span>الفهرس</span></a>';
     html += '<a class="pill" href="#/tags"><span>الوسوم</span></a>';
+    html += '<a class="pill" href="#/plans"><span>الخطط</span></a>';
     html += '<button class="pill" id="shareBtn" type="button"><span>نسخ الآيات</span></button>';
     html += '</div>';
     html += '<div class="font-size-ctl">';
@@ -3005,7 +3008,8 @@
     } else {
       window.scrollTo(0, 0);
     }
-  }
+  
+    plansMaybeAutoplayReader(n);}
 
   /* ---------- tags view ---------- */
 
@@ -3014,7 +3018,7 @@
 
     var html = '';
     html += '<div class="index-toolbar">';
-    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a><a class="pill" href="#/lab">المختبر</a></div>';
+    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a><a class="pill" href="#/lab">المختبر</a><a class="pill" href="#/plans">الخطط</a></div>';
     html += '<div class="tags-io">'
       + '<button type="button" class="io-btn" data-io="doc" title="رفع مستند (PDF أو DOCX) واستخراج الآيات منه كوسم جديد في تصنيف الكتب">رفع مستند</button>'
       + '<button type="button" class="io-btn" data-io="import" title="استيراد وسوم وتصنيفات من ملف">استيراد</button>'
@@ -4155,6 +4159,7 @@
       if (!memState || !memState.active || memState.reps === null || memState.busy) return;
       if (memState.reps > 0) {
         memState.reps--;
+        if (memState.reps === 0) plansNotifyMemorizeDone();
         renderMemWords();
       }
     });
@@ -4696,6 +4701,65 @@
     }
   }
 
+  /* ---------- plans (lazy-loaded plans.js) ---------- */
+
+  window.QuranPlansBridge = {
+    esc: esc,
+    toAr: toAr,
+    surahByNumber: surahByNumber,
+    newId: newId,
+    showAppToast: showAppToast,
+    activeAyahOf: activeAyahOf,
+    numberingForSurah: numberingForSurah,
+    getAyahCount: getAyahCount,
+    canonAyah: canonAyah,
+    LS: LS,
+    appEl: appEl
+  };
+
+  var plansScriptPromise = null;
+
+  function ensurePlansScript() {
+    if (window.QuranPlans) return Promise.resolve();
+    if (!plansScriptPromise) {
+      plansScriptPromise = new Promise(function (resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'plans.js';
+        s.async = true;
+        s.onload = function () { resolve(); };
+        s.onerror = function () { reject(new Error('plans load failed')); };
+        document.head.appendChild(s);
+      });
+      plansScriptPromise.catch(function () { plansScriptPromise = null; });
+    }
+    return plansScriptPromise;
+  }
+
+  function lazyLoadPlans() {
+    ensurePlansScript().then(function () {
+      if (window.QuranPlans) {
+        window.QuranPlans.render();
+      } else {
+        appEl.innerHTML = '<div class="empty-state">تعذّر تحميل الخطط.</div>';
+      }
+    }).catch(function () {
+      appEl.innerHTML = '<div class="empty-state">تعذّر تحميل صفحة الخطط.</div>';
+    });
+  }
+
+  /* Called at the end of renderReader: autostart listening-plan recitation. */
+  function plansMaybeAutoplayReader(surah) {
+    if (window.QuranPlans) window.QuranPlans.maybeAutoplayReader(surah);
+  }
+
+  /* Called when the memorize 50-rep loop completes: auto-check today's chunk.
+     Loads plans.js on demand so the check-off works even if #/plans was never visited. */
+  function plansNotifyMemorizeDone() {
+    ensurePlansScript().then(function () {
+      if (window.QuranPlans) window.QuranPlans.notifyMemorizeDone();
+    }).catch(function () {});
+  }
+
   /* ---------- init ---------- */
 
   function render() {
@@ -4716,6 +4780,8 @@
       lazyLoadLab();
     } else if (route.memorize && state.quran) {
       renderMemorize();
+    } else if (route.plans && state.quran) {
+      lazyLoadPlans();
     } else if (route.surah && state.surahs && surahByNumber(route.surah)) {
       renderReader(route.surah, route.ayah);
     } else {
