@@ -10,6 +10,8 @@
   var newId = B.newId;
   var showAppToast = B.showAppToast;
   var activeAyahOf = B.activeAyahOf;
+  var activeAyahEndOf = B.activeAyahEndOf || activeAyahOf;
+  var startReaderAt = B.startReaderAt;
   var numberingForSurah = B.numberingForSurah;
   var getAyahCount = B.getAyahCount;
   var canonAyah = B.canonAyah;
@@ -109,7 +111,7 @@
       var f = (s === fromS) ? fromH : 1;
       var t = (s === toS) ? toH : plansHafsCount(s);
       if (f > t) continue;
-      out.push({ surah: s, from: activeAyahOf(s, f), to: activeAyahOf(s, t) });
+      out.push({ surah: s, from: activeAyahOf(s, f), to: activeAyahEndOf(s, t) });
     }
     return out;
   }
@@ -314,9 +316,10 @@
     if (!flag) return;
     try { sessionStorage.removeItem('qaloon_plan_listen'); } catch (e) {}
     var parts = flag.split(':');
-    if (+parts[0] !== surah) return;
+    if (+parts[0] !== surah || !startReaderAt) return;
+    var from = +parts[1] || 1;
     setTimeout(function () {
-      try { rdrStartAudio(); } catch (e) {}
+      try { startReaderAt(from); } catch (e) {}
     }, 350);
   }
 
@@ -430,7 +433,7 @@
       }
       html += '<div class="plan-reviews" data-reviews="' + i + '"></div>';
       html += '<div class="plan-actions plan-foot-actions">';
-      html += '<button type="button" class="pill" data-del="' + i + '">حذف الخطة</button>';
+      html += '<button type="button" class="pill plan-del-btn" data-del="' + i + '">حذف الخطة</button>';
       html += '</div>';
       html += '</div>';
     });

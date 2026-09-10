@@ -383,10 +383,14 @@
       for (var i = 0; i < ids.length; i++) {
         if (catTagId[ids[i]]) {
           var sp = vkey.split(':');
-          var aa = activeAyahOf(+sp[0], +sp[1]);
+          var aas = activeAyahsCovering(+sp[0], +sp[1]);
           var q = state.quran && state.quran[(+sp[0]) - 1];
-          var tx = q && q.verses[aa - 1];
-          if (tx) parts.push(normalizeWordForMatch(tx));
+          if (q) {
+            aas.forEach(function (aa) {
+              var tx = q.verses[aa - 1];
+              if (tx) parts.push(normalizeWordForMatch(tx));
+            });
+          }
           break;
         }
       }
@@ -2598,7 +2602,7 @@
       if (!c || c.done || !c.to) return;
       var parts = String(c.to).split(':');
       if (+parts[0] !== surah) return;
-      var end = activeAyahOf(surah, +parts[1]);
+      var end = activeAyahEndOf(surah, +parts[1]);
       var cnt = getAyahCount(surah);
       if (end >= 1 && end <= cnt) out[end] = true;
     });
@@ -3617,10 +3621,13 @@
       if (tagState.verses[key].indexOf(tagId) !== -1) {
         var parts = key.split(':');
         var surah = +parts[0];
-        var aa = activeAyahOf(surah, +parts[1]);
+        var aas = activeAyahsCovering(surah, +parts[1]);
         var q = state.quran && state.quran[surah - 1];
-        if (!q || !q.verses[aa - 1]) return;
-        out.push({ surah: surah, ayah: aa, text: q.verses[aa - 1] });
+        if (!q) return;
+        aas.forEach(function (aa) {
+          if (!q.verses[aa - 1]) return;
+          out.push({ surah: surah, ayah: aa, text: q.verses[aa - 1] });
+        });
       }
     });
     out.sort(function (a, b) { return a.surah - b.surah || a.ayah - b.ayah; });
@@ -4241,7 +4248,7 @@
       if (!ct) ct = cf;
       if (cf > ct) { var tmp = cf; cf = ct; ct = tmp; }
       var from = isCanon ? activeAyahOf(sn, cf) : cf;
-      var to = isCanon ? activeAyahOf(sn, ct) : ct;
+      var to = isCanon ? activeAyahEndOf(sn, ct) : ct;
       var count = getAyahCount(sn);
       if (!count) continue;
       if (from < 1) from = 1;
@@ -4301,7 +4308,7 @@
     var defSurah = (saved && saved.surah) || 1;
     var memCanon = !!(saved && saved.num === 'hafs');
     var defFrom = memCanon && saved.from ? activeAyahOf(defSurah, saved.from) : (saved && saved.from) || 1;
-    var defTo = memCanon && saved.to ? activeAyahOf(defSurah, saved.to) : (saved && saved.to) || 5;
+    var defTo = memCanon && saved.to ? activeAyahEndOf(defSurah, saved.to) : (saved && saved.to) || 5;
     var planMemOrigin = !!(saved && saved.fromPlan && saved.planType === 'memorize');
     var memCnt = getAyahCount(defSurah);
     if (defFrom > memCnt) defFrom = memCnt;
@@ -4951,15 +4958,32 @@
     return canonAyahFromQaloon(surah, ayah);
   }
 
-  /* First active-riwaya ayah whose content covers canonical `h` (hafs). */
-  function activeAyahOf(surah, h) {
-    if (state.riwaya === 'hafs') return h;
+  /* All active-riwaya ayahs whose content covers canonical `h` (hafs).
+     Usually one; two when one hafs ayah spans two qaloon ayahs
+     (e.g. Fatiha 7 -> 6+7, Baqara 255 -> 253+254). */
+  function activeAyahsCovering(surah, h) {
+    if (state.riwaya === 'hafs') return [h];
     var t = numberingForSurah(surah);
-    if (!t) return h;
+    if (!t) return [h];
+    var out = [];
     for (var i = 0; i < t.length; i++) {
-      if (h >= t[i][0] && h <= t[i][1]) return i + 1;
+      if (h >= t[i][0] && h <= t[i][1]) out.push(i + 1);
     }
-    return Math.min(h, t.length || h);
+    if (!out.length) return [Math.min(h, t.length || h)];
+    return out;
+  }
+
+  /* First active-riwaya ayah whose content covers canonical `h` (hafs):
+     for range STARTS and single-verse lookups. */
+  function activeAyahOf(surah, h) {
+    return activeAyahsCovering(surah, h)[0];
+  }
+
+  /* Last active-riwaya ayah covering canonical `h`: for range ENDS, so a
+     chunk ending on a split hafs ayah keeps its final qaloon ayah. */
+  function activeAyahEndOf(surah, h) {
+    var v = activeAyahsCovering(surah, h);
+    return v[v.length - 1];
   }
 
   /* Canonical storage key for an active-riwaya verse. */
@@ -5015,6 +5039,8 @@
     newId: newId,
     showAppToast: showAppToast,
     activeAyahOf: activeAyahOf,
+    activeAyahEndOf: activeAyahEndOf,
+    startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
     numberingForSurah: numberingForSurah,
     getAyahCount: getAyahCount,
     canonAyah: canonAyah,
