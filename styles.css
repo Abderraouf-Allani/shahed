@@ -1822,6 +1822,13 @@ html.dark .plan-save-btn { color: #10241a; }
 }
 
 .plan-foot-actions { margin-top: 0.6rem; }
+.plan-del-btn {
+  color: #b3312c;
+  border-color: rgba(179, 49, 44, 0.55);
+}
+.plan-del-btn:hover { background: rgba(179, 49, 44, 0.08); }
+html.dark .plan-del-btn { color: #e88; border-color: rgba(238, 136, 136, 0.5); }
+html.dark .plan-del-btn:hover { background: rgba(238, 136, 136, 0.1); }
 
 .plan-done-msg {
   color: var(--accent);
