@@ -3894,6 +3894,63 @@
       onDone();
     }
   }
+
+  /* Coalescing guard: taps arriving while an operation is still running are
+     folded into a single catch-up pass instead of queuing a full render per
+     tap. hide/help rerun at most once; rapid rep taps accumulate their count
+     and apply in one render, so no recitation is ever lost. */
+  function memRequestAction(name) {
+    if (!memState || !memState.active) return;
+    if (name === 'rep' && memState.reps === null) return;
+    if (memState.busy) {
+      if (name === 'rep') memState.pendingRep = (memState.pendingRep || 0) + 1;
+      else memState.pendingAction = name;
+      return;
+    }
+    memRunAction(name);
+  }
+
+  function memRunAction(name) {
+    if (!memState || !memState.active || memState.busy) return;
+    if (name === 'hide') {
+      if (memState.peeking) return;
+      if (memState.reps !== null) return;
+      ensureMemHideScript().then(applyMemLevel).catch(function () { applyMemLevel(); });
+    } else if (name === 'help') {
+      showMemHelp();
+    } else if (name === 'rep') {
+      if (memState.reps === null) return;
+      memLockBtns();
+      memDecReps(1);
+      memCommit(memUnlockDrain);
+    }
+  }
+
+  function memDecReps(n) {
+    if (!memState || !memState.active || memState.reps === null || memState.reps <= 0) return;
+    memState.reps = Math.max(0, memState.reps - n);
+    if (memState.reps === 0) plansNotifyMemorizeDone();
+    renderMemWords();
+  }
+
+  function memUnlockDrain() {
+    memUnlockBtns();
+    if (!memState || !memState.active) {
+      if (memState) { memState.pendingRep = 0; memState.pendingAction = null; }
+      return;
+    }
+    if ((memState.pendingRep || 0) > 0) {
+      var pr = memState.pendingRep;
+      memState.pendingRep = 0;
+      memLockBtns();
+      memDecReps(pr);
+      memCommit(memUnlockDrain);
+      return;
+    }
+    var pa = memState.pendingAction;
+    memState.pendingAction = null;
+    if (pa) memRunAction(pa);
+  }
   var memRO = null;
 
   var memAudio = {
@@ -4024,7 +4081,7 @@
     toHide.forEach(function (w) { w.hidden = true; });
     memState.level++;
     renderMemWords();
-    memCommit(memUnlockBtns);
+    memCommit(memUnlockDrain);
   }
 
   function revealMemWords() {
@@ -4053,6 +4110,10 @@
   function showMemHelp() {
     if (!memState || !memState.active || memState.level <= 0) return;
     if (memState.busy) return;
+    /* + tapped in step 2 voids the repetition run: the count restarts at 50
+       on re-completion (existing allDone rule), and hiding is available again. */
+    var voidRun = memState.reps !== null;
+    if (voidRun && !confirm('الرجوع إلى مرحلة الإخفاء؟ ستفقد التكرارات المنجزة وسيبدأ العد من ٥٠ مجدداً')) return;
     memLockBtns();
     var allWords = collectMemWords();
     var hidden = allWords.filter(function (w) { return w.hidden; });
@@ -4066,6 +4127,7 @@
     }
     toShow.forEach(function (w) { w.hidden = false; });
     memState.level--;
+    if (voidRun) memState.reps = null;
     if (memState.reps === null) {
       /* Regression: splice a midpoint breakpoint into the AHEAD interval so
          the onward climb gains a rest stop (V1+tweak). */
@@ -4074,7 +4136,7 @@
       memState.rungs = MH ? MH.insertBreakpoint(rungs, memState.level) : rungs;
     }
     renderMemWords();
-    memCommit(memUnlockBtns);
+    memCommit(memUnlockDrain);
   }
 
   function renderMemWords(force) {
@@ -4228,6 +4290,8 @@
         memState.peeking = false;
         memState.featReady = false;
         memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+        memState.pendingAction = null;
+        memState.pendingRep = 0;
         try {
           saved.auto = false;
           localStorage.setItem(LS.memSession, JSON.stringify(saved));
@@ -4380,6 +4444,8 @@
       memState.peeking = false;
       memState.featReady = false;
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+      memState.pendingAction = null;
+      memState.pendingRep = 0;
       try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to), sections: [{ surah: surahNum, from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) }], auto: false })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
@@ -4388,22 +4454,14 @@
     });
 
     document.getElementById('memHideBtn').addEventListener('click', function () {
-      if (memState.busy) return;
-      if (memState.peeking) return;
-      if (memState.reps !== null) return;
-      ensureMemHideScript().then(applyMemLevel).catch(function () { applyMemLevel(); });
+      memRequestAction('hide');
     });
 
     /* Preload the hiding model while the learner reads the setup. */
     ensureMemHideScript().catch(function () {});
 
     document.getElementById('memRepBtn').addEventListener('click', function () {
-      if (!memState || !memState.active || memState.reps === null || memState.busy) return;
-      if (memState.reps > 0) {
-        memState.reps--;
-        if (memState.reps === 0) plansNotifyMemorizeDone();
-        renderMemWords();
-      }
+      memRequestAction('rep');
     });
 
     var peekBtn = document.getElementById('memPeekBtn');
@@ -4414,8 +4472,7 @@
     peekBtn.addEventListener('touchend', function () { if (memState.peeking) unrevealMemWords(); });
 
     document.getElementById('memHelpBtn').addEventListener('click', function () {
-      if (memState.busy) return;
-      showMemHelp();
+      memRequestAction('help');
     });
 
     document.getElementById('memResetBtn').addEventListener('click', function () {
@@ -4427,6 +4484,8 @@
       memState.peeking = false;
       memState.featReady = false;
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+      memState.pendingAction = null;
+      memState.pendingRep = 0;
       memUnlockBtns();
       setupEl.style.display = '';
       areaEl.style.display = 'none';
