@@ -27,6 +27,9 @@
 
   var STRUGGLE_TARGET = 7; /* successive good ratings to graduate from «حفظ متعثر» */
 
+  /* Western digits (0-9) for missed-day notifications — not ٠-٩. */
+  function toWest(n) { return String(n); }
+
   function plansLoad() {
     try {
       var v = JSON.parse(localStorage.getItem(LS.plans) || '[]');
@@ -346,11 +349,11 @@
     var n = s.overdue.length + s.reviews.length;
     if (!n) { el.innerHTML = ''; return; }
     var html = '<div class="plans-alert" role="alert">';
-    html += '<strong>🔔 تنبيه: لديك ' + toAr(n) + ' مهمة متأخرة</strong>';
+    html += '<strong>🔔 تنبيه: لديك ' + toWest(n) + ' مهمة متأخرة</strong>';
     html += '<span> (';
     var bits = [];
-    if (s.overdue.length) bits.push(toAr(s.overdue.length) + ' مهمة يومية');
-    if (s.reviews.length) bits.push(toAr(s.reviews.length) + ' مراجعة مستحقة');
+    if (s.overdue.length) bits.push(toWest(s.overdue.length) + ' مهمة يومية');
+    if (s.reviews.length) bits.push(toWest(s.reviews.length) + ' مراجعة مستحقة');
     html += bits.join(' + ') + ') — تداركها قبل تراكمها، وفّقك الله';
     html += '</span></div>';
     el.innerHTML = html;
@@ -415,7 +418,7 @@
         var due = plansChunkDue(p);
         var lateDays = plansDaysBetween(due, plansDayKey(0));
         if (lateDays > 0) {
-          html += '<span class="plan-late-badge">⏰ متأخرة ' + toAr(lateDays) + ' ي</span>';
+          html += '<span class="plan-late-badge">⏰ متأخرة ' + toWest(lateDays) + ' ي</span>';
         }
         html += '<span class="plan-actions">';
         html += '<a class="pill" data-go="' + i + '" href="' + plansDeepLink(p, cur) + '">' + plansGoLabel(p) + '</a>';
@@ -486,7 +489,7 @@
         var late = plansDaysBetween(c.nextReview, today);
         rows += '<div class="plan-review-row">'
           + '<span class="plan-chunk-label">' + c.label + '</span>'
-          + (late > 0 ? '<span class="plan-review-late">متأخرة ' + toAr(late) + ' ي</span>' : '')
+          + (late > 0 ? '<span class="plan-review-late">متأخرة ' + toWest(late) + ' ي</span>' : '')
           + '<span class="plan-actions">'
           + '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
           + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'

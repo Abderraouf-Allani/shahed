@@ -505,6 +505,18 @@ html[data-riwaya="hafs"] .mushaf-text {
 
 .verse { white-space: normal; }
 
+/* Surah search mode: one ayah per line (finder list) instead of continuous mushaf flow. */
+.mushaf-text.mushaf-searching { text-align: right; }
+.mushaf-text.mushaf-searching .verse {
+  display: block;
+  padding: 0.45rem 0.8rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  line-height: 2;
+}
+
 .ayah-num {
   display: inline-flex;
   align-items: center;

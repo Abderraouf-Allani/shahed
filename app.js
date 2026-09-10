@@ -7,6 +7,9 @@
     return String(n).replace(/[0-9]/g, function (d) { return AR_DIGITS[+d]; });
   }
 
+  /* Western digits (0-9) for missed-day notifications — not ٠-٩. */
+  function toWest(n) { return String(n); }
+
   function toEnDigits(s) {
     return String(s).replace(/[٠-٩]/g, function (d) { return String(AR_DIGITS.indexOf(d)); });
   }
@@ -2030,6 +2033,13 @@
 
   window.addEventListener('hashchange', render);
 
+  /* Confirm page refresh/reload so the reader doesn't lose their place
+     (active memorization level, audio position, open forms) by accident.
+     The browser shows its own generic confirmation message. */
+  window.addEventListener('beforeunload', function (e) {
+    e.preventDefault();
+  });
+
   /* ---------- tag menu (popover) ---------- */
 
   var tagMenu = null;
@@ -2566,6 +2576,8 @@
     }
     var countEl = document.getElementById('surahSearchCount');
     if (countEl) countEl.textContent = nq ? toAr(shown) + ' من ' + toAr(els.length) : '';
+    var mushaf = document.getElementById('mushaf');
+    if (mushaf) mushaf.classList.toggle('mushaf-searching', !!nq);
   }
 
   /* Final ayah of the current read/listen plan chunk, shown with a special
@@ -2712,7 +2724,7 @@
       html += '<div class="ayah-results-body"><div class="tayah-list">';
       var shown = list.length > 200 ? 200 : list.length;
       for (var i = 0; i < shown; i++) {
-        html += renderAyahCard(list[i]);
+        html += renderAyahCard(list[i], false, !showTags);
       }
       html += '</div></div>';
       if (list.length > 200) {
@@ -2784,8 +2796,8 @@
     try { due = getPlansDueCount(); } catch (e) { due = null; }
     if (!due || !due.total) { box.innerHTML = ''; return; }
     var bits = [];
-    if (due.overdue) bits.push(toAr(due.overdue) + ' مهمة يومية متأخرة');
-    if (due.reviews) bits.push(toAr(due.reviews) + ' مراجعة مستحقة');
+    if (due.overdue) bits.push(toWest(due.overdue) + ' مهمة يومية متأخرة');
+    if (due.reviews) bits.push(toWest(due.reviews) + ' مراجعة مستحقة');
     box.innerHTML = '<a class="plans-alert plans-alert-link" href="#/plans" role="alert">'
       + '🔔 لديك ' + bits.join(' + ') + ' — اضغط للمتابعة في صفحة الخطط</a>';
   }
@@ -3636,7 +3648,9 @@
     return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + toAr(ayah) + '</span></span> ';
   }
 
-  function renderAyahCard(a, withScope) {
+  /* hideTags: search popup follows the surah tags display config (showTags);
+     the tags page itself always shows chips. */
+  function renderAyahCard(a, withScope, hideTags) {
     var surah = surahByNumber(a.surah);
     var tags = getVerseTags(a.surah, a.ayah);
     var before = '', after = '', scope = '';
@@ -3665,8 +3679,8 @@
       + scope
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
       + '<div class="tayah-text">' + before + tagged + after + '</div>'
-      + (tags.length ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
-      + '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>'
+      + (tags.length && !hideTags ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
+      + (hideTags ? '' : '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>')
       + '</div>';
   }
 
@@ -5007,7 +5021,7 @@
     var n = 0;
     try { n = getPlansDueCount().total; } catch (e) { n = 0; }
     if (n > 0) {
-      badge.textContent = toAr(n > 9 ? '٩+' : n);
+      badge.textContent = n > 9 ? '9+' : toWest(n);
       badge.removeAttribute('hidden');
     } else {
       badge.setAttribute('hidden', '');
@@ -5028,8 +5042,8 @@
     if (stamp && stamp.day === today && stamp.sig === sig) return;
     try { localStorage.setItem(LS.plansNotif, JSON.stringify({ day: today, sig: sig })); } catch (e) {}
     var bits = [];
-    if (due.overdue) bits.push('مهام يومية متأخرة: ' + toAr(due.overdue));
-    if (due.reviews) bits.push('مراجعات مستحقة: ' + toAr(due.reviews));
+    if (due.overdue) bits.push('مهام يومية متأخرة: ' + toWest(due.overdue));
+    if (due.reviews) bits.push('مراجعات مستحقة: ' + toWest(due.reviews));
     var msg = '🔔 لديك مهام خطط متأخرة (' + bits.join('، ') + ') — افتح صفحة الخطط للمتابعة';
     showAppToast(msg);
     try {
