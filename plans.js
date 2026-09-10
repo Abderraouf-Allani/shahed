@@ -25,6 +25,8 @@
 
   var PLAN_REVIEW_STEPS = [1, 3, 7, 14, 30]; /* days after chunk completion */
 
+  var STRUGGLE_TARGET = 7; /* successive good ratings to graduate from «حفظ متعثر» */
+
   function plansLoad() {
     try {
       var v = JSON.parse(localStorage.getItem(LS.plans) || '[]');
@@ -148,8 +150,70 @@
     return Math.round((b - a) / 86400000);
   }
 
+  function plansAddDays(key, n) {
+    /* UTC frame, matching plansDayKey's toISOString stamps. */
+    var d = new Date(key + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + (n || 0));
+    return d.toISOString().slice(0, 10);
+  }
+
+  /* Due date of the current (pointer) chunk: one chunk per day from creation.
+     A chunk whose due date is before today counts as missed. */
+  function plansChunkDue(p) {
+    if (!p.created) return plansDayKey(0);
+    return plansAddDays(p.created, p.pointer || 0);
+  }
+
+  /* Missed work across all plans: overdue daily chunks + due spaced reviews. */
+  function plansDueSummary() {
+    var today = plansDayKey(0);
+    var out = { overdue: [], reviews: [] };
+    plansLoad().forEach(function (p) {
+      var chunks = p.chunks || [];
+      var cur = chunks[p.pointer || 0];
+      if (cur && !cur.done && (p.pointer || 0) < chunks.length) {
+        var due = plansChunkDue(p);
+        if (due < today) {
+          out.overdue.push({ plan: p, chunk: cur, due: due, late: plansDaysBetween(due, today) });
+        }
+      }
+      chunks.forEach(function (c, ci) {
+        if (!c.done || !c.nextReview || c.nextReview === 'done') return;
+        if (c.nextReview <= today) {
+          out.reviews.push({ plan: p, ci: ci, chunk: c, late: plansDaysBetween(c.nextReview, today) });
+        }
+      });
+    });
+    var st = struggleLoad();
+    (st && st.items || []).forEach(function (it, idx) {
+      if (it.nextReview && it.nextReview <= today) {
+        out.reviews.push({ struggle: true, ci: idx, chunk: it, late: plansDaysBetween(it.nextReview, today) });
+      }
+    });
+    return out;
+  }
+
+  function plansRequestNotifications() {
+    if (!('Notification' in window)) { showAppToast('التنبيهات غير مدعومة في هذا المتصفح'); return; }
+    if (Notification.permission === 'granted') { showAppToast('التنبيهات مفعّلة — سننبّهك عند تفويت مهمة'); return; }
+    try {
+      Notification.requestPermission().then(function (perm) {
+        showAppToast(perm === 'granted' ? 'تم تفعيل التنبيهات' : 'لم تُمنح صلاحية التنبيهات');
+      }).catch(function () { showAppToast('تعذّر طلب صلاحية التنبيهات'); });
+    } catch (e) {
+      try {
+        Notification.requestPermission(function (perm) {
+          showAppToast(perm === 'granted' ? 'تم تفعيل التنبيهات' : 'لم تُمنح صلاحية التنبيهات');
+        });
+      } catch (e2) { showAppToast('تعذّر طلب صلاحية التنبيهات'); }
+    }
+  }
+
   /* ---- events ---- */
-  function plansNotifyMemorizeDone() {
+  /* extra (optional): {sections:[{surah,from,to}] canonical, fromPlan:memPlanId}
+     from a plan-originated memorize session completed with the revision
+     checkbox on — creates/extends the linked auto revision plan. */
+  function plansNotifyMemorizeDone(extra) {
     var done = false;
     var all = plansLoad();
     all.forEach(function (p) {
@@ -161,6 +225,84 @@
       }
     });
     if (done) showAppToast('أُنجز هدف حفظ اليوم — وفّقك الله');
+    if (extra && extra.fromPlan && extra.sections && extra.sections.length) {
+      plansEnsureAutoRevise(extra.sections, extra.fromPlan);
+    }
+  }
+
+  /* Absolute [start,end] hafs span of canonical sections. */
+  function plansRangeAbs(sections) {
+    var min = Infinity, max = -Infinity;
+    sections.forEach(function (sec) {
+      var a = plansHafsAbs(sec.surah, sec.from);
+      var b = plansHafsAbs(sec.surah, sec.to);
+      if (a < min) min = a;
+      if (b > max) max = b;
+    });
+    return { start: min, end: max };
+  }
+
+  /* Create (or extend, when the new section is close: overlapping/adjacent to)
+     the auto revision plan linked to a memorize plan. Chunk done/review state
+     of identical ranges is preserved across the rebuild. */
+  function plansEnsureAutoRevise(sections, memPlanId) {
+    var all = plansLoad();
+    var memPlan = null, i, p;
+    for (i = 0; i < all.length; i++) {
+      if (all[i].id === memPlanId) { memPlan = all[i]; break; }
+    }
+    var r = plansRangeAbs(sections);
+    if (r.start === Infinity) return;
+    var target = null, targetRange = null;
+    for (i = 0; i < all.length; i++) {
+      p = all[i];
+      if (p.type !== 'revise' || !p.autoReviseFor || p.autoReviseFor !== memPlanId) continue;
+      var pr = { start: plansHafsAbs(p.fromSurah, p.fromAyah), end: plansHafsAbs(p.toSurah, p.toAyah) };
+      if (r.start <= pr.end + 1 && r.end >= pr.start - 1) { target = p; targetRange = pr; break; }
+    }
+    var unit = (target || memPlan || {}).unit || 'ayahs';
+    var perDay = (target || memPlan || {}).perDay || 5;
+    if (target) {
+      var ns = Math.min(r.start, targetRange.start);
+      var ne = Math.max(r.end, targetRange.end);
+      if (ns === targetRange.start && ne === targetRange.end) return; /* already covered */
+      var A = plansSurahOfAbs(ns), E = plansSurahOfAbs(ne);
+      var oldByKey = {};
+      (target.chunks || []).forEach(function (c) { oldByKey[c.from + '-' + c.to] = c; });
+      var fresh = plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: A.surah, fromAyah: A.ayah, toSurah: E.surah, toAyah: E.ayah });
+      fresh.forEach(function (c) {
+        var o = oldByKey[c.from + '-' + c.to];
+        if (o && o.done) { c.done = o.done; c.reviewIdx = o.reviewIdx; c.nextReview = o.nextReview; }
+      });
+      target.fromSurah = A.surah; target.fromAyah = A.ayah;
+      target.toSurah = E.surah; target.toAyah = E.ayah;
+      target.chunks = fresh;
+      target.pointer = 0;
+      for (i = 0; i < fresh.length; i++) {
+        if (!fresh[i].done) break;
+        target.pointer = i + 1;
+      }
+      plansPersistPlan(target);
+      showAppToast('حُدّثت خطة المراجعة التلقائية — ' + toAr(fresh.length) + ' يوماً');
+      return;
+    }
+    if (all.length >= 8) { showAppToast('تعذّر إنشاء خطة المراجعة — الحد الأقصى ٨ خطط'); return; }
+    var S = plansSurahOfAbs(r.start), T = plansSurahOfAbs(r.end);
+    var plan = {
+      id: newId('p'),
+      type: 'revise',
+      unit: unit,
+      perDay: perDay,
+      fromSurah: S.surah, fromAyah: S.ayah,
+      toSurah: T.surah, toAyah: T.ayah,
+      pointer: 0,
+      created: plansDayKey(0),
+      autoReviseFor: memPlanId,
+      chunks: plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: S.surah, fromAyah: S.ayah, toSurah: T.surah, toAyah: T.ayah })
+    };
+    all.push(plan);
+    plansSave(all);
+    showAppToast('أُنشئت خطة مراجعة تلقائية للمقطع المحفوظ — وفّقك الله');
   }
 
   function plansMaybeAutoplayReader(surah) {
@@ -185,22 +327,74 @@
     html += '</div>';
     html += '<div class="plans-new">';
     html += '<button type="button" class="pill plans-add-btn" id="plansAddBtn">+ خطة جديدة</button>';
+    html += ' <button type="button" class="pill" id="plansNotifBtn" title="تفعيل تنبيهات المتصفح عند تفويت مهمة">🔔 التنبيهات</button>';
     html += '</div>';
+    html += '<div id="plansAlert"></div>';
     html += '<div id="plansArea"></div>';
     appEl.innerHTML = html;
+    renderPlansAlert();
     renderPlansArea();
     document.getElementById('plansAddBtn').addEventListener('click', function () { plansOpenForm(); });
+    document.getElementById('plansNotifBtn').addEventListener('click', function () { plansRequestNotifications(); });
+  }
+
+  /* Missed-work banner at the top of the plans page. */
+  function renderPlansAlert() {
+    var el = document.getElementById('plansAlert');
+    if (!el) return;
+    var s = plansDueSummary();
+    var n = s.overdue.length + s.reviews.length;
+    if (!n) { el.innerHTML = ''; return; }
+    var html = '<div class="plans-alert" role="alert">';
+    html += '<strong>🔔 تنبيه: لديك ' + toAr(n) + ' مهمة متأخرة</strong>';
+    html += '<span> (';
+    var bits = [];
+    if (s.overdue.length) bits.push(toAr(s.overdue.length) + ' مهمة يومية');
+    if (s.reviews.length) bits.push(toAr(s.reviews.length) + ' مراجعة مستحقة');
+    html += bits.join(' + ') + ') — تداركها قبل تراكمها، وفّقك الله';
+    html += '</span></div>';
+    el.innerHTML = html;
+  }
+
+  /* Dedicated card for the implicit «حفظ متعثر» plan (not counted in the 8). */
+  function renderStruggleCard() {
+    var st = struggleLoad();
+    if (!st || !(st.items || []).length) return '';
+    var today = plansDayKey(0);
+    var html = '<div class="plan-card plan-struggle">';
+    html += '<div class="plan-head">';
+    html += '<span class="plan-type">⚠️ حفظ متعثر</span>';
+    html += '<span class="plan-target">' + toAr(st.items.length) + ' مقطع</span>';
+    html += '</div>';
+    html += '<div class="plan-meta">يبقى المقطع هنا حتى تُتقنه ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية</div>';
+    st.items.forEach(function (it, idx) {
+      var dueNow = !it.nextReview || it.nextReview <= today;
+      var late = (it.nextReview && it.nextReview < today) ? plansDaysBetween(it.nextReview, today) : 0;
+      html += '<div class="plan-review-row">';
+      html += '<span class="plan-chunk-label">' + it.label + '</span>';
+      html += '<span class="plan-streak">إتقان متتالٍ: ' + toAr(it.streak || 0) + ' / ' + toAr(STRUGGLE_TARGET) + '</span>';
+      if (late > 0) html += '<span class="plan-review-late">متأخرة ' + toAr(late) + ' ي</span>';
+      else if (!dueNow) html += '<span class="plan-review-wait">بعد ' + toAr(plansDaysBetween(today, it.nextReview)) + ' ي</span>';
+      html += '<span class="plan-actions">';
+      html += '<a class="pill" data-sgo="' + idx + '" href="#/memorize">راجع</a>';
+      html += '<button type="button" class="pill" data-struggle-good="' + idx + '">أتقنت ✓</button>';
+      html += '<button type="button" class="pill" data-struggle-bad="' + idx + '">تعثرت</button>';
+      html += '</span></div>';
+    });
+    html += '</div>';
+    return html;
   }
 
   function renderPlansArea() {
     var area = document.getElementById('plansArea');
     if (!area) return;
     var plans = plansLoad();
-    if (!plans.length) {
+    var struggleHtml = renderStruggleCard();
+    if (!plans.length && !struggleHtml) {
       area.innerHTML = '<div class="empty-state">لا خطط بعد — أنشئ خطة قراءة أو استماع أو مراجعة أو حفظ.</div>';
       return;
     }
-    var html = '';
+    var html = struggleHtml;
     plans.forEach(function (p, i) {
       var T = PLAN_TYPES[p.type] || { label: p.type, icon: '' };
       var total = (p.chunks || []).length;
@@ -210,7 +404,7 @@
       var finished = !cur || (p.pointer || 0) >= total;
       html += '<div class="plan-card" data-i="' + i + '">';
       html += '<div class="plan-head">';
-      html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + '</span>';
+      html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + '</span>';
       html += '<span class="plan-target">' + toAr(p.perDay) + ' ' + (p.unit === 'surahs' ? 'سورة/يوم' : 'آية/يوم') + '</span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
@@ -218,6 +412,11 @@
       if (!finished && cur && !cur.done) {
         html += '<div class="plan-current">';
         html += '<span class="plan-chunk-label">' + cur.label + '</span>';
+        var due = plansChunkDue(p);
+        var lateDays = plansDaysBetween(due, plansDayKey(0));
+        if (lateDays > 0) {
+          html += '<span class="plan-late-badge">⏰ متأخرة ' + toAr(lateDays) + ' ي</span>';
+        }
         html += '<span class="plan-actions">';
         html += '<a class="pill" data-go="' + i + '" href="' + plansDeepLink(p, cur) + '">' + plansGoLabel(p) + '</a>';
         html += '<button type="button" class="pill" data-done="' + (p.pointer || 0) + '">أتممت</button>';
@@ -235,24 +434,44 @@
     area.innerHTML = html;
     plans.forEach(function (p, i) { renderPlanReviews(p, i); });
     area.onclick = function (e) {
-      var t = e.target.closest('button[data-done],button[data-del],button[data-review-done]');
+      var t = e.target.closest('button[data-done],button[data-del],button[data-review-good],button[data-review-bad],button[data-struggle-good],button[data-struggle-bad]');
       if (!t) return;
+      if (t.dataset.struggleGood !== undefined) {
+        struggleRate(+t.dataset.struggleGood, true);
+        renderPlansAlert(); renderPlansArea(); return;
+      }
+      if (t.dataset.struggleBad !== undefined) {
+        struggleRate(+t.dataset.struggleBad, false);
+        renderPlansAlert(); renderPlansArea(); return;
+      }
       var all = plansLoad();
       var i = +((t.closest('.plan-card') || {}).dataset || {}).i;
       var p = all[i];
       if (!p) return;
       if (t.dataset.done !== undefined) {
         var c = (p.chunks || [])[+t.dataset.done];
-        if (c && !c.done) { plansScheduleReview(p, c); renderPlansArea(); }
-      } else if (t.dataset.reviewDone !== undefined) {
-        plansCompleteReview(p, +t.dataset.reviewDone);
+        if (c && !c.done) { plansScheduleReview(p, c); renderPlansAlert(); renderPlansArea(); }
+      } else if (t.dataset.reviewGood !== undefined) {
+        plansRateReview(i, +t.dataset.reviewGood, true);
+        renderPlansAlert();
+        renderPlansArea();
+      } else if (t.dataset.reviewBad !== undefined) {
+        plansRateReview(i, +t.dataset.reviewBad, false);
+        renderPlansAlert();
         renderPlansArea();
       } else if (t.dataset.del !== undefined) {
-        if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); renderPlansArea(); }
+        if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); renderPlansAlert(); renderPlansArea(); }
       }
     };
     area.querySelectorAll('a[data-go]').forEach(function (a) {
       a.addEventListener('click', function () { plansOnGo(+a.dataset.go); });
+    });
+    area.querySelectorAll('a[data-sgo]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        var st = struggleLoad();
+        var it = st && st.items[+a.dataset.sgo];
+        if (it) plansPrefillMemorize(it);
+      });
     });
   }
 
@@ -268,11 +487,29 @@
         rows += '<div class="plan-review-row">'
           + '<span class="plan-chunk-label">' + c.label + '</span>'
           + (late > 0 ? '<span class="plan-review-late">متأخرة ' + toAr(late) + ' ي</span>' : '')
-          + '<button type="button" class="pill" data-review-done="' + ci + '">راجعت</button>'
+          + '<span class="plan-actions">'
+          + '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
+          + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
+          + '</span>'
           + '</div>';
       }
     });
     el.innerHTML = rows ? '<div class="plan-review-title">مراجعات اليوم</div>' + rows : '';
+  }
+
+  function plansPersistPlan(plan) {
+    var all = plansLoad();
+    var idx = all.indexOf(plan);
+    if (idx < 0) {
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].id === plan.id) { idx = i; break; }
+      }
+    }
+    if (idx >= 0) {
+      all[idx] = plan;
+      plansSave(all);
+    }
+    return idx;
   }
 
   function plansCompleteReview(plan, ci) {
@@ -284,16 +521,94 @@
     } else {
       c.nextReview = plansDayKey(PLAN_REVIEW_STEPS[c.reviewIdx]);
     }
+    plansPersistPlan(plan);
+  }
+
+  /* Complete a spaced review with a self-rating (good=true «أتقنت»).
+     A bad rating advances the original schedule AND adds an extra revision
+     of the section inside the implicit «حفظ متعثر» plan. */
+  function plansRateReview(planIdx, ci, good) {
     var all = plansLoad();
-    var idx = all.indexOf(plan);
-    if (idx < 0) {
-      for (var i = 0; i < all.length; i++) {
-        if (all[i].id === plan.id) { idx = i; break; }
-      }
+    var p = all[planIdx];
+    var c = p && (p.chunks || [])[ci];
+    if (!c) return;
+    plansCompleteReview(p, ci);
+    if (!good) struggleAddChunk(c);
+  }
+
+  /* ---- «حفظ متعثر»: sections with bad self-ratings stay here until rated
+     good STRUGGLE_TARGET successive times. Implicit single store, outside the
+     8-plan limit, in canonical (hafs) numbering like everything else. */
+  function struggleLoad() {
+    try {
+      var v = JSON.parse(localStorage.getItem(LS.struggle) || 'null');
+      if (v && Array.isArray(v.items)) return v;
+    } catch (e) {}
+    return null;
+  }
+
+  function struggleSave(st) {
+    try { localStorage.setItem(LS.struggle, JSON.stringify(st)); } catch (e) {}
+  }
+
+  function struggleEnsure() {
+    var st = struggleLoad();
+    if (!st) {
+      st = { id: newId('st'), created: plansDayKey(0), items: [] };
+      struggleSave(st);
     }
-    if (idx >= 0) {
-      all[idx] = plan;
-      plansSave(all);
+    return st;
+  }
+
+  /* Add a badly-rated section (dedupe by range; a repeat bad rating resets
+     the good-streak and reschedules for tomorrow). */
+  function struggleAddChunk(c) {
+    var st = struggleEnsure();
+    var found = null;
+    for (var i = 0; i < st.items.length; i++) {
+      if (st.items[i].from === c.from && st.items[i].to === c.to) { found = st.items[i]; break; }
+    }
+    if (found) {
+      found.streak = 0;
+      found.nextReview = plansDayKey(1);
+      struggleSave(st);
+      showAppToast('سُجِّل التعثر — بقي المقطع في «حفظ متعثر» وأُعيدت جدولته للغد');
+      return;
+    }
+    st.items.push({
+      from: c.from, to: c.to, label: c.label || (c.from + ' - ' + c.to),
+      streak: 0, added: plansDayKey(0), lastRated: null,
+      nextReview: plansDayKey(1)
+    });
+    struggleSave(st);
+    showAppToast('أُضيف المقطع إلى «حفظ متعثر» — أتقنه ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية ليخرج');
+  }
+
+  /* Rate one struggling revision: good increments the streak (graduation at
+     STRUGGLE_TARGET removes the section), bad resets the streak to 0. */
+  function struggleRate(itemIdx, good) {
+    var st = struggleLoad();
+    var it = st && st.items[itemIdx];
+    if (!it) return;
+    var today = plansDayKey(0);
+    if (good) {
+      it.streak = (it.streak || 0) + 1;
+      it.lastRated = today;
+      if (it.streak >= STRUGGLE_TARGET) {
+        st.items.splice(itemIdx, 1);
+        struggleSave(st);
+        showAppToast('🎉 أتقنت المقطع ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية — خرج من «حفظ متعثر»');
+        return;
+      }
+      it.nextReview = plansDayKey(1);
+      struggleSave(st);
+      showAppToast('أحسنت — إتقان متتالٍ ' + toAr(it.streak) + ' / ' + toAr(STRUGGLE_TARGET));
+    } else {
+      it.streak = 0;
+      it.lastRated = today;
+      it.nextReview = plansDayKey(1);
+      struggleSave(st);
+      showAppToast('سُجِّل التعثر — أُعيدت جدولة المقطع للغد');
     }
   }
 
@@ -323,7 +638,7 @@
     var c = (p.chunks || [])[p.pointer || 0];
     if (!c) return;
     if (p.type === 'memorize' || p.type === 'revise') {
-      plansPrefillMemorize(c);
+      plansPrefillMemorize(c, p.id, p.type);
     } else if (p.type === 'listen') {
       var segs = plansChunkActive(c);
       if (segs.length) {
@@ -348,7 +663,7 @@
     return out;
   }
 
-  function plansPrefillMemorize(c) {
+  function plansPrefillMemorize(c, planId, planType) {
     var canon = plansChunkCanonical(c);
     if (!canon.length) return;
     var first = canon[0];
@@ -359,7 +674,10 @@
         from: first.from,
         to: first.to,
         sections: canon,
-        auto: true
+        auto: true,
+        fromPlan: planId || null,
+        planType: planType || null,
+        reviseAuto: true
       }));
     } catch (e) {}
   }
@@ -472,6 +790,13 @@
   window.QuranPlans = {
     render: renderPlans,
     notifyMemorizeDone: plansNotifyMemorizeDone,
-    maybeAutoplayReader: plansMaybeAutoplayReader
+    maybeAutoplayReader: plansMaybeAutoplayReader,
+    dueSummary: plansDueSummary,
+    requestNotifications: plansRequestNotifications,
+    ensureAutoRevise: plansEnsureAutoRevise,
+    rateReview: plansRateReview,
+    struggleRate: struggleRate,
+    getStruggle: struggleLoad,
+    struggleTarget: STRUGGLE_TARGET
   };
 })();

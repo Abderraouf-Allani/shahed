@@ -42,7 +42,9 @@
     memSurahRep: 'qaloon_mem_surahrep',
     intended: 'qaloon_intended_list_v1',
     tagScope: 'qaloon_tayahscope_v1',
-    plans: 'qaloon_plans_v1'
+    plans: 'qaloon_plans_v1',
+    plansNotif: 'qaloon_plans_notif_v1',
+    struggle: 'qaloon_struggle_v1'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -2639,11 +2641,13 @@
       html += '</a>';
     }
 
+    html += '<div id="plansAlertSlot"></div>';
     html += '<div id="intendedStrip"></div>';
     html += '<div class="surah-grid" id="surahGrid"></div>';
     appEl.innerHTML = html;
 
     renderIntendedStrip();
+    renderPlansAlertSlot();
 
     var input = document.getElementById('surahSearch');
     input.addEventListener('input', function () {
@@ -2771,6 +2775,19 @@
       html += '</button></div>';
     });
     grid.innerHTML = html;
+  }
+
+  function renderPlansAlertSlot() {
+    var box = document.getElementById('plansAlertSlot');
+    if (!box) return;
+    var due = null;
+    try { due = getPlansDueCount(); } catch (e) { due = null; }
+    if (!due || !due.total) { box.innerHTML = ''; return; }
+    var bits = [];
+    if (due.overdue) bits.push(toAr(due.overdue) + ' مهمة يومية متأخرة');
+    if (due.reviews) bits.push(toAr(due.reviews) + ' مراجعة مستحقة');
+    box.innerHTML = '<a class="plans-alert plans-alert-link" href="#/plans" role="alert">'
+      + '🔔 لديك ' + bits.join(' + ') + ' — اضغط للمتابعة في صفحة الخطط</a>';
   }
 
   function renderIntendedStrip() {
@@ -4176,6 +4193,7 @@
     var memCanon = !!(saved && saved.num === 'hafs');
     var defFrom = memCanon && saved.from ? activeAyahOf(defSurah, saved.from) : (saved && saved.from) || 1;
     var defTo = memCanon && saved.to ? activeAyahOf(defSurah, saved.to) : (saved && saved.to) || 5;
+    var planMemOrigin = !!(saved && saved.fromPlan && saved.planType === 'memorize');
     var memCnt = getAyahCount(defSurah);
     if (defFrom > memCnt) defFrom = memCnt;
     if (defTo > memCnt) defTo = memCnt;
@@ -4202,6 +4220,9 @@
     html += '</div>';
     html += '</div>';
     html += '<div class="mem-area" id="memArea" style="display:none">';
+    if (planMemOrigin) {
+      html += '<label class="mem-revise-opt"><input type="checkbox" id="memReviseAuto"' + (saved.reviseAuto === false ? '' : ' checked') + '> 🔁 إنشاء خطة مراجعة لهذا المقطع عند إتمامه بنجاح</label>';
+    }
     html += '<div class="mushaf-text" id="memMushaf"></div>';
     html += '<div class="mem-controls">';
     html += '<div class="mem-ctrl-top">';
@@ -4242,6 +4263,17 @@
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
+    }
+
+    var reviseAutoEl = document.getElementById('memReviseAuto');
+    if (reviseAutoEl) {
+      reviseAutoEl.addEventListener('change', function () {
+        try {
+          var cur = JSON.parse(localStorage.getItem(LS.memSession)) || {};
+          cur.reviseAuto = !!reviseAutoEl.checked;
+          localStorage.setItem(LS.memSession, JSON.stringify(cur));
+        } catch (e) {}
+      });
     }
 
     surahEl.addEventListener('change', function () {
@@ -4902,11 +4934,109 @@
   }
 
   /* Called when the memorize 50-rep loop completes: auto-check today's chunk.
-     Loads plans.js on demand so the check-off works even if #/plans was never visited. */
+     Loads plans.js on demand so the check-off works even if #/plans was never visited.
+     Plan-originated sessions with the revision checkbox on also create/extend the
+     linked auto revision plan for the memorized canonical sections. */
   function plansNotifyMemorizeDone() {
+    var extra = null;
+    try {
+      var ms = JSON.parse(localStorage.getItem(LS.memSession));
+      if (ms && ms.reviseAuto && ms.fromPlan && Array.isArray(ms.sections) && ms.sections.length) {
+        extra = { sections: ms.sections, fromPlan: ms.fromPlan };
+      }
+    } catch (e) {}
     ensurePlansScript().then(function () {
-      if (window.QuranPlans) window.QuranPlans.notifyMemorizeDone();
+      if (window.QuranPlans) window.QuranPlans.notifyMemorizeDone(extra);
     }).catch(function () {});
+  }
+
+  /* ---------- missed-plan notifications (all 4 plan types) ---------- */
+
+  /* Lightweight due computation over LS (no plans.js needed): a plan's current
+     chunk is due one day per pointer step from creation; spaced reviews are due
+     when nextReview <= today. Returns {overdue, reviews, total}. */
+  function plansLocalDayKey(offsetDays) {
+    var d = new Date();
+    d.setDate(d.getDate() + (offsetDays || 0));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function plansLocalAddDays(key, n) {
+    /* UTC frame, matching plansLocalDayKey's toISOString stamps. */
+    var d = new Date(key + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + (n || 0));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function plansLocalDaysBetween(k1, k2) {
+    var a = new Date(k1 + 'T00:00:00'), b = new Date(k2 + 'T00:00:00');
+    return Math.round((b - a) / 86400000);
+  }
+
+  function getPlansDueCount() {
+    var plans = null;
+    try { plans = JSON.parse(localStorage.getItem(LS.plans) || '[]'); } catch (e) { return { overdue: 0, reviews: 0, total: 0 }; }
+    if (!Array.isArray(plans) || !plans.length) return { overdue: 0, reviews: 0, total: 0 };
+    var today = plansLocalDayKey(0);
+    var overdue = 0, reviews = 0;
+    plans.forEach(function (pl) {
+      var chunks = pl.chunks || [];
+      var cur = chunks[pl.pointer || 0];
+      if (cur && !cur.done && (pl.pointer || 0) < chunks.length) {
+        var due = pl.created ? plansLocalAddDays(pl.created, pl.pointer || 0) : today;
+        if (due < today) overdue++;
+      }
+      chunks.forEach(function (c) {
+        if (!c.done || !c.nextReview || c.nextReview === 'done') return;
+        if (c.nextReview <= today) reviews++;
+      });
+    });
+    var st = null;
+    try { st = JSON.parse(localStorage.getItem(LS.struggle) || 'null'); } catch (e) { st = null; }
+    if (st && Array.isArray(st.items)) {
+      st.items.forEach(function (it) {
+        if (it.nextReview && it.nextReview <= today) reviews++;
+      });
+    }
+    return { overdue: overdue, reviews: reviews, total: overdue + reviews };
+  }
+
+  function updatePlansBadge() {
+    var badge = document.getElementById('plansBadge');
+    if (!badge) return;
+    var n = 0;
+    try { n = getPlansDueCount().total; } catch (e) { n = 0; }
+    if (n > 0) {
+      badge.textContent = toAr(n > 9 ? '٩+' : n);
+      badge.removeAttribute('hidden');
+    } else {
+      badge.setAttribute('hidden', '');
+    }
+  }
+
+  /* Once-daily reminder (toast + optional browser Notification) when the user
+     missed a planned daily chunk or has due spaced reviews. */
+  function maybeNotifyPlansDue() {
+    var due;
+    try { due = getPlansDueCount(); } catch (e) { return; }
+    updatePlansBadge();
+    if (!due.total) return;
+    var today = plansLocalDayKey(0);
+    var stamp = null;
+    try { stamp = JSON.parse(localStorage.getItem(LS.plansNotif) || 'null'); } catch (e) { stamp = null; }
+    var sig = due.overdue + 'o/' + due.reviews + 'r';
+    if (stamp && stamp.day === today && stamp.sig === sig) return;
+    try { localStorage.setItem(LS.plansNotif, JSON.stringify({ day: today, sig: sig })); } catch (e) {}
+    var bits = [];
+    if (due.overdue) bits.push('مهام يومية متأخرة: ' + toAr(due.overdue));
+    if (due.reviews) bits.push('مراجعات مستحقة: ' + toAr(due.reviews));
+    var msg = '🔔 لديك مهام خطط متأخرة (' + bits.join('، ') + ') — افتح صفحة الخطط للمتابعة';
+    showAppToast(msg);
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('شاهد من القرآن — تنبيه الخطط', { body: msg });
+      }
+    } catch (e) {}
   }
 
   /* ---------- init ---------- */
@@ -4937,6 +5067,7 @@
       renderIndex();
     }
     updateHeaderReading();
+    updatePlansBadge();
   }
 
   function loadData() {
@@ -5044,6 +5175,7 @@
   }
 
   loadData().then(render).then(function () {
+    try { maybeNotifyPlansDue(); } catch (e) {}
     if (window.__quranLoader) window.__quranLoader.done();
   }).catch(function (err) {
     appEl.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات: ' + esc(err.message) + '</div>';
