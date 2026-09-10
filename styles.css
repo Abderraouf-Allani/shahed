@@ -1877,6 +1877,7 @@ html.dark .plan-save-btn { color: #10241a; }
   cursor: pointer;
 }
 .mem-revise-opt input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.mem-profile-seg { margin-bottom: 0.7rem; }
 
 /* Missed-plan notifications: header badge, alert banners, late chips. */
 .plans-icon-btn { position: relative; }
