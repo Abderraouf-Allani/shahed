@@ -3944,206 +3944,7 @@
     return out;
   }
 
-  /* MEMV1-BEGIN: static hiding estimators + contract scorer (V1, no learner data).
-     Pure except normAyahText + state.quran/state.riwaya. Extracted verbatim by
-     the node harness — keep dependency-free. */
-  var MEMV1_CHILD = { targets: { 1: 0.15, 2: 0.30, 3: 0.48, 4: 0.68, 5: 0.90 }, alpha: 0.35, beta: 0.30, maxRun: 2 };
-  var MEMV1_ADULT = { targets: { 1: 0.22, 2: 0.38, 3: 0.56, 4: 0.75, 5: 0.92 }, alpha: 0.20, beta: 0.20, maxRun: 3 };
-  var MEMV1_MORPH_PLACEHOLDER = 0.5;
-
-  var memCorpusCache = null;
-
-  /* One pass over the active dataset: unigrams, within-ayah bigrams,
-     bigram→continuation map, forward fan-out, preceding-bigram multiplicity. */
-  function memBuildCorpusIndex() {
-    if (memCorpusCache && memCorpusCache.riwaya === state.riwaya && memCorpusCache.quran === state.quran) {
-      return memCorpusCache.corpus;
-    }
-    var uni = {}, bi = {}, cont = {}, fwd = {}, seenNext = {};
-    var N = 0;
-    state.quran.forEach(function (ch) {
-      (ch.verses || []).forEach(function (v) {
-        var toks = normAyahText(v).replace(/^\s+|\s+$/g, '').split(' ').filter(function (t) { return t.length > 0; });
-        for (var i = 0; i < toks.length; i++) {
-          var w = toks[i];
-          N++;
-          uni[w] = (uni[w] || 0) + 1;
-          if (i >= 1) {
-            var pv = toks[i - 1], bk = pv + '|' + w;
-            bi[bk] = (bi[bk] || 0) + 1;
-            if (i >= 2) {
-              /* continuation of the bigram ENDING at i-1 is toks[i] */
-              var B = toks[i - 2] + '|' + pv;
-              var c = cont[B];
-              if (!c) { c = { total: 0, next: {}, distinct: 0 }; cont[B] = c; }
-              if (!c.next[w]) { c.next[w] = 0; c.distinct++; }
-              c.next[w]++;
-              c.total++;
-            }
-            var f = fwd[pv];
-            if (!f) { f = { total: 0, distinct: 0 }; fwd[pv] = f; seenNext[pv] = {}; }
-            if (!seenNext[pv][w]) { seenNext[pv][w] = 1; f.distinct++; }
-            f.total++;
-          }
-        }
-      });
-    });
-    var preCount = {}, V = 0, maxFreq = 1;
-    Object.keys(uni).forEach(function (w) {
-      V++;
-      if (uni[w] > maxFreq) maxFreq = uni[w];
-    });
-    Object.keys(cont).forEach(function (bk) {
-      Object.keys(cont[bk].next).forEach(function (w) {
-        preCount[w] = (preCount[w] || 0) + 1;
-      });
-    });
-    var corpus = { N: N, V: V, maxFreq: maxFreq, uni: uni, bi: bi, cont: cont, fwd: fwd, preCount: preCount };
-    memCorpusCache = { riwaya: state.riwaya, quran: state.quran, corpus: corpus };
-    return corpus;
-  }
-
-  /* Per-word P/L/A/I/G/D over memState-style sections
-     [{ayahWords:[{ayah, words:[{text,hidden,...}]}]}]. Ayah-relative positions;
-     n-grams never cross ayahs. */
-  /* V1 estimators: pure (normalized token, positional context, corpus).
-     Signatures match the frozen contract: predictability / linguisticDifficulty /
-     anchorValue / interference / transitionDifficulty. */
-  function memPredictability(t, i, toks, secCount, corpus) {
-    var pr;
-    if (i === 0) {
-      pr = (corpus.uni[t] || 0) / corpus.N;
-    } else if (i === 1) {
-      pr = (corpus.bi[toks[0] + '|' + t] || 0) / Math.max(1, corpus.uni[toks[0]] || 0);
-    } else {
-      var ce = corpus.cont[toks[i - 2] + '|' + toks[i - 1]];
-      var tri = ce ? ((ce.next[t] || 0) / ce.total) : 0;
-      var bc = corpus.bi[toks[i - 1] + '|' + t] || 0;
-      pr = 0.6 * tri + 0.4 * (bc / Math.max(1, corpus.uni[toks[i - 1]] || 0));
-    }
-    /* Section-local repetition boost (estimator-level, weights untouched). */
-    return Math.max(pr, Math.min(1, ((secCount[t] || 1) - 1) / 2));
-  }
-
-  function memLinguistic(t, corpus) {
-    var c = corpus.uni[t] || 0;
-    var rarity = 1 - Math.log(1 + c) / Math.log(1 + corpus.maxFreq);
-    return 0.5 * rarity + 0.3 * Math.min(1, t.length / 12) + 0.2 * MEMV1_MORPH_PLACEHOLDER;
-  }
-
-  function memAnchorValue(t, i, L, toks, corpus) {
-    var c = corpus.uni[t] || 0;
-    var boundary = (i === 0) ? 1 : ((i === L - 1) ? 0.6 : 0);
-    var distinctiveness = 1 - Math.min(1, Math.log(1 + c) / Math.log(21));
-    var cue = (i < L - 1 && c > 0) ? ((corpus.bi[t + '|' + toks[i + 1]] || 0) / c) : 0;
-    return 0.40 * boundary + 0.30 * distinctiveness + 0.30 * cue;
-  }
-
-  function memInterference(t, corpus) {
-    var cm = Math.min(1, Math.log(1 + (corpus.preCount[t] || 0)) / Math.log(11));
-    var fw = corpus.fwd[t];
-    var nm = fw ? Math.max(0, Math.min(1, (fw.distinct - 1) / 5)) : 0;
-    return 0.5 * cm + 0.5 * nm;
-  }
-
-  /* Returns {g, amb}: continuation ambiguity + shared protection flag. */
-  function memTransition(t, i, toks, corpus) {
-    var out = { g: 0, amb: false };
-    if (i === 1) {
-      var f0 = corpus.fwd[toks[0]];
-      out.g = 1 - ((corpus.bi[toks[0] + '|' + t] || 0) / Math.max(1, f0 ? f0.total : 1));
-    } else if (i >= 2) {
-      var ce = corpus.cont[toks[i - 2] + '|' + toks[i - 1]];
-      if (ce) {
-        out.g = 1 - ((ce.next[t] || 0) / ce.total);
-        out.amb = ce.distinct >= 2;
-      }
-    }
-    return out;
-  }
-
-  function memEstimateSection(sections, corpus) {
-    var secCount = {};
-    var tokLists = [];
-    sections.forEach(function (sec) {
-      sec.ayahWords.forEach(function (aw) {
-        var toks = aw.words.map(function (w) { return normAyahText(w.text).replace(/\s+/g, ''); });
-        toks.forEach(function (t) { secCount[t] = (secCount[t] || 0) + 1; });
-        tokLists.push(toks);
-      });
-    });
-    var seq = 0, li = 0;
-    sections.forEach(function (sec) {
-      sec.ayahWords.forEach(function (aw) {
-        var toks = tokLists[li++], L = toks.length;
-        for (var i = 0; i < aw.words.length; i++) {
-          var w = aw.words[i], t = toks[i];
-          w._P = memPredictability(t, i, toks, secCount, corpus);
-          w._L = memLinguistic(t, corpus);
-          w._A = memAnchorValue(t, i, L, toks, corpus);
-          w._I = memInterference(t, corpus);
-          var tr = memTransition(t, i, toks, corpus);
-          w._G = tr.g;
-          w._amb = tr.amb;
-          w._D = 0.30 * (1 - w._P) + 0.15 * w._L + 0.20 * w._I + 0.35 * w._G;
-          w._seq = seq++;
-        }
-      });
-    });
-  }
-
-  function memHideScore(w, prof, target, progress, C) {
-    var D = w._D;
-    var dist = (D <= target) ? (target - D) : 2 * (D - target);
-    var fit = 1 - Math.min(1, dist);
-    return 0.60 * fit + 0.40 * (1 - D) + 0.15 * w._I * progress - prof.alpha * w._A - prof.beta * C;
-  }
-
-  /* Contract selection over flat word list (collectMemWords order).
-     Returns words to hide now. k==5 hides every remainder (explicit
-     invariant); otherwise ranked pick with run/transition constraints and a
-     progressive-relaxation fallback guaranteeing the exact increment. */
-  function memSelectHideSet(allWords, profKey, iteration) {
-    var prof = (profKey === 'child') ? MEMV1_CHILD : MEMV1_ADULT;
-    var N = allWords.length;
-    var hidden = allWords.map(function (w) { return !!w.hidden; });
-    var hiddenNow = hidden.filter(function (h) { return h; }).length;
-    if (iteration >= 5) return allWords.filter(function (w) { return !w.hidden; });
-    var need = Math.ceil(N * 0.20 * iteration) - hiddenNow;
-    if (need <= 0) return [];
-    var target = prof.targets[iteration] || 0.5;
-    var progress = (iteration - 1) / 4;
-    var scored = [];
-    allWords.forEach(function (w, idx) {
-      if (w.hidden) return;
-      var left = (idx > 0 && hidden[idx - 1]) ? 1 : 0;
-      var right = (idx < N - 1 && hidden[idx + 1]) ? 1 : 0;
-      scored.push({ w: w, idx: idx, s: memHideScore(w, prof, target, progress, (left + right) / 2) });
-    });
-    scored.sort(function (a, b) { return (b.s - a.s) || (a.w._seq - b.w._seq); });
-    var selFlag = {}, selected = [];
-    var runLenIf = function (idx) {
-      var l = 0, r = 0, j = idx - 1;
-      while (j >= 0 && (hidden[j] || selFlag[j])) { l++; j--; }
-      j = idx + 1;
-      while (j < N && (hidden[j] || selFlag[j])) { r++; j++; }
-      return l + 1 + r;
-    };
-    var levels = [{ t: false, r: false }, { t: true, r: false }, { t: true, r: true }];
-    for (var li = 0; li < levels.length && selected.length < need; li++) {
-      var lv = levels[li];
-      for (var si = 0; si < scored.length && selected.length < need; si++) {
-        var cd = scored[si];
-        if (selFlag[cd.idx]) continue;
-        if (!lv.r && runLenIf(cd.idx) > prof.maxRun) continue;
-        if (!lv.t && iteration < 4 && cd.w._amb) continue;
-        selFlag[cd.idx] = 1;
-        selected.push(cd.w);
-      }
-    }
-    return selected;
-  }
-  /* MEMV1-END */
+  /* Smart-hiding V1 lives in lazy-loaded memhide.js (window.QuranMemHide). */
 
 
   function positionMemBlanks() {
@@ -4200,14 +4001,26 @@
     var allWords = collectMemWords();
     var visible = allWords.filter(function (w) { return !w.hidden; });
     if (!visible.length) { memUnlockBtns(); return; }
-    if (!memState.featReady || memState.featRiwaya !== state.riwaya) {
-      memEstimateSection(memState.sections, memBuildCorpusIndex());
-      memState.featReady = true;
-      memState.featRiwaya = state.riwaya;
+    var MH = window.QuranMemHide;
+    var rungs = memState.rungs || [0.2, 0.4, 0.6, 0.8, 1.0];
+    memState.rungs = rungs;
+    var frac = rungs[Math.min(memState.level, rungs.length - 1)];
+    var toHide;
+    if (MH) {
+      if (!memState.featReady || memState.featRiwaya !== state.riwaya) {
+        MH.estimateSection(memState.sections, MH.buildCorpusIndex());
+        memState.featReady = true;
+        memState.featRiwaya = state.riwaya;
+      }
+      var profKey = state.memProfile === 'child' ? 'child' : 'adult';
+      toHide = MH.selectHideSet(allWords, profKey, frac);
+    } else {
+      /* Module failed to load (shouldn't happen: SW-precached): hide the
+         contract increment sequentially so the button never breaks. */
+      var hiddenNow = allWords.filter(function (w) { return w.hidden; }).length;
+      var need = (frac >= 1 ? allWords.length : Math.ceil(allWords.length * frac)) - hiddenNow;
+      toHide = visible.slice(0, Math.max(0, need));
     }
-    var k = Math.min(5, memState.level + 1);
-    var profKey = state.memProfile === 'child' ? 'child' : 'adult';
-    var toHide = memSelectHideSet(allWords, profKey, k);
     toHide.forEach(function (w) { w.hidden = true; });
     memState.level++;
     renderMemWords();
@@ -4253,6 +4066,13 @@
     }
     toShow.forEach(function (w) { w.hidden = false; });
     memState.level--;
+    if (memState.reps === null) {
+      /* Regression: splice a midpoint breakpoint into the AHEAD interval so
+         the onward climb gains a rest stop (V1+tweak). */
+      var MH = window.QuranMemHide;
+      var rungs = memState.rungs || [0.2, 0.4, 0.6, 0.8, 1.0];
+      memState.rungs = MH ? MH.insertBreakpoint(rungs, memState.level) : rungs;
+    }
     renderMemWords();
     memCommit(memUnlockBtns);
   }
@@ -4407,6 +4227,7 @@
         memState.sections = planned;
         memState.peeking = false;
         memState.featReady = false;
+        memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
         try {
           saved.auto = false;
           localStorage.setItem(LS.memSession, JSON.stringify(saved));
@@ -4558,6 +4379,7 @@
       memState.sections = sections;
       memState.peeking = false;
       memState.featReady = false;
+      memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
       try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to), sections: [{ surah: surahNum, from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) }], auto: false })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
@@ -4569,8 +4391,11 @@
       if (memState.busy) return;
       if (memState.peeking) return;
       if (memState.reps !== null) return;
-      applyMemLevel();
+      ensureMemHideScript().then(applyMemLevel).catch(function () { applyMemLevel(); });
     });
+
+    /* Preload the hiding model while the learner reads the setup. */
+    ensureMemHideScript().catch(function () {});
 
     document.getElementById('memRepBtn').addEventListener('click', function () {
       if (!memState || !memState.active || memState.reps === null || memState.busy) return;
@@ -4601,6 +4426,7 @@
       memState.sections = [];
       memState.peeking = false;
       memState.featReady = false;
+      memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
       memUnlockBtns();
       setupEl.style.display = '';
       areaEl.style.display = 'none';
@@ -5137,6 +4963,31 @@
     appEl: appEl
   };
 
+  /* Smart-hiding V1 (memhide.js) bridge + lazy loader. Preloaded on the
+     memorize page so the model is ready before the first hide tap. */
+  window.QuranMemHideBridge = {
+    normAyahText: normAyahText,
+    state: state
+  };
+
+  var memHideScriptPromise = null;
+
+  function ensureMemHideScript() {
+    if (window.QuranMemHide) return Promise.resolve();
+    if (!memHideScriptPromise) {
+      memHideScriptPromise = new Promise(function (resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'memhide.js';
+        s.async = true;
+        s.onload = function () { resolve(); };
+        s.onerror = function () { reject(new Error('memhide load failed')); };
+        document.head.appendChild(s);
+      });
+      memHideScriptPromise.catch(function () { memHideScriptPromise = null; });
+    }
+    return memHideScriptPromise;
+  }
+
   var plansScriptPromise = null;
 
   function ensurePlansScript() {
@@ -5309,22 +5160,83 @@
     updatePlansBadge();
   }
 
+  /* Byte-weighted loader progress: the istiadha shine tracks actual eager-resource
+     bytes (quran.json dominates), with live download fractions via streams when
+     available and completion fallback otherwise, plus a fonts step. */
+  function loadProgressWeights() {
+    return { surahs: 15041, quran: 1414190, numbering: 36441, fonts: 97000 };
+  }
+
+  function loadProgressReport(weights, fracs) {
+    if (!window.__quranLoader) return;
+    var tw = weights.surahs + weights.quran + weights.numbering + weights.fonts;
+    if (!tw) return;
+    window.__quranLoader.progress(
+      (weights.surahs * fracs.surahs + weights.quran * fracs.quran +
+       weights.numbering * fracs.numbering + weights.fonts * fracs.fonts) / tw);
+  }
+
+  function fetchJsonProgress(url, key, weights, fracs) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var total = parseInt(r.headers.get('content-length'), 10);
+      if (total > 0) weights[key] = total;
+      var canStream = r.body && r.body.getReader && typeof TextDecoder !== 'undefined';
+      if (!canStream) {
+        return r.json().then(function (v) {
+          fracs[key] = 1;
+          loadProgressReport(weights, fracs);
+          return v;
+        });
+      }
+      var reader = r.body.getReader();
+      var chunks = [], received = 0;
+      var pump = function () {
+        return reader.read().then(function (res) {
+          if (res.done) {
+            fracs[key] = 1;
+            loadProgressReport(weights, fracs);
+            var buf = new Uint8Array(received), off = 0;
+            chunks.forEach(function (c) { buf.set(c, off); off += c.length; });
+            return JSON.parse(new TextDecoder().decode(buf));
+          }
+          chunks.push(res.value);
+          received += res.value.length;
+          if (total > 0) {
+            fracs[key] = Math.min(0.999, received / total);
+            loadProgressReport(weights, fracs);
+          }
+          return pump();
+        });
+      };
+      return pump();
+    });
+  }
+
   function loadData() {
-    var loaded = 0;
-    var total = 3;
-    var count = function (v) {
-      loaded++;
-      if (window.__quranLoader) window.__quranLoader.progress(loaded / total);
-      return v;
-    };
+    var weights = loadProgressWeights();
+    var fracs = { surahs: 0, quran: 0, numbering: 0, fonts: 0 };
+    try {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () {
+          fracs.fonts = 1;
+          loadProgressReport(weights, fracs);
+        }).catch(function () {
+          fracs.fonts = 1;
+          loadProgressReport(weights, fracs);
+        });
+      } else {
+        fracs.fonts = 1;
+      }
+    } catch (e) {
+      fracs.fonts = 1;
+    }
     var core = Promise.all([
-      fetch('data/surahs.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/quran.json').then(function (r) { return r.json(); }).then(count),
-      fetch('data/numbering.json').then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      }).then(count).catch(function () {
-        loaded++;
+      fetchJsonProgress('data/surahs.json', 'surahs', weights, fracs),
+      fetchJsonProgress('data/quran.json', 'quran', weights, fracs),
+      fetchJsonProgress('data/numbering.json', 'numbering', weights, fracs).catch(function () {
+        fracs.numbering = 1;
+        loadProgressReport(weights, fracs);
         return null;
       })
     ]);
