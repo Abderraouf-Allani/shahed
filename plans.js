@@ -153,7 +153,7 @@
     var done = false;
     var all = plansLoad();
     all.forEach(function (p) {
-      if (p.type !== 'memorize' || p.pointer >= (p.chunks || []).length) return;
+      if ((p.type !== 'memorize' && p.type !== 'revise') || p.pointer >= (p.chunks || []).length) return;
       var c = p.chunks[p.pointer || 0];
       if (c && !c.done) {
         plansScheduleReview(p, c);
@@ -304,11 +304,11 @@
     return 'اقرأ';
   }
 
-  /* Deep-link URL for a chunk. Memorize goes to the memorize page (session
-     prefilled by plansOnGo); listen/read/revise go to the reader at the
+  /* Deep-link URL for a chunk. Memorize/revise go to the memorize page (session
+     prefilled by plansOnGo); listen/read go to the reader at the
      chunk's first ACTIVE-riwaya ayah. */
   function plansDeepLink(p, c) {
-    if (p.type === 'memorize') return '#/memorize';
+    if (p.type === 'memorize' || p.type === 'revise') return '#/memorize';
     var segs = plansChunkActive(c);
     if (!segs.length) return '#/';
     var s = segs[0];
@@ -322,7 +322,7 @@
     if (!p) return;
     var c = (p.chunks || [])[p.pointer || 0];
     if (!c) return;
-    if (p.type === 'memorize') {
+    if (p.type === 'memorize' || p.type === 'revise') {
       plansPrefillMemorize(c);
     } else if (p.type === 'listen') {
       var segs = plansChunkActive(c);
@@ -332,17 +332,34 @@
     }
   }
 
-  /* Prefill the memorize setup form via the existing canonical memSession format. */
+  /* Prefill the memorize setup form via the existing canonical memSession format.
+     Stores the FULL chunk (all surahs comprised) as canonical sections so the
+     memorize page can show the whole range, not just the first surah. */
+  function plansChunkCanonical(c) {
+    var fs = c.from.split(':'), ts = c.to.split(':');
+    var fromS = +fs[0], fromH = +fs[1], toS = +ts[0], toH = +ts[1];
+    var out = [];
+    for (var s = fromS; s <= toS; s++) {
+      var f = (s === fromS) ? fromH : 1;
+      var t = (s === toS) ? toH : plansHafsCount(s);
+      if (f > t) continue;
+      out.push({ surah: s, from: f, to: t });
+    }
+    return out;
+  }
+
   function plansPrefillMemorize(c) {
-    var segs = plansChunkActive(c);
-    if (!segs.length) return;
-    var seg = segs[0];
+    var canon = plansChunkCanonical(c);
+    if (!canon.length) return;
+    var first = canon[0];
     try {
       localStorage.setItem(LS.memSession, JSON.stringify({
-        surah: seg.surah,
+        surah: first.surah,
         num: 'hafs',
-        from: canonAyah(seg.surah, seg.from),
-        to: canonAyah(seg.surah, seg.to)
+        from: first.from,
+        to: first.to,
+        sections: canon,
+        auto: true
       }));
     } catch (e) {}
   }

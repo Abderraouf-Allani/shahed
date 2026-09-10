@@ -525,6 +525,13 @@ html[data-riwaya="hafs"] .mushaf-text {
   top: -0.1em;
 }
 
+.ayah-num.plan-end {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
 .surah-divider {
   text-align: center;
   margin: 2rem 0;
@@ -1549,6 +1556,13 @@ html.dark .loader-caption { color: #9a917f; }
 .mem-start-btn:hover { opacity: 0.9; }
 
 .mem-area { padding-top: 0.5rem; padding-bottom: 5rem; }
+.mem-surah-head {
+  text-align: center; font-size: 1.05rem; font-weight: 700;
+  color: var(--text); margin: 1.2rem 0 0.6rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface-2); border-radius: 8px;
+}
+.mem-surah-head:first-child { margin-top: 0; }
 .mem-level {
   text-align: center; font-size: 0.8rem; font-weight: 600;
   color: var(--text-muted);

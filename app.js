@@ -158,20 +158,56 @@
 
   playIntroBasmala();
 
-  /* ---------- screen wake lock ---------- */
+  /* ---------- screen wake lock (keep the PWA open until the user quits) ---------- */
 
   var wakeSentinel = null;
+  var wakePending = false;
   var screenWakeSupported = !!(navigator.wakeLock && navigator.wakeLock.request);
 
   function requestScreenWake() {
-    if (!screenWakeSupported) return;
+    if (!screenWakeSupported) { enableNoSleepFallback(); return; }
     if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return;
-    if (wakeSentinel) return;
+    if (wakeSentinel || wakePending) return;
     var p = null;
     try { p = navigator.wakeLock.request('screen'); } catch (e) { wakeSentinel = null; return; }
     if (p && typeof p.then === 'function') {
-      p.then(function (s) { wakeSentinel = s; }).catch(function () { wakeSentinel = null; });
+      wakePending = true;
+      p.then(function (s) {
+        wakePending = false;
+        wakeSentinel = s;
+        if (s && typeof s.addEventListener === 'function') {
+          s.addEventListener('release', function () {
+            if (wakeSentinel === s) wakeSentinel = null;
+            requestScreenWake();
+          });
+        }
+      }).catch(function () { wakePending = false; wakeSentinel = null; });
     }
+  }
+
+  /* Fallback for browsers without the Wake Lock API (e.g. older iOS Safari):
+     a muted looping video keeps the screen from sleeping. */
+  var noSleepVideo = null;
+  function enableNoSleepFallback() {
+    if (noSleepVideo) { try { noSleepVideo.play().catch(function () {}); } catch (e) {} return; }
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      var ctx = canvas.getContext('2d');
+      if (ctx) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 64, 64); }
+      var stream = canvas.captureStream ? canvas.captureStream(1) : null;
+      if (!stream) return;
+      var v = document.createElement('video');
+      v.setAttribute('muted', '');
+      v.muted = true;
+      v.setAttribute('playsinline', '');
+      v.loop = true;
+      v.style.cssText = 'position:fixed;bottom:0;left:0;width:2px;height:2px;opacity:0.01;pointer-events:none;';
+      v.srcObject = stream;
+      if (document.body) document.body.appendChild(v);
+      noSleepVideo = v;
+      try { var pr = v.play(); if (pr && typeof pr.catch === 'function') pr.catch(function () {}); } catch (e) {}
+    } catch (e) {}
   }
 
   requestScreenWake();
@@ -179,6 +215,12 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') requestScreenWake();
     });
+    /* The boot-time request can be rejected before first user activation;
+       retry on the first gestures so the lock holds for the whole session. */
+    var wakeGestureRetry = function () { requestScreenWake(); };
+    document.addEventListener('pointerdown', wakeGestureRetry);
+    document.addEventListener('keydown', wakeGestureRetry);
+    document.addEventListener('touchstart', wakeGestureRetry);
   }
 
   var RELATIONSHIPS = [
@@ -1927,10 +1969,14 @@
     if (route.memorize) {
       var mem = null;
       try { mem = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
-      if (mem && mem.surah) {
-        var ms = surahByNumber(mem.surah);
-        if (ms) {
-          el.textContent = 'الحفظ: ' + ms.nameAr + ' · ' + mem.from + '-' + mem.to;
+      if (mem && ((mem.sections && mem.sections.length) || mem.surah)) {
+        var secs = (mem.sections && mem.sections.length) ? mem.sections : [{ surah: mem.surah, from: mem.from, to: mem.to }];
+        var ms = surahByNumber(+secs[0].surah);
+        var ml = surahByNumber(+secs[secs.length - 1].surah);
+        if (ms && ml) {
+          el.textContent = secs.length > 1
+            ? 'الحفظ: ' + ms.nameAr + ' ' + secs[0].from + ' ← ' + ml.nameAr + ' ' + secs[secs.length - 1].to
+            : 'الحفظ: ' + ms.nameAr + ' · ' + secs[0].from + '-' + secs[0].to;
           el.href = '#/memorize';
           el.removeAttribute('hidden');
           return;
@@ -2520,7 +2566,30 @@
     if (countEl) countEl.textContent = nq ? toAr(shown) + ' من ' + toAr(els.length) : '';
   }
 
-  function renderVerse(q, surah, ayah, text) {
+  /* Final ayah of the current read/listen plan chunk, shown with a special
+     number style in the reader until the user hits finish (أتممت) in the
+     plans page. Read live from LS so the mark clears when the chunk is
+     checked off (pointer advances / chunk done). Chunk endpoints are
+     canonical (hafs); convert to the active riwaya for display. */
+  function planEndAyahsForSurah(surah) {
+    var out = {};
+    var plans = null;
+    try { plans = JSON.parse(localStorage.getItem(LS.plans) || '[]'); } catch (e) { return out; }
+    if (!Array.isArray(plans)) return out;
+    plans.forEach(function (p) {
+      if (p.type !== 'read' && p.type !== 'listen') return;
+      var c = (p.chunks || [])[p.pointer || 0];
+      if (!c || c.done || !c.to) return;
+      var parts = String(c.to).split(':');
+      if (+parts[0] !== surah) return;
+      var end = activeAyahOf(surah, +parts[1]);
+      var cnt = getAyahCount(surah);
+      if (end >= 1 && end <= cnt) out[end] = true;
+    });
+    return out;
+  }
+
+  function renderVerse(q, surah, ayah, text, isPlanEnd) {
     var tags = filterVisibleTags(getVerseTags(surah, ayah));
     var chips = showTags && tags.length ? '<span class="verse-chips">' + tags.map(function (t) { return verseTagChip(t, surah, ayah); }).join('') + '</span>' : '';
     var tagBtn = showTags
@@ -2530,7 +2599,7 @@
       + '<span class="verse-text">' + esc(text) + '</span>'
       + tagBtn
       + chips
-      + '<span class="ayah-num">' + toAr(ayah) + '</span>'
+      + '<span class="ayah-num' + (isPlanEnd ? ' plan-end' : '') + '"' + (isPlanEnd ? ' title="نهاية المقطع المخطط"' : '') + '>' + toAr(ayah) + '</span>'
       + '</span> ';
   }
 
@@ -2801,8 +2870,9 @@
     }
 
     html += '<div class="mushaf-text" id="mushaf">';
+    var planEnds = planEndAyahsForSurah(n);
     q.verses.forEach(function (v, i) {
-      html += renderVerse(q, n, i + 1, v);
+      html += renderVerse(q, n, i + 1, v, !!planEnds[i + 1]);
     });
     html += '</div>';
 
@@ -3850,7 +3920,8 @@
     var rects = [];
     memState.sections.forEach(function (sec) {
       sec.ayahWords.forEach(function (aw) {
-        var verse = mushaf.querySelector('.verse[data-ayah="' + aw.ayah + '"]');
+        var verse = mushaf.querySelector('.verse[data-surah="' + sec.surah + '"][data-ayah="' + aw.ayah + '"]')
+          || mushaf.querySelector('.verse[data-ayah="' + aw.ayah + '"]');
         if (!verse) return;
         var tn = verse.firstElementChild && verse.firstElementChild.firstChild;
         if (!tn || tn.nodeType !== Node.TEXT_NODE) return;
@@ -3951,10 +4022,15 @@
     if (!mushaf || !memState) return;
     if (force || !mushaf.querySelector('.verse')) {
       var html = '';
+      var multi = memState.sections.length > 1;
       memState.sections.forEach(function (sec) {
+        if (multi) {
+          var sname = surahByNumber(sec.surah);
+          html += '<div class="mem-surah-head">' + esc(sname ? sname.nameAr : '') + ' — ' + toAr(sec.from) + '-' + toAr(sec.to) + '</div>';
+        }
         sec.ayahWords.forEach(function (aw) {
           var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
-          html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-ayah="' + aw.ayah + '">';
+          html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-surah="' + sec.surah + '" data-ayah="' + aw.ayah + '">';
           html += '<span class="verse-text">' + esc(fullText) + '</span>';
           html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
           html += '</span> ';
@@ -4019,12 +4095,83 @@
     memUpdateAudioHighlight();
   }
 
+  /* Build ACTIVE-riwaya memorize sections from a canonical memSession value.
+     Supports the multi-surah format {sections:[{surah,from,to}]} written by
+     plans, plus the legacy single-surah {surah,from,to}. Returns null when
+     nothing usable can be built. */
+  function memBuildSectionsFromSaved(saved) {
+    if (!saved || !state.quran) return null;
+    var canonSecs = null;
+    if (saved.sections && Array.isArray(saved.sections) && saved.sections.length) {
+      canonSecs = saved.sections;
+    } else if (saved.surah) {
+      canonSecs = [{ surah: saved.surah, from: saved.from, to: saved.to }];
+    }
+    if (!canonSecs) return null;
+    var isCanon = (saved.num === 'hafs');
+    var out = [];
+    for (var i = 0; i < canonSecs.length; i++) {
+      var cs = canonSecs[i];
+      var sn = +cs.surah;
+      if (!sn || sn < 1 || sn > 114) continue;
+      var cf = +cs.from, ct = +cs.to;
+      if (!cf) cf = 1;
+      if (!ct) ct = cf;
+      if (cf > ct) { var tmp = cf; cf = ct; ct = tmp; }
+      var from = isCanon ? activeAyahOf(sn, cf) : cf;
+      var to = isCanon ? activeAyahOf(sn, ct) : ct;
+      var count = getAyahCount(sn);
+      if (!count) continue;
+      if (from < 1) from = 1;
+      if (to > count) to = count;
+      if (from > to) continue;
+      var chapters = state.quran[sn - 1];
+      if (!chapters) continue;
+      var ayahWords = [];
+      for (var a = from; a <= to; a++) {
+        var text = chapters.verses[a - 1];
+        if (!text) continue;
+        ayahWords.push({ ayah: a, words: buildMemWords(text) });
+      }
+      if (ayahWords.length) out.push({ surah: sn, from: from, to: to, ayahWords: ayahWords });
+    }
+    return out.length ? out : null;
+  }
+
+  /* Flat playlist across all sections: [{surah, ayah}] in display order. */
+  function memFlatList() {
+    var out = [];
+    if (!memState || !memState.sections) return out;
+    memState.sections.forEach(function (sec) {
+      sec.ayahWords.forEach(function (aw) {
+        out.push({ surah: sec.surah, ayah: aw.ayah });
+      });
+    });
+    return out;
+  }
+
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
     memStopAudio();
     memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, busy: false };
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
+    /* Plan deep-link (memorize/revise): show the full chunk at once, even
+       across surahs, without requiring another tap on ابدأ. */
+    if (saved && saved.auto && state.quran) {
+      var planned = memBuildSectionsFromSaved(saved);
+      if (planned) {
+        memState.active = true;
+        memState.level = 0;
+        memState.reps = null;
+        memState.sections = planned;
+        memState.peeking = false;
+        try {
+          saved.auto = false;
+          localStorage.setItem(LS.memSession, JSON.stringify(saved));
+        } catch (e) {}
+      }
+    }
     var defSurah = (saved && saved.surah) || 1;
     var memCanon = !!(saved && saved.num === 'hafs');
     var defFrom = memCanon && saved.from ? activeAyahOf(defSurah, saved.from) : (saved && saved.from) || 1;
@@ -4141,7 +4288,7 @@
       memState.reps = null;
       memState.sections = sections;
       memState.peeking = false;
-      try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) })); } catch (e) {}
+      try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to), sections: [{ surah: surahNum, from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) }], auto: false })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords(true);
@@ -4197,7 +4344,7 @@
 
     document.getElementById('memNextBtn').addEventListener('click', function () {
       if (!memState || !memState.active || !memState.sections.length) return;
-      memJumpTo(Math.min(memState.sections[0].ayahWords.length - 1, memAudio.idx + 1));
+      memJumpTo(Math.min(memFlatList().length - 1, memAudio.idx + 1));
     });
 
     var ayahRepSel = document.getElementById('memAyahRep');
@@ -4260,9 +4407,9 @@
   }
 
   function memPlayAyah(idx, replay) {
-    var sec = memState && memState.sections && memState.sections[0];
-    var ayahObj = sec && sec.ayahWords[idx];
-    if (!ayahObj) { memStopAudio(); return; }
+    var flat = memFlatList();
+    var item = flat[idx];
+    if (!item) { memStopAudio(); return; }
     var el = memAudioEl();
     memAudio.errorStreak = 0;
     if (replay && el.src) {
@@ -4270,7 +4417,7 @@
       memAudio.playing = true;
       memSafePlay(function () { el.play(); });
     } else {
-      el.src = memAudioUrl(sec.surah, ayahObj.ayah);
+      el.src = memAudioUrl(item.surah, item.ayah);
       memAudio.playing = true;
       memSafePlay(function () { el.play(); });
     }
@@ -4288,7 +4435,7 @@
 
   function memStartAudio() {
     if (!memState || !memState.active || !memState.sections.length) return;
-    if (!memState.sections[0].ayahWords.length) return;
+    if (!memFlatList().length) return;
     memAudioEl();
     memReadAudioPrefs();
     memAudio.active = true;
@@ -4300,7 +4447,7 @@
 
   function memTogglePlay() {
     if (!memState || !memState.active || !memState.sections.length) return;
-    if (!memState.sections[0].ayahWords.length) return;
+    if (!memFlatList().length) return;
     if (!memAudio.active) { memStartAudio(); return; }
     var el = memAudioEl();
     if (memAudio.playing) {
@@ -4326,7 +4473,7 @@
 
   function memJumpTo(idx) {
     if (!memState || !memState.active || !memState.sections.length) return;
-    var len = memState.sections[0].ayahWords.length;
+    var len = memFlatList().length;
     if (!len) return;
     memAudioEl();
     memReadAudioPrefs();
@@ -4341,9 +4488,9 @@
     if (memAudio.ayahInf) { memPlayAyah(memAudio.idx, true); return; }
     memAudio.ayahRepLeft--;
     if (memAudio.ayahRepLeft > 0) { memPlayAyah(memAudio.idx, true); return; }
-    var sec = memState.sections[0];
+    var total = memFlatList().length;
     var next = memAudio.idx + 1;
-    if (next < sec.ayahWords.length) {
+    if (next < total) {
       memAudio.idx = next;
       memAudio.ayahRepLeft = memAudio.ayahRep;
       memPlayAyah(next, false);
@@ -4400,10 +4547,11 @@
     var existing = mushaf.querySelectorAll('.mem-playing');
     for (var i = 0; i < existing.length; i++) existing[i].classList.remove('mem-playing');
     if (!memAudio.active) return;
-    var sec = memState.sections && memState.sections[0];
-    var ayahObj = sec && sec.ayahWords[memAudio.idx];
-    if (!ayahObj) return;
-    var verse = mushaf.querySelector('.verse[data-ayah="' + ayahObj.ayah + '"]');
+    var flat = memFlatList();
+    var item = flat[memAudio.idx];
+    if (!item) return;
+    var verse = mushaf.querySelector('.verse[data-surah="' + item.surah + '"][data-ayah="' + item.ayah + '"]')
+      || mushaf.querySelector('#ayah-' + item.surah + '-' + item.ayah);
     if (verse) {
       verse.classList.add('mem-playing');
       try { verse.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { verse.scrollIntoView(); }
@@ -4414,11 +4562,12 @@
     var st = document.getElementById('memAudioStatus');
     if (!st) return;
     if (!memAudio.active || !memState || !memState.active) { st.textContent = ''; return; }
-    var sec = memState.sections[0];
-    var ayahObj = sec.ayahWords[memAudio.idx];
+    var flat = memFlatList();
+    var item = flat[memAudio.idx];
+    if (!item) { st.textContent = ''; return; }
     var parts = [];
-    parts.push('سورة ' + surahByNumber(sec.surah).nameAr);
-    parts.push('الآية ' + toAr(ayahObj.ayah) + ' من ' + toAr(sec.ayahWords.length));
+    parts.push('سورة ' + surahByNumber(item.surah).nameAr);
+    parts.push('الآية ' + toAr(item.ayah) + ' من ' + toAr(flat.length));
     parts.push('تكرار الآية ' + (memAudio.ayahInf ? '∞' : String(memAudio.ayahRepLeft) + ' / ' + String(memAudio.ayahRep)));
     if (memAudio.surahInf) parts.push('تكرار السورة ∞');
     else if (memAudio.surahRep > 1) parts.push('تكرار السورة ' + toAr(memAudio.pass) + ' / ' + toAr(memAudio.surahRep));
