@@ -4237,7 +4237,7 @@
     html += '</div>';
     html += '<div class="mem-audio-opts">';
     html += '<label class="mem-audio-opt">تكرار الآية<select id="memAyahRep" class="mem-audio-sel">' + memRepOptions(ayahRepDef) + '</select></label>';
-    html += '<label class="mem-audio-opt">تكرار السورة<select id="memSurahRep" class="mem-audio-sel">' + memRepOptions(surahRepDef) + '</select></label>';
+    html += '<label class="mem-audio-opt">تكرار الحصة<select id="memSurahRep" class="mem-audio-sel">' + memRepOptions(surahRepDef) + '</select></label>';
     html += '</div>';
     html += '</div>';
     html += '<div class="mem-ctrl-btns">';
@@ -4601,8 +4601,8 @@
     parts.push('سورة ' + surahByNumber(item.surah).nameAr);
     parts.push('الآية ' + toAr(item.ayah) + ' من ' + toAr(flat.length));
     parts.push('تكرار الآية ' + (memAudio.ayahInf ? '∞' : String(memAudio.ayahRepLeft) + ' / ' + String(memAudio.ayahRep)));
-    if (memAudio.surahInf) parts.push('تكرار السورة ∞');
-    else if (memAudio.surahRep > 1) parts.push('تكرار السورة ' + toAr(memAudio.pass) + ' / ' + toAr(memAudio.surahRep));
+    if (memAudio.surahInf) parts.push('تكرار الحصة ∞');
+    else if (memAudio.surahRep > 1) parts.push('تكرار الحصة ' + toAr(memAudio.pass) + ' / ' + toAr(memAudio.surahRep));
     st.textContent = parts.join(' — ');
   }
 
