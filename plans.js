@@ -346,6 +346,7 @@
 
   /* Missed-work banner at the top of the plans page. */
   function renderPlansAlert() {
+    try { if (B.refreshDueBadge) B.refreshDueBadge(); } catch (e) {}
     var el = document.getElementById('plansAlert');
     if (!el) return;
     var s = plansDueSummary();

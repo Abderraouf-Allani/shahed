@@ -1734,11 +1734,30 @@
   /* ---------- licenses ---------- */
 
   var licensesModal = null;
+  var licensesHistPushed = false;
 
-  function closeLicensesModal() {
+  function closeLicensesModalDom() {
     if (licensesModal) { licensesModal.remove(); licensesModal = null; }
     document.removeEventListener('keydown', onLicensesKeydown);
   }
+
+  /* User-initiated close: also pop the history entry pushed on open, so Back
+     while open only closes the popup and never touches route history. */
+  function closeLicensesModal() {
+    if (!licensesModal) return;
+    closeLicensesModalDom();
+    if (licensesHistPushed) {
+      licensesHistPushed = false;
+      try { history.back(); } catch (e) {}
+    }
+  }
+
+  window.addEventListener('popstate', function () {
+    if (licensesModal) {
+      licensesHistPushed = false;
+      closeLicensesModalDom();
+    }
+  });
 
   function onLicensesKeydown(e) {
     if (e.key === 'Escape') closeLicensesModal();
@@ -1750,7 +1769,7 @@
   }
 
   function openLicensesModal() {
-    closeLicensesModal();
+    closeLicensesModalDom();
     var modal = document.createElement('div');
     modal.className = 'licenses-modal';
 
@@ -1824,6 +1843,10 @@
 
     document.body.appendChild(modal);
     licensesModal = modal;
+    if (!licensesHistPushed) {
+      licensesHistPushed = true;
+      try { history.pushState({ licenses: true }, ''); } catch (e) { licensesHistPushed = false; }
+    }
     document.addEventListener('keydown', onLicensesKeydown);
     modal.querySelector('.licenses-close').addEventListener('click', closeLicensesModal);
     modal.querySelector('.licenses-overlay').addEventListener('click', closeLicensesModal);
@@ -3086,7 +3109,31 @@
         return;
       }
       var chip = e.target.closest('.verse-tag-chip');
-      if (chip) openVerseTagContext(chip);
+      if (chip) { openVerseTagContext(chip); return; }
+      /* Search mode: a plain tap on a matched verse exits the search, shows
+         the full surah again and scrolls to that ayah. Tag controls above
+         keep their own behavior; text selection never navigates. */
+      if (state.surahQuery && state.surahQuery.trim()) {
+        var verseEl = e.target.closest('.verse[data-ayah]');
+        if (verseEl) {
+          var sel = '';
+          try { sel = String(window.getSelection()); } catch (se) {}
+          if (!sel) {
+            var ayah = +verseEl.dataset.ayah;
+            var target = '#/surah/' + n + '/' + ayah;
+            state.surahQuery = '';
+            if (location.hash === target) {
+              var si = document.getElementById('surahAyahSearch');
+              if (si) si.value = '';
+              applySurahAyahFilter();
+              var el = document.getElementById('ayah-' + n + '-' + ayah);
+              if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } else {
+              location.hash = target;
+            }
+          }
+        }
+      }
     });
 
     var ayahSearch = document.getElementById('surahAyahSearch');
@@ -5041,6 +5088,7 @@
     activeAyahOf: activeAyahOf,
     activeAyahEndOf: activeAyahEndOf,
     startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
+    refreshDueBadge: function () { updatePlansBadge(); },
     numberingForSurah: numberingForSurah,
     getAyahCount: getAyahCount,
     canonAyah: canonAyah,
@@ -5178,15 +5226,24 @@
 
   function updatePlansBadge() {
     var badge = document.getElementById('plansBadge');
-    if (!badge) return;
     var n = 0;
     try { n = getPlansDueCount().total; } catch (e) { n = 0; }
-    if (n > 0) {
-      badge.textContent = n > 9 ? '9+' : toWest(n);
-      badge.removeAttribute('hidden');
-    } else {
-      badge.setAttribute('hidden', '');
+    if (badge) {
+      if (n > 0) {
+        badge.textContent = n > 9 ? '9+' : toWest(n);
+        badge.removeAttribute('hidden');
+      } else {
+        badge.setAttribute('hidden', '');
+      }
     }
+    /* Installed-PWA icon badge (Badging API): same due count on the app icon
+       in the device apps menu. Silent no-op where unsupported/not installed. */
+    try {
+      if ('setAppBadge' in navigator) {
+        var r = n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge();
+        if (r && typeof r.catch === 'function') r.catch(function () {});
+      }
+    } catch (e) {}
   }
 
   /* Once-daily reminder (toast + optional browser Notification) when the user
