@@ -1810,7 +1810,11 @@
       + ' <a href="https://qurancomplex.gov.sa/en/techquran/dev/" target="_blank" rel="noopener">qurancomplex.gov.sa — صفحة المطورين</a>.'
       + '</li>'
       + '<li>تعذر الاتصال بموقع المجمع أثناء الإعداد، فجُلب النص من نسخة مطابقة منشورة على GitHub:'
-      + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>';
+      + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>'
+      + '<li>حدود الأرباع الـ٢٤٠ (ربع الحزب، برواية حفص) من مكتبة <strong>quran-meta</strong> — رخصة MIT —'
+      + ' <a href="https://github.com/quran-center/quran-meta" target="_blank" rel="noopener">github.com/quran-center/quran-meta</a>'
+      + ' (متحقق منها مقابل علامات ۞ في نص المجمع، وبيانات Tarteel الوصفية، وخادم'
+      + ' <a href="https://mcp.quran.ai" target="_blank" rel="noopener">mcp.quran.ai</a>).</li>';
 
     var audioRows =
       '<li>تلاوة <strong>قالون عن نافع</strong> — ملفات صوتية «آية بآية» (رقم التلاوة <code>257</code>) من خادم'

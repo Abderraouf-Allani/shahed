@@ -72,12 +72,82 @@
     return null;
   }
 
+  /* Canonical hizb-division boundaries (Hafs/Medina, from data/ahzab.json):
+     240 rub' START keys. Juz'=8 rub', hizb=4, half=2. Plans partition in these
+     quanta exactly like ayahs; rendering converts to the active riwaya. */
+  var plansAhzabCache = null;
+  var plansAhzabPromise = null;
+
+  function plansEnsureAhzab() {
+    if (plansAhzabCache) return Promise.resolve(plansAhzabCache);
+    if (!plansAhzabPromise) {
+      plansAhzabPromise = fetch('data/ahzab.json').then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        if (!d || !Array.isArray(d.rub) || d.rub.length !== 240) throw new Error('bad ahzab');
+        plansAhzabCache = d.rub;
+        return plansAhzabCache;
+      }).catch(function (err) { plansAhzabPromise = null; throw err; });
+    }
+    return plansAhzabPromise;
+  }
+
+  var PLAN_AHZAB_SPAN = { rub: 1, half: 2, hizb: 4, juz: 8 };
+
+  /* Quanta of `unit` as canonical hafs abs spans [{start, end}]. */
+  function plansAhzabQuanta(unit) {
+    var rub = plansAhzabCache;
+    var per = PLAN_AHZAB_SPAN[unit] || 1;
+    var total = plansHafsAbs(114, plansHafsCount(114));
+    var out = [];
+    for (var k = 0; k < 240; k += per) {
+      var start = plansHafsAbs(rub[k][0], rub[k][1]);
+      var end = (k + per < 240) ? plansHafsAbs(rub[k + per][0], rub[k + per][1]) - 1 : total;
+      out.push({ start: start, end: end });
+    }
+    return out;
+  }
+
+  var PLAN_UNIT_LABELS = {
+    ayahs:  { one: 'آية/يوم', two: 'آيتان/يوم', few: 'آيات/يوم' },
+    rub:    { one: 'ربع/يوم', two: 'ربعان/يوم', few: 'أرباع/يوم' },
+    half:   { one: 'نصف/يوم', two: 'نصفان/يوم', few: 'أنصاف/يوم' },
+    hizb:   { one: 'حزب/يوم', two: 'حزبان/يوم', few: 'أحزاب/يوم' },
+    juz:    { one: 'جزء/يوم', two: 'جزآن/يوم', few: 'أجزاء/يوم' },
+    surahs: { one: 'سورة/يوم', two: 'سورتان/يوم', few: 'سور/يوم' }
+  };
+
+  function plansUnitLabel(unit, perDay) {
+    var L = PLAN_UNIT_LABELS[unit] || PLAN_UNIT_LABELS.ayahs;
+    return countNoun(perDay, toAr, L.one, L.two, L.few);
+  }
+
   /* Build canonical chunks: range [fromSurah:fromAyah, toSurah:toAyah] (hafs)
-     partitioned into perDay pieces. unit: 'ayahs' (N ayahs/day) or 'surahs' (N surahs/day). */
+     partitioned into perDay pieces. unit: 'ayahs', 'surahs', or an ahzab
+     quantum ('rub'/'half'/'hizb'/'juz', grouped and clipped to the range). */
   function plansBuildChunks(p) {
     var chunks = [];
     var i, a, e, A, B;
-    if (p.unit === 'surahs') {
+    if (PLAN_AHZAB_SPAN[p.unit]) {
+      if (!plansAhzabCache) throw new Error('ahzab-missing');
+      var absStart = plansHafsAbs(p.fromSurah, p.fromAyah);
+      var absEnd = plansHafsAbs(p.toSurah, p.toAyah);
+      var quanta = plansAhzabQuanta(p.unit);
+      var qi = 0;
+      while (qi < quanta.length && quanta[qi].end < absStart) qi++;
+      for (; qi < quanta.length; qi += p.perDay) {
+        var lastQ = Math.min(qi + p.perDay - 1, quanta.length - 1);
+        var qs = Math.max(quanta[qi].start, absStart);
+        var qe = Math.min(quanta[lastQ].end, absEnd);
+        if (qs > qe) break;
+        A = plansSurahOfAbs(qs);
+        B = plansSurahOfAbs(qe);
+        if (!A || !B) break;
+        chunks.push({ from: A.surah + ':' + A.ayah, to: B.surah + ':' + B.ayah });
+        if (qe >= absEnd) break;
+      }
+    } else if (p.unit === 'surahs') {
       for (i = p.fromSurah; i <= p.toSurah; i += p.perDay) {
         var end = Math.min(i + p.perDay - 1, p.toSurah);
         chunks.push({ from: i + ':1', to: end + ':' + plansHafsCount(end) });
@@ -269,6 +339,14 @@
     }
     var unit = (target || memPlan || {}).unit || 'ayahs';
     var perDay = (target || memPlan || {}).perDay || 5;
+    if (PLAN_AHZAB_SPAN[unit] && !plansAhzabCache) {
+      plansEnsureAhzab().then(function () {
+        plansEnsureAutoRevise(sections, memPlanId);
+      }).catch(function () {
+        showAppToast('تعذّر تحميل حدود الأرباع — أُجّلت خطة المراجعة');
+      });
+      return;
+    }
     if (target) {
       var ns = Math.min(r.start, targetRange.start);
       var ne = Math.max(r.end, targetRange.end);
@@ -340,6 +418,7 @@
     html += '<div id="plansAlert"></div>';
     html += '<div id="plansArea"></div>';
     appEl.innerHTML = html;
+    plansEnsureAhzab().catch(function () {});
     renderPlansAlert();
     renderPlansArea();
     document.getElementById('plansAddBtn').addEventListener('click', function () { plansOpenForm(); });
@@ -414,9 +493,7 @@
       html += '<div class="plan-card" data-i="' + i + '">';
       html += '<div class="plan-head">';
       html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + '</span>';
-      html += '<span class="plan-target">' + (p.unit === 'surahs'
-        ? countNoun(p.perDay, toAr, 'سورة/يوم', 'سورتان/يوم', 'سور/يوم')
-        : countNoun(p.perDay, toAr, 'آية/يوم', 'آيتان/يوم', 'آيات/يوم')) + '</span>';
+      html += '<span class="plan-target">' + plansUnitLabel(p.unit, p.perDay) + '</span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
       html += '<div class="plan-meta"><span>' + toAr(done) + ' / ' + toAr(total) + ' — ' + toAr(pct) + '%</span></div>';
@@ -730,6 +807,10 @@
     html += '<label>التقسيم</label>';
     html += '<div class="plan-seg">';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="ayahs" checked> آيات/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="rub"> ربع/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="half"> نصف/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="hizb"> حزب/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="juz"> جزء/يوم</label>';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="surahs"> سور/يوم</label>';
     html += '</div>';
     html += '</div>';
@@ -788,23 +869,33 @@
       ta = Math.min(ta, plansHafsCount(ts));
       if (fs > ts) { showAppToast('سورة البداية بعد سورة النهاية'); return; }
       if (fs === ts && fa > ta) { var tmp = fa; fa = ta; ta = tmp; }
-      var plan = {
-        id: newId('p'),
-        type: type,
-        unit: unit,
-        perDay: perDay,
-        fromSurah: fs, fromAyah: fa,
-        toSurah: ts, toAyah: ta,
-        pointer: 0,
-        created: plansDayKey(0),
-        chunks: plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: fs, fromAyah: fa, toSurah: ts, toAyah: ta })
+      var mkPlan = function () {
+        var plan = {
+          id: newId('p'),
+          type: type,
+          unit: unit,
+          perDay: perDay,
+          fromSurah: fs, fromAyah: fa,
+          toSurah: ts, toAyah: ta,
+          pointer: 0,
+          created: plansDayKey(0),
+          chunks: plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: fs, fromAyah: fa, toSurah: ts, toAyah: ta })
+        };
+        var all = plansLoad();
+        all.push(plan);
+        plansSave(all);
+        overlay.remove();
+        renderPlansAlert();
+        renderPlansArea();
+        showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toAr));
       };
-      var all = plansLoad();
-      all.push(plan);
-      plansSave(all);
-      overlay.remove();
-      renderPlansArea();
-      showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toAr));
+      if (PLAN_AHZAB_SPAN[unit]) {
+        plansEnsureAhzab().then(mkPlan).catch(function () {
+          showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
+        });
+      } else {
+        mkPlan();
+      }
     });
   }
 
@@ -815,6 +906,9 @@
     dueSummary: plansDueSummary,
     requestNotifications: plansRequestNotifications,
     ensureAutoRevise: plansEnsureAutoRevise,
+    ensureAhzab: plansEnsureAhzab,
+    unitLabel: plansUnitLabel,
+    buildChunks: plansBuildChunks,
     rateReview: plansRateReview,
     struggleRate: struggleRate,
     getStruggle: struggleLoad,
