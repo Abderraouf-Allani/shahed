@@ -11,6 +11,8 @@
   var showAppToast = B.showAppToast;
   var activeAyahOf = B.activeAyahOf;
   var activeAyahEndOf = B.activeAyahEndOf || activeAyahOf;
+  var countNoun = B.countNoun;
+  var dayNoun = B.dayNoun;
   var startReaderAt = B.startReaderAt;
   var numberingForSurah = B.numberingForSurah;
   var getAyahCount = B.getAyahCount;
@@ -288,7 +290,7 @@
         target.pointer = i + 1;
       }
       plansPersistPlan(target);
-      showAppToast('حُدّثت خطة المراجعة التلقائية — ' + toAr(fresh.length) + ' يوماً');
+      showAppToast('حُدّثت خطة المراجعة التلقائية — ' + dayNoun(fresh.length, toAr));
       return;
     }
     if (all.length >= 8) { showAppToast('تعذّر إنشاء خطة المراجعة — الحد الأقصى ٨ خطط'); return; }
@@ -353,11 +355,11 @@
     var n = s.overdue.length + s.reviews.length;
     if (!n) { el.innerHTML = ''; return; }
     var html = '<div class="plans-alert" role="alert">';
-    html += '<strong>🔔 تنبيه: لديك ' + toWest(n) + ' مهمة متأخرة</strong>';
+    html += '<strong>🔔 تنبيه: ' + countNoun(n, toWest, 'لديك مهمة متأخرة', 'لديك مهمتان متأخرتان', 'لديك مهام متأخرة') + '</strong>';
     html += '<span> (';
     var bits = [];
-    if (s.overdue.length) bits.push(toWest(s.overdue.length) + ' مهمة يومية');
-    if (s.reviews.length) bits.push(toWest(s.reviews.length) + ' مراجعة مستحقة');
+    if (s.overdue.length) bits.push(countNoun(s.overdue.length, toWest, 'مهمة يومية', 'مهمتان يوميتان', 'مهام يومية'));
+    if (s.reviews.length) bits.push(countNoun(s.reviews.length, toWest, 'مراجعة مستحقة', 'مراجعتان مستحقتان', 'مراجعات مستحقة'));
     html += bits.join(' + ') + ') — تداركها قبل تراكمها، وفّقك الله';
     html += '</span></div>';
     el.innerHTML = html;
@@ -371,17 +373,17 @@
     var html = '<div class="plan-card plan-struggle">';
     html += '<div class="plan-head">';
     html += '<span class="plan-type">⚠️ حفظ متعثر</span>';
-    html += '<span class="plan-target">' + toAr(st.items.length) + ' مقطع</span>';
+    html += '<span class="plan-target">' + countNoun(st.items.length, toAr, 'مقطع', 'مقطعان', 'مقاطع') + '</span>';
     html += '</div>';
-    html += '<div class="plan-meta">يبقى المقطع هنا حتى تُتقنه ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية</div>';
+    html += '<div class="plan-meta">يبقى المقطع هنا حتى تُتقنه ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + '</div>';
     st.items.forEach(function (it, idx) {
       var dueNow = !it.nextReview || it.nextReview <= today;
       var late = (it.nextReview && it.nextReview < today) ? plansDaysBetween(it.nextReview, today) : 0;
       html += '<div class="plan-review-row">';
       html += '<span class="plan-chunk-label">' + it.label + '</span>';
       html += '<span class="plan-streak">إتقان متتالٍ: ' + toAr(it.streak || 0) + ' / ' + toAr(STRUGGLE_TARGET) + '</span>';
-      if (late > 0) html += '<span class="plan-review-late">متأخرة ' + toAr(late) + ' ي</span>';
-      else if (!dueNow) html += '<span class="plan-review-wait">بعد ' + toAr(plansDaysBetween(today, it.nextReview)) + ' ي</span>';
+      if (late > 0) html += '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>';
+      else if (!dueNow) html += '<span class="plan-review-wait">' + dayNoun(plansDaysBetween(today, it.nextReview), toAr, 'بعد ') + '</span>';
       html += '<span class="plan-actions">';
       html += '<a class="pill" data-sgo="' + idx + '" href="#/memorize">راجع</a>';
       html += '<button type="button" class="pill" data-struggle-good="' + idx + '">أتقنت ✓</button>';
@@ -412,7 +414,9 @@
       html += '<div class="plan-card" data-i="' + i + '">';
       html += '<div class="plan-head">';
       html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + '</span>';
-      html += '<span class="plan-target">' + toAr(p.perDay) + ' ' + (p.unit === 'surahs' ? 'سورة/يوم' : 'آية/يوم') + '</span>';
+      html += '<span class="plan-target">' + (p.unit === 'surahs'
+        ? countNoun(p.perDay, toAr, 'سورة/يوم', 'سورتان/يوم', 'سور/يوم')
+        : countNoun(p.perDay, toAr, 'آية/يوم', 'آيتان/يوم', 'آيات/يوم')) + '</span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
       html += '<div class="plan-meta"><span>' + toAr(done) + ' / ' + toAr(total) + ' — ' + toAr(pct) + '%</span></div>';
@@ -422,7 +426,7 @@
         var due = plansChunkDue(p);
         var lateDays = plansDaysBetween(due, plansDayKey(0));
         if (lateDays > 0) {
-          html += '<span class="plan-late-badge">⏰ متأخرة ' + toWest(lateDays) + ' ي</span>';
+          html += '<span class="plan-late-badge">⏰ ' + dayNoun(lateDays, toWest, 'متأخرة ') + '</span>';
         }
         html += '<span class="plan-actions">';
         html += '<a class="pill" data-go="' + i + '" href="' + plansDeepLink(p, cur) + '">' + plansGoLabel(p) + '</a>';
@@ -441,7 +445,7 @@
     area.innerHTML = html;
     plans.forEach(function (p, i) { renderPlanReviews(p, i); });
     area.onclick = function (e) {
-      var t = e.target.closest('button[data-done],button[data-del],button[data-review-good],button[data-review-bad],button[data-struggle-good],button[data-struggle-bad]');
+      var t = e.target.closest('button[data-done],button[data-del],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
       if (!t) return;
       if (t.dataset.struggleGood !== undefined) {
         struggleRate(+t.dataset.struggleGood, true);
@@ -466,6 +470,10 @@
         plansRateReview(i, +t.dataset.reviewBad, false);
         renderPlansAlert();
         renderPlansArea();
+      } else if (t.dataset.reviewPlain !== undefined) {
+        plansCompleteReview(p, +t.dataset.reviewPlain);
+        renderPlansAlert();
+        renderPlansArea();
       } else if (t.dataset.del !== undefined) {
         if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); renderPlansAlert(); renderPlansArea(); }
       }
@@ -482,10 +490,14 @@
     });
   }
 
+  /* Quality self-rating (good/bad) applies to memorize/revise reviews only.
+     Read/listen reviews complete with a single neutral button: no rating,
+     and never a struggle-plan entry. */
   function renderPlanReviews(p, planIdx) {
     var el = document.querySelector('.plan-reviews[data-reviews="' + planIdx + '"]');
     if (!el) return;
     var today = plansDayKey(0);
+    var rated = (p.type === 'memorize' || p.type === 'revise');
     var rows = '';
     (p.chunks || []).forEach(function (c, ci) {
       if (!c.done || !c.nextReview || c.nextReview === 'done') return;
@@ -493,10 +505,12 @@
         var late = plansDaysBetween(c.nextReview, today);
         rows += '<div class="plan-review-row">'
           + '<span class="plan-chunk-label">' + c.label + '</span>'
-          + (late > 0 ? '<span class="plan-review-late">متأخرة ' + toWest(late) + ' ي</span>' : '')
+          + (late > 0 ? '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>' : '')
           + '<span class="plan-actions">'
-          + '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
-          + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
+          + (rated
+            ? '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
+              + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
+            : '<button type="button" class="pill" data-review-plain="' + ci + '">راجعت</button>')
           + '</span>'
           + '</div>';
       }
@@ -588,7 +602,7 @@
       nextReview: plansDayKey(1)
     });
     struggleSave(st);
-    showAppToast('أُضيف المقطع إلى «حفظ متعثر» — أتقنه ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية ليخرج');
+    showAppToast('أُضيف المقطع إلى «حفظ متعثر» — أتقنه ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' ليخرج');
   }
 
   /* Rate one struggling revision: good increments the streak (graduation at
@@ -604,7 +618,7 @@
       if (it.streak >= STRUGGLE_TARGET) {
         st.items.splice(itemIdx, 1);
         struggleSave(st);
-        showAppToast('🎉 أتقنت المقطع ' + toAr(STRUGGLE_TARGET) + ' مرات متتالية — خرج من «حفظ متعثر»');
+        showAppToast('🎉 أتقنت المقطع ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' — خرج من «حفظ متعثر»');
         return;
       }
       it.nextReview = plansDayKey(1);
@@ -790,7 +804,7 @@
       plansSave(all);
       overlay.remove();
       renderPlansArea();
-      showAppToast('أُنشئت الخطة — ' + toAr(plan.chunks.length) + ' يوماً');
+      showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toAr));
     });
   }
 

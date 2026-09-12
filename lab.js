@@ -3,6 +3,7 @@
 
   var B = window.QuranLabBridge;
   if (!B) return;
+  var countNoun = B.countNoun;
 
   var esc = B.esc;
   var toAr = B.toAr;
@@ -228,7 +229,8 @@
 
     var stats = document.getElementById('labStats');
     if (stats) {
-      stats.textContent = toAr(Object.keys(cfg.nodes).length) + ' وسم على المخطط — ' + toAr(cfg.edges.length) + ' علاقة';
+      stats.textContent = countNoun(Object.keys(cfg.nodes).length, toAr, 'وسم', 'وسمان', 'وسوم')
+        + ' على المخطط — ' + countNoun(cfg.edges.length, toAr, 'علاقة', 'علاقتان', 'علاقات');
     }
   }
 
@@ -325,7 +327,7 @@
           saveLab();
           renderLabCanvas();
           if (!imported) alert('لم يتم العثور على تصنيفات مطابقة لاستيراد مخططاتها.');
-          else alert('تم استيراد مخططات ' + toAr(imported) + ' تصنيف.');
+          else alert('تم استيراد مخططات ' + countNoun(imported, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات') + '.');
         } catch (err) {
           alert('ملف غير صالح.');
         }

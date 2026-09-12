@@ -10,6 +10,31 @@
   /* Western digits (0-9) for missed-day notifications — not ٠-٩. */
   function toWest(n) { return String(n); }
 
+  /* Arabic number agreement for counted nouns: 1 singular, 2 dual, 3-10
+     plural, 11+ singular (e.g. مهمة / مهمتان / مهام / مهمة). `many` defaults
+     to `one`. Works on absolute value; 0 takes the plural. */
+  function plural(n, one, two, few, many) {
+    n = Math.abs(Math.floor(+n || 0));
+    if (n === 1) return one;
+    if (n === 2) return two;
+    if (n <= 10) return few;
+    return (many === undefined ? one : many);
+  }
+
+  /* "N noun" with correct agreement; fmt renders the digits (toAr/toWest). */
+  function countNoun(n, fmt, one, two, few, many) {
+    return fmt(n) + ' ' + plural(n, one, two, few, many);
+  }
+
+  /* Day counts with agreement: يوم واحد / يومان / N أيام / N يوماً.
+     Optional prefix ('متأخرة ' / 'بعد '). */
+  function dayNoun(n, fmt, prefix) {
+    n = Math.abs(Math.floor(+n || 0));
+    var s = n === 1 ? 'يوم واحد' : n === 2 ? 'يومان'
+      : n <= 10 ? fmt(n) + ' أيام' : fmt(n) + ' يوماً';
+    return (prefix || '') + s;
+  }
+
   function toEnDigits(s) {
     return String(s).replace(/[٠-٩]/g, function (d) { return String(AR_DIGITS.indexOf(d)); });
   }
@@ -1064,10 +1089,13 @@
 
     saveTags();
 
-    var msg = 'تم استيراد ' + toAr(createdTags) + ' وسماً و' + toAr(createdCats) + ' تصنيفاً، مع ' + toAr(assocKeys) + ' آية موسومة (' + toAr(addedAssoc) + ' رابطة).';
-    if (metaKeys) msg += '\nاستُعيدت بيانات ' + toAr(metaKeys) + ' رابطة من وسم.';
-    if (mergedCats) msg += '\nدُمجت ' + toAr(mergedCats) + ' تصنيف بنفس اسم تصنيف موجود.';
-    if (renamedTags) msg += '\nأُعيد تسمية ' + toAr(renamedTags) + ' وسماً مطابقاً لاسم وسم موجود.';
+    var msg = 'تم استيراد ' + countNoun(createdTags, toAr, 'وسم', 'وسمان', 'وسوم', 'وسماً')
+      + ' و' + countNoun(createdCats, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات', 'تصنيفاً')
+      + '، مع ' + countNoun(assocKeys, toAr, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة')
+      + ' (' + countNoun(addedAssoc, toAr, 'رابطة', 'رابطتان', 'روابط') + ').';
+    if (metaKeys) msg += '\nاستُعيدت بيانات ' + countNoun(metaKeys, toAr, 'رابطة', 'رابطتان', 'روابط') + ' من وسم.';
+    if (mergedCats) msg += '\nدُمجت ' + countNoun(mergedCats, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات') + ' بنفس اسم تصنيف موجود.';
+    if (renamedTags) msg += '\nأُعيد تسمية ' + countNoun(renamedTags, toAr, 'وسم مطابق', 'وسمان مطابقان', 'وسوم مطابقة', 'وسماً مطابقاً') + ' لاسم وسم موجود.';
     report(true, msg);
   }
 
@@ -1282,7 +1310,7 @@
         spans.push({ key: idx[i].key, start: s, end: e });
       }
       if (i < idx.length) {
-        showDocProgress('يجري مطابقة الآيات… (' + toAr(matched.length) + ' آية حتى الآن)', i / idx.length);
+        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
         setTimeout(pass1, 0);
       } else {
         i = 0;
@@ -1301,7 +1329,7 @@
         candidates.push(cand);
       }
       if (i < idx.length) {
-        showDocProgress('يجري مطابقة الآيات… (' + toAr(matched.length) + ' آية حتى الآن)', i / idx.length);
+        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
         setTimeout(pass2, 0);
       } else {
         candidates.sort(function (x, y) {
@@ -1664,7 +1692,7 @@
     var chaptersMsg = result.chapters > 1
       ? ' موزعة على ' + toAr(result.chapters) + ' فصول.'
       : '';
-    alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + toAr(matched.length) + ' آية' + chaptersMsg);
+    alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + chaptersMsg);
     renderTagArea();
   }
 
@@ -2743,7 +2771,7 @@
       return;
     }
     var list = searchAyahs(state.ayahQuery);
-    if (stats) stats.textContent = toAr(list.length) + ' آية';
+    if (stats) stats.textContent = countNoun(list.length, toAr, 'آية', 'آيتان', 'آيات');
     var html = '';
     html += '<div class="ayah-results-head">'
       + '<span>نتائج البحث في الآيات — ' + toAr(list.length) + '</span>'
@@ -2757,7 +2785,7 @@
       }
       html += '</div></div>';
       if (list.length > 200) {
-        html += '<div class="hint-box">يوجد ' + toAr(list.length - 200) + ' نتيجة أخرى. قم بتضييق البحث.</div>';
+        html += '<div class="hint-box">يوجد ' + countNoun(list.length - 200, toAr, 'نتيجة أخرى', 'نتيجتان أخريان', 'نتائج أخرى') + '. قم بتضييق البحث.</div>';
       }
     } else {
       html += '<div class="empty-state">لا توجد آيات مطابقة لبحثك</div>';
@@ -2788,7 +2816,8 @@
     }, 0);
 
     if (stats) {
-      stats.textContent = toAr(list.length) + ' سورة' + (state.query ? ' — ' + toAr(totalVerses) + ' آية' : ' — ' + toAr(grandTotal) + ' آية');
+      stats.textContent = countNoun(list.length, toAr, 'سورة', 'سورتان', 'سور')
+        + (state.query ? ' — ' + countNoun(totalVerses, toAr, 'آية', 'آيتان', 'آيات') : ' — ' + countNoun(grandTotal, toAr, 'آية', 'آيتان', 'آيات'));
     }
 
     if (!list.length) {
@@ -2809,7 +2838,7 @@
       html += '<span class="surah-meta">';
       html += '<span class="tag type-' + esc(s.type) + '">' + (s.type === 'Meccan' ? 'مكية' : 'مدنية') + '</span>';
       var c = state.quran[s.number - 1];
-      html += '<span class="tag">' + toAr(c ? c.verses.length : s.ayahCount) + ' آية</span>';
+      html += '<span class="tag">' + countNoun(c ? c.verses.length : s.ayahCount, toAr, 'آية', 'آيتان', 'آيات') + '</span>';
       html += '</span></span></a>';
       html += '<button type="button" class="surah-star' + (isInt ? ' is-intended' : '') + '" data-number="' + s.number + '" aria-pressed="' + (isInt ? 'true' : 'false') + '" title="' + (isInt ? 'إزالة من نيّات القراءة' : 'إضافة إلى نيّات القراءة') + '" aria-label="' + (isInt ? 'إزالة' : 'إضافة') + ' ' + esc(s.nameAr) + ' إلى نيّات القراءة">';
       html += '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2.5l3 6.1 6.7 1-4.9 4.7 1.2 6.7L12 17.6 6 21l1.2-6.7-4.9-4.7 6.7-1z"/></svg>';
@@ -2825,8 +2854,8 @@
     try { due = getPlansDueCount(); } catch (e) { due = null; }
     if (!due || !due.total) { box.innerHTML = ''; return; }
     var bits = [];
-    if (due.overdue) bits.push(toWest(due.overdue) + ' مهمة يومية متأخرة');
-    if (due.reviews) bits.push(toWest(due.reviews) + ' مراجعة مستحقة');
+    if (due.overdue) bits.push(countNoun(due.overdue, toWest, 'مهمة يومية متأخرة', 'مهمتان يوميتان متأخرتان', 'مهام يومية متأخرة'));
+    if (due.reviews) bits.push(countNoun(due.reviews, toWest, 'مراجعة مستحقة', 'مراجعتان مستحقتان', 'مراجعات مستحقة'));
     box.innerHTML = '<a class="plans-alert plans-alert-link" href="#/plans" role="alert">'
       + '🔔 لديك ' + bits.join(' + ') + ' — اضغط للمتابعة في صفحة الخطط</a>';
   }
@@ -2881,7 +2910,7 @@
     html += '<div class="reader-sub" dir="ltr">' + esc(s.nameEn) + ' — ' + esc(s.meaning) + '</div>';
     html += '<div class="reader-meta">';
     html += '<span class="tag type-' + esc(s.type) + '">' + (s.type === 'Meccan' ? 'سورة مكية' : 'سورة مدنية') + '</span>';
-    html += '<span class="tag">' + toAr(q.verses.length) + ' آية</span>';
+    html += '<span class="tag">' + countNoun(q.verses.length, toAr, 'آية', 'آيتان', 'آيات') + '</span>';
     html += '<span class="tag">السورة ' + toAr(n) + ' من ' + toAr(total) + '</span>';
     html += '</div>';
     html += '</div>';
@@ -3408,8 +3437,9 @@
     var taggedCount = Object.keys(tagState.verses).length;
     var stats = document.getElementById('tagStats');
     if (stats) {
-      stats.textContent = toAr(tagState.categories.length) + ' تصنيف — ' + toAr(tagState.tags.length) + ' وسم'
-        + (taggedCount ? ' — ' + toAr(taggedCount) + ' آية موسومة' : '');
+      stats.textContent = countNoun(tagState.categories.length, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات')
+        + ' — ' + countNoun(tagState.tags.length, toAr, 'وسم', 'وسمان', 'وسوم')
+        + (taggedCount ? ' — ' + countNoun(taggedCount, toAr, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة') : '');
     }
 
     var html = '';
@@ -3870,7 +3900,9 @@
     tagState: tagState,
     LS: LS,
     appEl: appEl,
-    positionTagMenu: positionTagMenu
+    positionTagMenu: positionTagMenu,
+    plural: plural,
+    countNoun: countNoun
   };
 
   var labScriptPromise = null;
@@ -5089,6 +5121,9 @@
     activeAyahEndOf: activeAyahEndOf,
     startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
     refreshDueBadge: function () { updatePlansBadge(); },
+    plural: plural,
+    countNoun: countNoun,
+    dayNoun: dayNoun,
     numberingForSurah: numberingForSurah,
     getAyahCount: getAyahCount,
     canonAyah: canonAyah,
@@ -5260,8 +5295,8 @@
     if (stamp && stamp.day === today && stamp.sig === sig) return;
     try { localStorage.setItem(LS.plansNotif, JSON.stringify({ day: today, sig: sig })); } catch (e) {}
     var bits = [];
-    if (due.overdue) bits.push('مهام يومية متأخرة: ' + toWest(due.overdue));
-    if (due.reviews) bits.push('مراجعات مستحقة: ' + toWest(due.reviews));
+    if (due.overdue) bits.push(countNoun(due.overdue, toWest, 'مهمة يومية متأخرة', 'مهمتان يوميتان متأخرتان', 'مهام يومية متأخرة'));
+    if (due.reviews) bits.push(countNoun(due.reviews, toWest, 'مراجعة مستحقة', 'مراجعتان مستحقتان', 'مراجعات مستحقة'));
     var msg = '🔔 لديك مهام خطط متأخرة (' + bits.join('، ') + ') — افتح صفحة الخطط للمتابعة';
     showAppToast(msg);
     try {
