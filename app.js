@@ -73,7 +73,8 @@
     tagScope: 'qaloon_tayahscope_v1',
     plans: 'qaloon_plans_v1',
     plansNotif: 'qaloon_plans_notif_v1',
-    struggle: 'qaloon_struggle_v1'
+    struggle: 'qaloon_struggle_v1',
+    emph: 'qaloon_emph_ayahs_v1'
   };
 
   var TAG_COLORS = ['#1e5a3c', '#a87b2f', '#8e3b46', '#2f5aa8', '#7a2fa8', '#a84a2f', '#2f8f8f', '#5c6bc0'];
@@ -2101,9 +2102,99 @@
     e.preventDefault();
   });
 
+  /* ---------- emphasized ayahs + ayah-number menu (surah page) ---------- */
+
+  function getEmphMap() {
+    try {
+      var v = JSON.parse(localStorage.getItem(LS.emph) || '{}');
+      return (v && typeof v === 'object') ? v : {};
+    } catch (e) { return {}; }
+  }
+
+  function isEmphAyah(surah, ayah) {
+    return !!getEmphMap()[surah + ':' + ayah];
+  }
+
+  function toggleEmphAyah(surah, ayah) {
+    var m = getEmphMap();
+    var k = surah + ':' + ayah;
+    if (m[k]) delete m[k]; else m[k] = 1;
+    try { localStorage.setItem(LS.emph, JSON.stringify(m)); } catch (e) {}
+    return !!m[k];
+  }
+
+  var ayahMenu = null;
+  var ayahPreview = null;
+
+  function closeAyahMenu() {
+    if (ayahMenu) { ayahMenu.remove(); ayahMenu = null; }
+  }
+
+  function playAyahPreview(surah, ayah) {
+    if (ayahPreview && ayahPreview.surah === surah && ayahPreview.ayah === ayah && ayahPreview.el) {
+      try {
+        if (ayahPreview.el.paused) ayahPreview.el.play(); else ayahPreview.el.pause();
+      } catch (e) {}
+      return;
+    }
+    stopAyahPreview();
+    rdrStopAudio();
+    var el = new Audio();
+    el.preload = 'auto';
+    el.src = riwayaAudioUrl(surah, ayah);
+    el.addEventListener('ended', stopAyahPreview);
+    el.addEventListener('error', stopAyahPreview);
+    ayahPreview = { surah: surah, ayah: ayah, el: el };
+    try {
+      var pr = el.play();
+      if (pr && typeof pr.catch === 'function') pr.catch(function () { stopAyahPreview(); });
+    } catch (e) { stopAyahPreview(); }
+  }
+
+  function stopAyahPreview() {
+    if (ayahPreview && ayahPreview.el) {
+      try { ayahPreview.el.pause(); } catch (e) {}
+    }
+    ayahPreview = null;
+  }
+
+  function openAyahMenu(surah, ayah, anchor) {
+    closeAyahMenu();
+    var menu = document.createElement('div');
+    menu.className = 'ayah-menu';
+    var emph = isEmphAyah(surah, ayah);
+    menu.innerHTML =
+      '<button type="button" data-act="play" title="تشغيل تلاوة الآية" aria-label="تشغيل تلاوة الآية">🔊</button>'
+      + '<button type="button" data-act="copy" title="نسخ الآية برقمها" aria-label="نسخ الآية برقمها">📋</button>'
+      + '<button type="button" data-act="emph" title="تمييز الآية أو إلغاء تمييزها" aria-label="تمييز الآية أو إلغاء تمييزها">' + (emph ? '⭐' : '☆') + '</button>';
+    document.body.appendChild(menu);
+    menu._anchor = anchor;
+    positionTagMenu(menu, anchor);
+    ayahMenu = menu;
+    menu.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      var act = btn.dataset.act;
+      closeAyahMenu();
+      if (act === 'play') {
+        playAyahPreview(surah, ayah);
+      } else if (act === 'copy') {
+        var q = state.quran && state.quran[surah - 1];
+        var text = q && q.verses[ayah - 1];
+        if (text) copyText(text + ' ﴿' + toAr(ayah) + '﴾');
+      } else if (act === 'emph') {
+        var on = toggleEmphAyah(surah, ayah);
+        var el = document.getElementById('ayah-' + surah + '-' + ayah);
+        if (el) el.classList.toggle('verse-emph', on);
+        showAppToast(on ? 'مُيّزت الآية ' + toAr(ayah) : 'أُلغي تمييز الآية ' + toAr(ayah));
+      }
+    });
+  }
+
   /* ---------- tag menu (popover) ---------- */
 
   var tagMenu = null;
+  var ayahNumLongPressAt = 0;
 
   function openTagMenu(surah, ayah, anchor) {
     closeTagMenu();
@@ -2295,6 +2386,8 @@
         !(tagBtnLongPressAt && Date.now() - tagBtnLongPressAt < 400)) closeTagMenu();
     if (tagContextPopup && !tagContextPopup.contains(e.target)) closeTagContextPopup();
     if (tagContextEditor && !tagContextEditor.contains(e.target)) closeTagContextEditor();
+    if (ayahMenu && !ayahMenu.contains(e.target) && !e.target.closest('.ayah-num') &&
+        !(ayahNumLongPressAt && Date.now() - ayahNumLongPressAt < 400)) closeAyahMenu();
     if (window.QuranLab) window.QuranLab.onDocClick(e.target);
   }, true);
 
@@ -2302,6 +2395,7 @@
     if (tagMenu && tagMenu._anchor) positionTagMenu(tagMenu, tagMenu._anchor);
     if (tagFilterMenu && tagFilterMenu._anchor) positionTagMenu(tagFilterMenu, tagFilterMenu._anchor);
     if (tagContextPopup && tagContextPopup._anchor) positionTagMenu(tagContextPopup, tagContextPopup._anchor);
+    if (ayahMenu && ayahMenu._anchor) positionTagMenu(ayahMenu, ayahMenu._anchor);
     if (tagContextEditor && tagContextEditor._anchor) positionTagMenu(tagContextEditor, tagContextEditor._anchor);
     if (window.QuranLab) window.QuranLab.onDocScroll();
   }, true);
@@ -2311,6 +2405,7 @@
       closeTagFilterMenu();
       closeTagContextPopup();
       closeTagContextEditor();
+      closeAyahMenu();
       closeLabEdgePopup();
     }
   });
@@ -2670,7 +2765,8 @@
     var tagBtn = showTags
       ? '<button type="button" class="tag-btn" data-surah="' + surah + '" data-ayah="' + ayah + '" title="وسم هذه الآية" aria-label="وسم هذه الآية">' + TAG_ICON + '</button>'
       : '';
-    return '<span class="verse" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
+    var emphCls = isEmphAyah(surah, ayah) ? ' verse-emph' : '';
+    return '<span class="verse' + emphCls + '" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
       + '<span class="verse-text">' + esc(text) + '</span>'
       + tagBtn
       + chips
@@ -3029,8 +3125,83 @@
       toggleTagFilterMenu(this);
     });
 
+    var tagBtnEvents = document.getElementById('mushaf');
     var tagBtnClickTimer = null;
     var tagBtnClick = null;
+    var ayahNumClickTimer = null;
+    var ayahNumClick = null;
+    var ayahNumLongTimer = null;
+    var ayahNumPressStart = null;
+
+    function ayahNumFromEvent(e) {
+      var numEl = e.target.closest('.ayah-num');
+      if (!numEl) return null;
+      var verse = numEl.closest('.verse[data-ayah]');
+      if (!verse) return null;
+      return { surah: +verse.dataset.surah, ayah: +verse.dataset.ayah, el: numEl };
+    }
+
+    function openAyahNumMenu(t) {
+      openAyahMenu(t.surah, t.ayah, t.el);
+    }
+
+    function cancelAyahNumLongPress() {
+      if (ayahNumLongTimer) { clearTimeout(ayahNumLongTimer); ayahNumLongTimer = null; }
+      ayahNumPressStart = null;
+    }
+
+    tagBtnEvents.addEventListener('mousedown', function (e) {
+      var t = ayahNumFromEvent(e);
+      if (!t) return;
+      cancelAyahNumLongPress();
+      ayahNumPressStart = { x: e.clientX, y: e.clientY, t: t };
+      ayahNumLongTimer = setTimeout(function () {
+        var p = ayahNumPressStart;
+        cancelAyahNumLongPress();
+        if (!p) return;
+        ayahNumLongPressAt = Date.now();
+        clearTimeout(ayahNumClickTimer);
+        ayahNumClickTimer = null;
+        ayahNumClick = null;
+        openAyahNumMenu(p.t);
+      }, 500);
+    });
+
+    tagBtnEvents.addEventListener('touchstart', function (e) {
+      var t = ayahNumFromEvent(e);
+      if (!t) return;
+      cancelAyahNumLongPress();
+      var tc = e.changedTouches[0];
+      ayahNumPressStart = { x: tc.clientX, y: tc.clientY, t: t };
+      ayahNumLongTimer = setTimeout(function () {
+        var p = ayahNumPressStart;
+        cancelAyahNumLongPress();
+        if (!p) return;
+        ayahNumLongPressAt = Date.now();
+        clearTimeout(ayahNumClickTimer);
+        ayahNumClickTimer = null;
+        ayahNumClick = null;
+        openAyahNumMenu(p.t);
+      }, 500);
+    }, { passive: true });
+
+    ['mousemove', 'touchmove'].forEach(function (ev) {
+      tagBtnEvents.addEventListener(ev, function (e) {
+        if (!ayahNumPressStart) return;
+        var pt = ev === 'touchmove' ? e.changedTouches[0] : e;
+        var btn = e.target.closest && e.target.closest('.ayah-num');
+        if (!btn) { cancelAyahNumLongPress(); return; }
+        var dx = pt.clientX - ayahNumPressStart.x;
+        var dy = pt.clientY - ayahNumPressStart.y;
+        if (dx * dx + dy * dy > 64) cancelAyahNumLongPress();
+      }, { passive: true });
+    });
+
+    ['mouseup', 'mouseleave', 'touchend'].forEach(function (ev) {
+      tagBtnEvents.addEventListener(ev, function (e) {
+        if (e.target.closest && e.target.closest('.ayah-num')) cancelAyahNumLongPress();
+      }, { passive: true });
+    });
     var tagBtnLongTimer = null;
     var tagBtnLongPressAt = 0;
     var tagBtnPressStart = null;
@@ -3051,8 +3222,6 @@
       if (tagBtnLongTimer) { clearTimeout(tagBtnLongTimer); tagBtnLongTimer = null; }
       tagBtnPressStart = null;
     }
-
-    var tagBtnEvents = document.getElementById('mushaf');
 
     tagBtnEvents.addEventListener('mousedown', function (e) {
       var btn = e.target.closest('.tag-btn');
@@ -3143,10 +3312,29 @@
       }
       var chip = e.target.closest('.verse-tag-chip');
       if (chip) { openVerseTagContext(chip); return; }
+      var numTap = ayahNumFromEvent(e);
+      if (numTap) {
+        if (ayahNumLongPressAt && Date.now() - ayahNumLongPressAt < 400) { ayahNumLongPressAt = 0; return; }
+        if (ayahNumClickTimer && ayahNumClick &&
+            ayahNumClick.surah === numTap.surah && ayahNumClick.ayah === numTap.ayah) {
+          clearTimeout(ayahNumClickTimer);
+          ayahNumClickTimer = null;
+          ayahNumClick = null;
+          openAyahNumMenu(numTap);
+          return;
+        }
+        clearTimeout(ayahNumClickTimer);
+        ayahNumClickTimer = setTimeout(function () {
+          ayahNumClickTimer = null;
+          ayahNumClick = null;
+        }, 300);
+        ayahNumClick = { surah: numTap.surah, ayah: numTap.ayah };
+        return;
+      }
       /* Search mode: a plain tap on a matched verse exits the search, shows
          the full surah again and scrolls to that ayah. Tag controls above
          keep their own behavior; text selection never navigates. */
-      if (state.surahQuery && state.surahQuery.trim()) {
+      if (state.surahQuery && state.surahQuery.trim() && !e.target.closest('.ayah-num')) {
         var verseEl = e.target.closest('.verse[data-ayah]');
         if (verseEl) {
           var sel = '';
@@ -5314,6 +5502,8 @@
 
   function render() {
     closeTagMenu();
+    closeAyahMenu();
+    stopAyahPreview();
     closeLabEdgePopup();
     window.scrollTo(0, 0);
     var route = parseHash();

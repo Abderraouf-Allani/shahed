@@ -846,6 +846,43 @@ button.tag-chip { border: none; cursor: pointer; font-family: inherit; }
 
 .verse-hidden { display: none !important; }
 
+/* Emphasized ayahs (ayah-number menu toggle, persisted). */
+.verse-emph {
+  background: rgba(168, 123, 47, 0.14);
+  border-radius: 8px;
+  outline: 1px solid rgba(168, 123, 47, 0.5);
+  outline-offset: 2px;
+}
+html.dark .verse-emph { background: rgba(233, 192, 101, 0.13); }
+
+/* Tiny ayah-number menu (play / copy / emphasize). */
+.ayah-menu {
+  position: absolute;
+  z-index: 1200;
+  display: flex;
+  flex-direction: row;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.ayah-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.45rem 0.55rem;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.ayah-menu button:hover { background: var(--surface-2); }
+
 .flash { animation: ayahFlash 2s ease; }
 @keyframes ayahFlash {
   0%, 100% { background: transparent; }
