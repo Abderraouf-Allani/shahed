@@ -1907,20 +1907,6 @@ html.dark .plan-del-btn:hover { background: rgba(238, 136, 136, 0.1); }
   padding: 0.05rem 0.55rem;
   white-space: nowrap;
 }
-.mem-revise-opt {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.55rem 0.9rem;
-  margin-bottom: 0.8rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.mem-revise-opt input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .mem-profile-seg { margin-bottom: 0.7rem; }
 
 /* Missed-plan notifications: header badge, alert banners, late chips. */

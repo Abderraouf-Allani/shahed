@@ -196,7 +196,7 @@ Qaloon / Hafs riwaya switch (brand-sub button in the header).
      precached: they are pulled in lazily (runtime cache-first, then cached for
      offline once fetched). Cache version must be bumped when assets change.
    - Lazy loading: pdf.js / fflate loaded only when a document is imported; the
-     five seed tag-books (dawaa, jam3, asarar, adib, dirasat) are fetched and
+     four seed tag-books (dawaa, jam3, asarar, adib) are fetched and
      merged only when the user first opens the tags view (ensureSeeds() guards
      with an in-flight promise + loaded flag; renderTagArea shows a
      "جاري تحميل كتب الوسوم…" placeholder until merge completes, then re-renders);

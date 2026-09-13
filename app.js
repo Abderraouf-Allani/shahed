@@ -3931,6 +3931,16 @@
   }
 
   function changeFontSize(delta) {
+    var memMushaf = (parseHash().memorize && memState && memState.active)
+      ? document.getElementById('memMushaf') : null;
+    if (memMushaf) {
+      /* Memorize page: zoom is session-local (never touches the reader's
+         saved size) and wins over auto-fit from here on. */
+      memState.fontPx = Math.min(46, Math.max(14, (memState.fontPx || state.fontPx || 32) + delta));
+      memState.userZoomed = true;
+      memMushaf.style.setProperty('--fs', memState.fontPx + 'px');
+      return;
+    }
     state.fontPx = Math.min(46, Math.max(16, state.fontPx + delta));
     localStorage.setItem(LS.fontSize, state.fontPx);
     applyFontSize();
@@ -4343,6 +4353,29 @@
     memCommit(memUnlockDrain);
   }
 
+  /* Shrink the memorize mushaf font until the section fits the viewport
+     (fixed bottom controls accounted for). Starts from the session baseline
+     (memState.fontPx) and stores the result back, so repeated calls converge
+     and the resize-observer path never ping-pongs. Skipped once the user
+     zooms explicitly: manual size wins from then on. */
+  function fitMemFont() {
+    var mushaf = document.getElementById('memMushaf');
+    if (!mushaf || !memState || !memState.active) return;
+    if (!mushaf.clientHeight) return;
+    if (memState.userZoomed) return;
+    var size = memState.fontPx || state.fontPx || 32;
+    mushaf.style.setProperty('--fs', size + 'px');
+    var controls = document.querySelector('.mem-controls');
+    var top = mushaf.getBoundingClientRect().top;
+    var avail = window.innerHeight - top - (controls ? controls.offsetHeight : 0) - 16;
+    var guard = 0;
+    while (size > 14 && mushaf.scrollHeight > avail && guard++ < 24) {
+      size -= 2;
+      mushaf.style.setProperty('--fs', size + 'px');
+    }
+    memState.fontPx = size;
+  }
+
   function renderMemWords(force) {
     var mushaf = document.getElementById('memMushaf');
     if (!mushaf || !memState) return;
@@ -4365,11 +4398,12 @@
       mushaf.innerHTML = html;
     }
     positionMemBlanks();
+    fitMemFont();
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(function () { if (memState && memState.active) positionMemBlanks(); });
     }
     if (typeof ResizeObserver !== 'undefined') {
-      if (!memRO) memRO = new ResizeObserver(function () { positionMemBlanks(); });
+      if (!memRO) memRO = new ResizeObserver(function () { positionMemBlanks(); fitMemFont(); });
       memRO.disconnect();
       memRO.observe(mushaf);
     }
@@ -4496,6 +4530,8 @@
         memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
         memState.pendingAction = null;
         memState.pendingRep = 0;
+        memState.fontPx = state.fontPx;
+        memState.userZoomed = false;
         try {
           saved.auto = false;
           localStorage.setItem(LS.memSession, JSON.stringify(saved));
@@ -4506,7 +4542,6 @@
     var memCanon = !!(saved && saved.num === 'hafs');
     var defFrom = memCanon && saved.from ? activeAyahOf(defSurah, saved.from) : (saved && saved.from) || 1;
     var defTo = memCanon && saved.to ? activeAyahEndOf(defSurah, saved.to) : (saved && saved.to) || 5;
-    var planMemOrigin = !!(saved && saved.fromPlan && saved.planType === 'memorize');
     var memCnt = getAyahCount(defSurah);
     if (defFrom > memCnt) defFrom = memCnt;
     if (defTo > memCnt) defTo = memCnt;
@@ -4538,9 +4573,6 @@
     html += '</div>';
     html += '</div>';
     html += '<div class="mem-area" id="memArea" style="display:none">';
-    if (planMemOrigin) {
-      html += '<label class="mem-revise-opt"><input type="checkbox" id="memReviseAuto"' + (saved.reviseAuto === false ? '' : ' checked') + '> 🔁 إنشاء خطة مراجعة لهذا المقطع عند إتمامه بنجاح</label>';
-    }
     html += '<div class="mushaf-text" id="memMushaf"></div>';
     html += '<div class="mem-controls">';
     html += '<div class="mem-ctrl-top">';
@@ -4581,17 +4613,6 @@
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
-    }
-
-    var reviseAutoEl = document.getElementById('memReviseAuto');
-    if (reviseAutoEl) {
-      reviseAutoEl.addEventListener('change', function () {
-        try {
-          var cur = JSON.parse(localStorage.getItem(LS.memSession)) || {};
-          cur.reviseAuto = !!reviseAutoEl.checked;
-          localStorage.setItem(LS.memSession, JSON.stringify(cur));
-        } catch (e) {}
-      });
     }
 
     document.querySelectorAll('input[name="memProfile"]').forEach(function (r) {
@@ -4650,6 +4671,8 @@
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
       memState.pendingAction = null;
       memState.pendingRep = 0;
+      memState.fontPx = state.fontPx;
+      memState.userZoomed = false;
       try { localStorage.setItem(LS.memSession, JSON.stringify({ surah: surahNum, num: 'hafs', from: canonAyah(surahNum, from), to: canonAyah(surahNum, to), sections: [{ surah: surahNum, from: canonAyah(surahNum, from), to: canonAyah(surahNum, to) }], auto: false })); } catch (e) {}
       setupEl.style.display = 'none';
       areaEl.style.display = '';
@@ -5317,8 +5340,10 @@
     var extra = null;
     try {
       var ms = JSON.parse(localStorage.getItem(LS.memSession));
-      if (ms && ms.reviseAuto && ms.fromPlan && Array.isArray(ms.sections) && ms.sections.length) {
-        extra = { sections: ms.sections, fromPlan: ms.fromPlan };
+      if (ms && ms.fromPlan && ms.planType === 'memorize' && Array.isArray(ms.sections) && ms.sections.length) {
+        if (confirm('أتممتَ حفظ المقطع — أنشئ خطة مراجعة له؟')) {
+          extra = { sections: ms.sections, fromPlan: ms.fromPlan };
+        }
       }
     } catch (e) {}
     ensurePlansScript().then(function () {
@@ -5556,8 +5581,7 @@
     'data/dawaa.json',
     'data/jam3.json',
     'data/asarar.json',
-    'data/adib.json',
-    'data/dirasat.json'
+    'data/adib.json'
   ];
 
   var seedTagsLoaded = false;

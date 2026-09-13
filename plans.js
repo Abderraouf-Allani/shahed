@@ -763,8 +763,7 @@
         sections: canon,
         auto: true,
         fromPlan: planId || null,
-        planType: planType || null,
-        reviseAuto: true
+        planType: planType || null
       }));
     } catch (e) {}
   }
