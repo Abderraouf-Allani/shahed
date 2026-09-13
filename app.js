@@ -3319,7 +3319,7 @@
 
     var html = '';
     html += '<div class="index-toolbar">';
-    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a><a class="pill" href="#/lab">المختبر</a><a class="pill" href="#/plans">الخطط</a></div>';
+    html += '<div class="nav-pills"><a class="pill" href="#/">الفهرس</a><a class="pill" href="#/lab">المختبر</a></div>';
     html += '<div class="tags-io">'
       + '<button type="button" class="io-btn" data-io="doc" title="رفع مستند (PDF أو DOCX) واستخراج الآيات منه كوسم جديد في تصنيف الكتب">رفع مستند</button>'
       + '<button type="button" class="io-btn" data-io="import" title="استيراد وسوم وتصنيفات من ملف">استيراد</button>'
@@ -3480,7 +3480,7 @@
   function renderTagChipBtn(t) {
     var sel = state.selectedTagId === t.id ? ' selected' : '';
     return '<span class="tag-chip-btn' + sel + '" draggable="true" data-tagid="' + t.id + '">'
-      + tagChip(t) + ' <b>' + toAr(tagCount(t.id)) + '</b>'
+      + tagChip(t) + ' <b>' + toWest(tagCount(t.id)) + '</b>'
       + '<button type="button" class="tag-edit" data-tagid="' + t.id + '" title="تعديل الوسم">✎</button>'
       + '<button type="button" class="tag-delete" data-tagid="' + t.id + '" title="حذف الوسم">✕</button>'
       + '</span>';
@@ -3524,7 +3524,7 @@
       return '<label class="suggest-item">'
         + '<input type="checkbox" class="suggest-check" data-word="' + esc(r.word) + '" data-catid="' + cat.id + '" checked>'
         + '<span class="tag-chip suggest-word">' + esc(r.word) + '</span>'
-        + '<span class="suggest-score" title="قوة الارتباط ' + Math.round(r.score * 100) + '%">' + toAr(Math.round(r.score * 100)) + '%</span>'
+        + '<span class="suggest-score" title="قوة الارتباط ' + Math.round(r.score * 100) + '%">' + toWest(Math.round(r.score * 100)) + '%</span>'
         + '</label>';
     }).join('');
     return '<div class="suggest-panel" data-catid="' + cat.id + '">'
@@ -3537,6 +3537,21 @@
       + '<button type="button" class="suggest-add-selected" data-catid="' + cat.id + '">إضافة المحدد</button>'
       + '<button type="button" class="suggest-close">إغلاق</button>'
       + '</div></div>';
+  }
+
+  /* Shared skeleton for one category block (head + tag chips). extraHtml holds
+     the per-category action buttons, suggest panel and inline new-tag form;
+     the uncategorized block passes none. Counts render in Western digits. */
+  function renderCatBlock(catId, dotStyle, name, count, tagsHtml, extraHtml) {
+    return '<div class="cat-block" data-catid="' + catId + '">'
+      + '<div class="cat-head">'
+      + '<span class="cat-dot" style="' + dotStyle + '"></span>'
+      + '<span class="cat-name">' + esc(name) + '</span>'
+      + '<b class="cat-count">' + toWest(count) + '</b>'
+      + (extraHtml || '')
+      + '</div>'
+      + '<div class="cat-tags">' + tagsHtml + '</div>'
+      + '</div>';
   }
 
   function renderTagArea() {
@@ -3557,9 +3572,9 @@
     var taggedCount = Object.keys(tagState.verses).length;
     var stats = document.getElementById('tagStats');
     if (stats) {
-      stats.textContent = countNoun(tagState.categories.length, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات')
-        + ' — ' + countNoun(tagState.tags.length, toAr, 'وسم', 'وسمان', 'وسوم')
-        + (taggedCount ? ' — ' + countNoun(taggedCount, toAr, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة') : '');
+      stats.textContent = countNoun(tagState.categories.length, toWest, 'تصنيف', 'تصنيفان', 'تصنيفات')
+        + ' — ' + countNoun(tagState.tags.length, toWest, 'وسم', 'وسمان', 'وسوم')
+        + (taggedCount ? ' — ' + countNoun(taggedCount, toWest, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة') : '');
     }
 
     var html = '';
@@ -3579,17 +3594,12 @@
       var catTags = tagState.tags.filter(function (t) { return t.categoryId === c.id && matches(t); });
       if (nq && !catTags.length) return;
       showSections = true;
-      html += '<div class="cat-block" data-catid="' + c.id + '">';
-      html += '<div class="cat-head">';
-      html += '<span class="cat-dot" style="background:' + c.color + '"></span>';
-      html += '<span class="cat-name">' + esc(c.name) + '</span>';
-      html += '<b class="cat-count">' + toAr(catTags.length) + '</b>';
-      html += '<button type="button" class="cat-tag-add" data-catid="' + c.id + '" title="إضافة وسم">+</button>';
-      html += '<button type="button" class="cat-suggest" data-catid="' + c.id + '" title="اقتراح وسوم لهذا التصنيف">✦</button>';
-      html += '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>';
-      html += '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
-      html += '</div>';
-      html += '<div class="cat-tags">' + catTags.map(renderTagChipBtn).join('') + '</div>';
+      var headBtns = '<button type="button" class="cat-tag-add" data-catid="' + c.id + '" title="إضافة وسم">+</button>'
+        + '<button type="button" class="cat-suggest" data-catid="' + c.id + '" title="اقتراح وسوم لهذا التصنيف">✦</button>'
+        + '<button type="button" class="cat-edit" data-catid="' + c.id + '" title="تعديل التصنيف">✎</button>'
+        + '<button type="button" class="cat-del" data-catid="' + c.id + '" title="حذف التصنيف">✕</button>';
+      html += renderCatBlock(c.id, 'background:' + c.color, c.name, catTags.length,
+        catTags.map(renderTagChipBtn).join(''), headBtns);
       if (state.suggestCatId === c.id) {
         html += renderSuggestPanel(c);
       }
@@ -3609,10 +3619,8 @@
     var uncat = tagState.tags.filter(function (t) { return !tagState.byCatId[t.categoryId] && matches(t); });
     if (uncat.length || (!nq && tagState.tags.some(function (t) { return !tagState.byCatId[t.categoryId]; }))) {
       showSections = true;
-      html += '<div class="cat-block" data-catid="">';
-      html += '<div class="cat-head"><span class="cat-dot" style="background:var(--text-muted)"></span><span class="cat-name">بدون تصنيف</span><b class="cat-count">' + toAr(uncat.length) + '</b></div>';
-      html += '<div class="cat-tags">' + uncat.map(renderTagChipBtn).join('') + '</div>';
-      html += '</div>';
+      html += renderCatBlock('', 'background:var(--text-muted)', 'بدون تصنيف', uncat.length,
+        uncat.map(renderTagChipBtn).join(''), '');
     }
 
     html += '</div>';
@@ -3623,11 +3631,11 @@
 
     if (selTag) {
       var ayahs = listAyahsForTag(selTag.id);
-      html += '<h2 class="section-title">آيات موسومة بـ «' + esc(selTag.name) + '» — ' + toAr(ayahs.length) + '</h2>';
+      html += '<h2 class="section-title">آيات موسومة بـ «' + esc(selTag.name) + '» — ' + toWest(ayahs.length) + '</h2>';
       html += '<div class="tayah-list">';
       if (ayahs.length) {
         ayahs.forEach(function (a) {
-          html += renderAyahCard(a, true);
+          html += renderAyahCard(a, true, false, true);
         });
       } else {
         html += '<div class="empty-state">لا توجد آيات تحت هذا الوسم</div>';
@@ -3653,26 +3661,26 @@
       return;
     }
 
-      var editSave = e.target.closest('.edit-save');
-      if (editSave) {
-        var panel = editSave.closest('.edit-panel, .tag-new-inline');
-        var name = panel.querySelector('.edit-name').value.trim();
-        var colorEl = panel.querySelector('.swatch.on');
-        var color = colorEl ? colorEl.dataset.color : TAG_COLORS[0];
-        var descEl = panel.querySelector('.edit-desc');
-        var desc = descEl ? descEl.value.trim() : '';
-        var type = editSave.dataset.type;
-        var id = editSave.dataset.id;
-        if (type === 'newcat') {
-          if (name) { createCategory(name, color); state.selectedTagId = null; }
-        } else if (type === 'cat') {
-          if (name) updateCategory(id, { name: name, color: color });
-        } else if (type === 'newtag') {
-          if (name) { createTag(name, color, editSave.dataset.catid, desc); state.selectedTagId = null; }
-        } else if (type === 'tag') {
-          var catId = panel.querySelector('.edit-cat').value;
-          if (name) updateTag(id, { name: name, color: color, categoryId: catId, description: desc });
-        }
+    var editSave = e.target.closest('.edit-save');
+    if (editSave) {
+      var panel = editSave.closest('.edit-panel, .tag-new-inline');
+      var name = panel.querySelector('.edit-name').value.trim();
+      var colorEl = panel.querySelector('.swatch.on');
+      var color = colorEl ? colorEl.dataset.color : TAG_COLORS[0];
+      var descEl = panel.querySelector('.edit-desc');
+      var desc = descEl ? descEl.value.trim() : '';
+      var type = editSave.dataset.type;
+      var id = editSave.dataset.id;
+      if (type === 'newcat') {
+        if (name) { createCategory(name, color); state.selectedTagId = null; }
+      } else if (type === 'cat') {
+        if (name) updateCategory(id, { name: name, color: color });
+      } else if (type === 'newtag') {
+        if (name) { createTag(name, color, editSave.dataset.catid, desc); state.selectedTagId = null; }
+      } else if (type === 'tag') {
+        var catId = panel.querySelector('.edit-cat').value;
+        if (name) updateTag(id, { name: name, color: color, categoryId: catId, description: desc });
+      }
       state.edit = null;
       renderTagArea();
       return;
@@ -3847,16 +3855,18 @@
     } catch (e) {}
   }
 
-  function renderCtxAyah(surah, ayah) {
+  function renderCtxAyah(surah, ayah, west) {
+    var fmt = west ? toWest : toAr;
     var q = state.quran && state.quran[surah - 1];
     var text = q && q.verses[ayah - 1];
     if (!text) return '';
-    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + toAr(ayah) + '</span></span> ';
+    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + fmt(ayah) + '</span></span> ';
   }
 
   /* hideTags: search popup follows the surah tags display config (showTags);
      the tags page itself always shows chips. */
-  function renderAyahCard(a, withScope, hideTags) {
+  function renderAyahCard(a, withScope, hideTags, west) {
+    var fmt = west ? toWest : toAr;
     var surah = surahByNumber(a.surah);
     var tags = getVerseTags(a.surah, a.ayah);
     var before = '', after = '', scope = '';
@@ -3868,22 +3878,22 @@
       var from = Math.max(1, a.ayah - n);
       var to = Math.min(count || a.ayah, a.ayah + n);
       var b = [], af = [];
-      for (var i = from; i < a.ayah; i++) b.push(renderCtxAyah(a.surah, i));
-      for (var i = a.ayah + 1; i <= to; i++) af.push(renderCtxAyah(a.surah, i));
+      for (var i = from; i < a.ayah; i++) b.push(renderCtxAyah(a.surah, i, west));
+      for (var i = a.ayah + 1; i <= to; i++) af.push(renderCtxAyah(a.surah, i, west));
       before = b.join('');
       after = af.join('');
       var canGrow = count > 0 && (n < (a.ayah - 1) || n < (count - a.ayah));
       scope = '<div class="tayah-scope">'
         + '<button type="button" class="tayah-scope-btn tayah-scope-minus" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" title="تقليص النطاق — إزالة أول وآخر آية" aria-label="تقليص النطاق"' + (n > 0 ? '' : ' disabled') + '>−</button>'
-        + '<span class="tayah-range">' + (count ? toAr(from) + '–' + toAr(to) : '') + '</span>'
+        + '<span class="tayah-range">' + (count ? fmt(from) + '–' + fmt(to) : '') + '</span>'
         + '<button type="button" class="tayah-scope-btn tayah-scope-plus" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" title="توسيع النطاق — إضافة آية قبل وبعد" aria-label="توسيع النطاق"' + (canGrow ? '' : ' disabled') + '>+</button>'
         + '</div>';
     }
     var tagged = '<a class="tayah-ayahlink' + (withScope && n > 0 ? ' tayah-principal' : '') + '" href="#/surah/' + a.surah + '/' + a.ayah + '">'
-      + esc(a.text) + ' <span class="ayah-num">' + toAr(a.ayah) + '</span></a> ';
+      + esc(a.text) + ' <span class="ayah-num">' + fmt(a.ayah) + '</span></a> ';
     return '<div class="tayah-card">'
       + scope
-      + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + toAr(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
+      + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + fmt(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
       + '<div class="tayah-text">' + before + tagged + after + '</div>'
       + (tags.length && !hideTags ? '<div class="tayah-chips">' + tags.map(function (t) { return verseTagChip(t, a.surah, a.ayah); }).join('') + '</div>' : '')
       + (hideTags ? '' : '<button type="button" class="tayah-remove" data-surah="' + a.surah + '" data-ayah="' + a.ayah + '" data-tagid="' + (tags.length ? tags[0].id : '') + '" title="إزالة هذا الوسم">✕</button>')

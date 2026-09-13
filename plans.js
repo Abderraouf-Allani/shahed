@@ -5,7 +5,6 @@
   if (!B) return;
 
   var esc = B.esc;
-  var toAr = B.toAr;
   var surahByNumber = B.surahByNumber;
   var newId = B.newId;
   var showAppToast = B.showAppToast;
@@ -120,7 +119,7 @@
 
   function plansUnitLabel(unit, perDay) {
     var L = PLAN_UNIT_LABELS[unit] || PLAN_UNIT_LABELS.ayahs;
-    return countNoun(perDay, toAr, L.one, L.two, L.few);
+    return countNoun(perDay, toWest, L.one, L.two, L.few);
   }
 
   /* Build canonical chunks: range [fromSurah:fromAyah, toSurah:toAyah] (hafs)
@@ -167,8 +166,8 @@
       var fs = c.from.split(':'), ts = c.to.split(':');
       var S = surahByNumber(+fs[0]);
       c.label = (+fs[0] === +ts[0])
-        ? esc(S.nameAr) + ' — ' + toAr(fs[1]) + '-' + toAr(ts[1])
-        : esc(S.nameAr) + ' ' + toAr(fs[1]) + ' → ' + esc(surahByNumber(+ts[0]).nameAr) + ' ' + toAr(ts[1]);
+        ? esc(S.nameAr) + ' — ' + toWest(fs[1]) + '-' + toWest(ts[1])
+        : esc(S.nameAr) + ' ' + toWest(fs[1]) + ' → ' + esc(surahByNumber(+ts[0]).nameAr) + ' ' + toWest(ts[1]);
       c.ayahCount = plansChunkAyahCount(c);
     });
     return chunks;
@@ -357,7 +356,7 @@
         target.pointer = i + 1;
       }
       plansPersistPlan(target);
-      showAppToast('حُدّثت خطة المراجعة التلقائية — ' + dayNoun(fresh.length, toAr));
+      showAppToast('حُدّثت خطة المراجعة التلقائية — ' + dayNoun(fresh.length, toWest));
       return;
     }
     if (all.length >= 8) { showAppToast('تعذّر إنشاء خطة المراجعة — الحد الأقصى ٨ خطط'); return; }
@@ -441,17 +440,17 @@
     var html = '<div class="plan-card plan-struggle">';
     html += '<div class="plan-head">';
     html += '<span class="plan-type">⚠️ حفظ متعثر</span>';
-    html += '<span class="plan-target">' + countNoun(st.items.length, toAr, 'مقطع', 'مقطعان', 'مقاطع') + '</span>';
+    html += '<span class="plan-target">' + countNoun(st.items.length, toWest, 'مقطع', 'مقطعان', 'مقاطع') + '</span>';
     html += '</div>';
-    html += '<div class="plan-meta">يبقى المقطع هنا حتى تُتقنه ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + '</div>';
+    html += '<div class="plan-meta">يبقى المقطع هنا حتى تُتقنه ' + countNoun(STRUGGLE_TARGET, toWest, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + '</div>';
     st.items.forEach(function (it, idx) {
       var dueNow = !it.nextReview || it.nextReview <= today;
       var late = (it.nextReview && it.nextReview < today) ? plansDaysBetween(it.nextReview, today) : 0;
       html += '<div class="plan-review-row">';
       html += '<span class="plan-chunk-label">' + it.label + '</span>';
-      html += '<span class="plan-streak">إتقان متتالٍ: ' + toAr(it.streak || 0) + ' / ' + toAr(STRUGGLE_TARGET) + '</span>';
+      html += '<span class="plan-streak">إتقان متتالٍ: ' + toWest(it.streak || 0) + ' / ' + toWest(STRUGGLE_TARGET) + '</span>';
       if (late > 0) html += '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>';
-      else if (!dueNow) html += '<span class="plan-review-wait">' + dayNoun(plansDaysBetween(today, it.nextReview), toAr, 'بعد ') + '</span>';
+      else if (!dueNow) html += '<span class="plan-review-wait">' + dayNoun(plansDaysBetween(today, it.nextReview), toWest, 'بعد ') + '</span>';
       html += '<span class="plan-actions">';
       html += '<a class="pill" data-sgo="' + idx + '" href="#/memorize">راجع</a>';
       html += '<button type="button" class="pill" data-struggle-good="' + idx + '">أتقنت ✓</button>';
@@ -485,7 +484,7 @@
       html += '<span class="plan-target">' + plansUnitLabel(p.unit, p.perDay) + '</span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
-      html += '<div class="plan-meta"><span>' + toAr(done) + ' / ' + toAr(total) + ' — ' + toAr(pct) + '%</span></div>';
+      html += '<div class="plan-meta"><span>' + toWest(done) + ' / ' + toWest(total) + ' — ' + toWest(pct) + '%</span></div>';
       if (!finished && cur && !cur.done) {
         html += '<div class="plan-current">';
         html += '<span class="plan-chunk-label">' + cur.label + '</span>';
@@ -668,7 +667,7 @@
       nextReview: plansDayKey(1)
     });
     struggleSave(st);
-    showAppToast('أُضيف المقطع إلى «حفظ متعثر» — أتقنه ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' ليخرج');
+    showAppToast('أُضيف المقطع إلى «حفظ متعثر» — أتقنه ' + countNoun(STRUGGLE_TARGET, toWest, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' ليخرج');
   }
 
   /* Rate one struggling revision: good increments the streak (graduation at
@@ -684,12 +683,12 @@
       if (it.streak >= STRUGGLE_TARGET) {
         st.items.splice(itemIdx, 1);
         struggleSave(st);
-        showAppToast('🎉 أتقنت المقطع ' + countNoun(STRUGGLE_TARGET, toAr, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' — خرج من «حفظ متعثر»');
+        showAppToast('🎉 أتقنت المقطع ' + countNoun(STRUGGLE_TARGET, toWest, 'مرة متتالية', 'مرتين متتاليتين', 'مرات متتالية') + ' — خرج من «حفظ متعثر»');
         return;
       }
       it.nextReview = plansDayKey(1);
       struggleSave(st);
-      showAppToast('أحسنت — إتقان متتالٍ ' + toAr(it.streak) + ' / ' + toAr(STRUGGLE_TARGET));
+      showAppToast('أحسنت — إتقان متتالٍ ' + toWest(it.streak) + ' / ' + toWest(STRUGGLE_TARGET));
     } else {
       it.streak = 0;
       it.lastRated = today;
@@ -776,7 +775,7 @@
     var surahOptions = '';
     for (var i = 1; i <= 114; i++) {
       var s = surahByNumber(i);
-      surahOptions += '<option value="' + i + '">' + toAr(i) + '. ' + esc(s.nameAr) + '</option>';
+      surahOptions += '<option value="' + i + '">' + toWest(i) + '. ' + esc(s.nameAr) + '</option>';
     }
     var toSurahOptions = surahOptions.replace('<option value="114"', '<option value="114" selected');
     var html = '';
@@ -875,7 +874,7 @@
         overlay.remove();
         renderPlansAlert();
         renderPlansArea();
-        showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toAr));
+        showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toWest));
       };
       if (PLAN_AHZAB_SPAN[unit]) {
         plansEnsureAhzab().then(mkPlan).catch(function () {
