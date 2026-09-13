@@ -2119,7 +2119,13 @@
     var m = getEmphMap();
     var k = surah + ':' + ayah;
     if (m[k]) delete m[k]; else m[k] = 1;
-    try { localStorage.setItem(LS.emph, JSON.stringify(m)); } catch (e) {}
+    var raw = JSON.stringify(m);
+    try {
+      localStorage.setItem(LS.emph, raw);
+      if (localStorage.getItem(LS.emph) !== raw) throw new Error('unpersisted');
+    } catch (e) {
+      showAppToast('تعذّر الحفظ على هذا الجهاز — لن يبقى التمييز بعد التحديث');
+    }
     return !!m[k];
   }
 
@@ -2191,10 +2197,90 @@
     });
   }
 
+  /* Unified press tracker for verse controls: 500ms long-press + double-click.
+     find(e) maps an event to {surah, ayah, ...} or null. Fires onLongPress(d)
+     after a hold, onSingle(d) after doubleMs with no second tap, and
+     onDoubleClick(d) on a second tap within doubleMs. cancelOffTarget also
+     aborts the hold when the pointer drifts onto a non-matching target
+     (ayah numbers; the tag button preserves the legacy quirk of firing
+     anyway when slid off). */
+  function trackPress(container, find, opts) {
+    var clickTimer = null, clickData = null;
+    var longTimer = null, pressStart = null, longFiredAt = 0;
+    function keyOf(d) { return d.surah + ':' + d.ayah; }
+    function cancel() {
+      if (longTimer) { clearTimeout(longTimer); longTimer = null; }
+      pressStart = null;
+    }
+    function arm(x, y, d) {
+      cancel();
+      pressStart = { x: x, y: y, d: d };
+      longTimer = setTimeout(function () {
+        var p = pressStart;
+        cancel();
+        if (!p) return;
+        longFiredAt = Date.now();
+        clearTimeout(clickTimer); clickTimer = null; clickData = null;
+        if (opts.onLongPressStamp) opts.onLongPressStamp();
+        opts.onLongPress(p.d);
+      }, 500);
+    }
+    function dist2(e, touch) {
+      var pt = touch ? e.changedTouches[0] : e;
+      var dx = pt.clientX - pressStart.x, dy = pt.clientY - pressStart.y;
+      return dx * dx + dy * dy;
+    }
+    container.addEventListener('mousedown', function (e) {
+      var d = find(e);
+      if (!d) return;
+      arm(e.clientX, e.clientY, d);
+    });
+    container.addEventListener('mousemove', function (e) {
+      if (!pressStart) return;
+      if (opts.cancelOffTarget && !find(e)) { cancel(); return; }
+      if (dist2(e, false) > 64) cancel();
+    });
+    container.addEventListener('mouseup', function (e) { if (find(e)) cancel(); });
+    container.addEventListener('mouseleave', function (e) {
+      if (e && e.target && e.target.closest && find(e)) cancel();
+    });
+    container.addEventListener('touchstart', function (e) {
+      var d = find(e);
+      if (!d) return;
+      var t = e.changedTouches[0];
+      arm(t.clientX, t.clientY, d);
+    }, { passive: true });
+    container.addEventListener('touchmove', function (e) {
+      if (!pressStart) return;
+      if (opts.cancelOffTarget && !find(e)) { cancel(); return; }
+      if (dist2(e, true) > 64) cancel();
+    }, { passive: true });
+    container.addEventListener('touchend', function (e) { if (find(e)) cancel(); }, { passive: true });
+    container.addEventListener('click', function (e) {
+      var d = find(e);
+      if (!d) return;
+      if (longFiredAt && Date.now() - longFiredAt < 400) { longFiredAt = 0; return; }
+      if (clickTimer && clickData && keyOf(clickData) === keyOf(d)) {
+        clearTimeout(clickTimer); clickTimer = null; clickData = null;
+        if (opts.onDoubleClick) opts.onDoubleClick(d);
+        return;
+      }
+      clearTimeout(clickTimer);
+      if (!opts.onSingle && !opts.onDoubleClick) return;
+      clickTimer = setTimeout(function () {
+        clickTimer = null; clickData = null;
+        if (opts.onSingle) opts.onSingle(d);
+      }, opts.doubleMs || 250);
+      clickData = d;
+    });
+    return { cancel: cancel };
+  }
+
   /* ---------- tag menu (popover) ---------- */
 
   var tagMenu = null;
   var ayahNumLongPressAt = 0;
+  var tagBtnLongPressAt = 0;
 
   function openTagMenu(surah, ayah, anchor) {
     closeTagMenu();
@@ -3126,85 +3212,34 @@
     });
 
     var tagBtnEvents = document.getElementById('mushaf');
-    var tagBtnClickTimer = null;
-    var tagBtnClick = null;
-    var ayahNumClickTimer = null;
-    var ayahNumClick = null;
-    var ayahNumLongTimer = null;
-    var ayahNumPressStart = null;
+    trackPress(tagBtnEvents, function (e) {
+      var btn = e.target.closest('.tag-btn');
+      if (!btn) return null;
+      return { surah: +btn.dataset.surah, ayah: +btn.dataset.ayah, btn: btn };
+    }, {
+      cancelOffTarget: false,
+      onLongPressStamp: function () { tagBtnLongPressAt = Date.now(); },
+      onLongPress: function (d) { applyQuickTag(d.surah, d.ayah, d.btn); },
+      onSingle: function (d) { openTagMenu(d.surah, d.ayah, d.btn); },
+      onDoubleClick: function (d) { applyQuickTag(d.surah, d.ayah, d.btn); },
+      doubleMs: 250
+    });
+    trackPress(tagBtnEvents, ayahNumFromEvent, {
+      cancelOffTarget: true,
+      onLongPressStamp: function () { ayahNumLongPressAt = Date.now(); },
+      onLongPress: function (t) { openAyahMenu(t.surah, t.ayah, t.el); },
+      onDoubleClick: function (t) { openAyahMenu(t.surah, t.ayah, t.el); },
+      doubleMs: 300
+    });
 
     function ayahNumFromEvent(e) {
-      var numEl = e.target.closest('.ayah-num');
+      var numEl = e.target.closest ? e.target.closest('.ayah-num') : null;
       if (!numEl) return null;
       var verse = numEl.closest('.verse[data-ayah]');
       if (!verse) return null;
       return { surah: +verse.dataset.surah, ayah: +verse.dataset.ayah, el: numEl };
     }
 
-    function openAyahNumMenu(t) {
-      openAyahMenu(t.surah, t.ayah, t.el);
-    }
-
-    function cancelAyahNumLongPress() {
-      if (ayahNumLongTimer) { clearTimeout(ayahNumLongTimer); ayahNumLongTimer = null; }
-      ayahNumPressStart = null;
-    }
-
-    tagBtnEvents.addEventListener('mousedown', function (e) {
-      var t = ayahNumFromEvent(e);
-      if (!t) return;
-      cancelAyahNumLongPress();
-      ayahNumPressStart = { x: e.clientX, y: e.clientY, t: t };
-      ayahNumLongTimer = setTimeout(function () {
-        var p = ayahNumPressStart;
-        cancelAyahNumLongPress();
-        if (!p) return;
-        ayahNumLongPressAt = Date.now();
-        clearTimeout(ayahNumClickTimer);
-        ayahNumClickTimer = null;
-        ayahNumClick = null;
-        openAyahNumMenu(p.t);
-      }, 500);
-    });
-
-    tagBtnEvents.addEventListener('touchstart', function (e) {
-      var t = ayahNumFromEvent(e);
-      if (!t) return;
-      cancelAyahNumLongPress();
-      var tc = e.changedTouches[0];
-      ayahNumPressStart = { x: tc.clientX, y: tc.clientY, t: t };
-      ayahNumLongTimer = setTimeout(function () {
-        var p = ayahNumPressStart;
-        cancelAyahNumLongPress();
-        if (!p) return;
-        ayahNumLongPressAt = Date.now();
-        clearTimeout(ayahNumClickTimer);
-        ayahNumClickTimer = null;
-        ayahNumClick = null;
-        openAyahNumMenu(p.t);
-      }, 500);
-    }, { passive: true });
-
-    ['mousemove', 'touchmove'].forEach(function (ev) {
-      tagBtnEvents.addEventListener(ev, function (e) {
-        if (!ayahNumPressStart) return;
-        var pt = ev === 'touchmove' ? e.changedTouches[0] : e;
-        var btn = e.target.closest && e.target.closest('.ayah-num');
-        if (!btn) { cancelAyahNumLongPress(); return; }
-        var dx = pt.clientX - ayahNumPressStart.x;
-        var dy = pt.clientY - ayahNumPressStart.y;
-        if (dx * dx + dy * dy > 64) cancelAyahNumLongPress();
-      }, { passive: true });
-    });
-
-    ['mouseup', 'mouseleave', 'touchend'].forEach(function (ev) {
-      tagBtnEvents.addEventListener(ev, function (e) {
-        if (e.target.closest && e.target.closest('.ayah-num')) cancelAyahNumLongPress();
-      }, { passive: true });
-    });
-    var tagBtnLongTimer = null;
-    var tagBtnLongPressAt = 0;
-    var tagBtnPressStart = null;
 
     function applyQuickTag(surah, ayah, btn) {
       var lastTagId = localStorage.getItem(LS.lastTag);
@@ -3218,123 +3253,16 @@
       }
     }
 
-    function cancelTagBtnLongPress() {
-      if (tagBtnLongTimer) { clearTimeout(tagBtnLongTimer); tagBtnLongTimer = null; }
-      tagBtnPressStart = null;
-    }
-
-    tagBtnEvents.addEventListener('mousedown', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (!btn) return;
-      cancelTagBtnLongPress();
-      tagBtnPressStart = { x: e.clientX, y: e.clientY, btn: btn, surah: +btn.dataset.surah, ayah: +btn.dataset.ayah };
-      tagBtnLongTimer = setTimeout(function () {
-        var p = tagBtnPressStart;
-        cancelTagBtnLongPress();
-        if (!p) return;
-        tagBtnLongPressAt = Date.now();
-        clearTimeout(tagBtnClickTimer);
-        tagBtnClickTimer = null;
-        tagBtnClick = null;
-        applyQuickTag(p.surah, p.ayah, p.btn);
-      }, 500);
-    });
-
-    tagBtnEvents.addEventListener('mousemove', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (!btn || !tagBtnPressStart) return;
-      var dx = e.clientX - tagBtnPressStart.x;
-      var dy = e.clientY - tagBtnPressStart.y;
-      if (dx * dx + dy * dy > 64) cancelTagBtnLongPress();
-    });
-
-    tagBtnEvents.addEventListener('mouseup', function (e) {
-      if (e.target.closest('.tag-btn')) cancelTagBtnLongPress();
-    });
-
-    tagBtnEvents.addEventListener('mouseleave', function (e) {
-      if (e && e.target && e.target.closest && e.target.closest('.tag-btn')) cancelTagBtnLongPress();
-    });
-
-    tagBtnEvents.addEventListener('touchstart', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (!btn) return;
-      cancelTagBtnLongPress();
-      var t = e.changedTouches[0];
-      tagBtnPressStart = { x: t.clientX, y: t.clientY, btn: btn, surah: +btn.dataset.surah, ayah: +btn.dataset.ayah };
-      tagBtnLongTimer = setTimeout(function () {
-        var p = tagBtnPressStart;
-        cancelTagBtnLongPress();
-        if (!p) return;
-        tagBtnLongPressAt = Date.now();
-        clearTimeout(tagBtnClickTimer);
-        tagBtnClickTimer = null;
-        tagBtnClick = null;
-        applyQuickTag(p.surah, p.ayah, p.btn);
-      }, 500);
-    }, { passive: true });
-
-    tagBtnEvents.addEventListener('touchmove', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (!btn || !tagBtnPressStart) return;
-      var t = e.changedTouches[0];
-      var dx = t.clientX - tagBtnPressStart.x;
-      var dy = t.clientY - tagBtnPressStart.y;
-      if (dx * dx + dy * dy > 64) cancelTagBtnLongPress();
-    }, { passive: true });
-
-    tagBtnEvents.addEventListener('touchend', function (e) {
-      if (e.target.closest('.tag-btn')) cancelTagBtnLongPress();
-    }, { passive: true });
 
     tagBtnEvents.addEventListener('click', function (e) {
-      var btn = e.target.closest('.tag-btn');
-      if (btn) {
-        if (tagBtnLongPressAt && Date.now() - tagBtnLongPressAt < 400) { tagBtnLongPressAt = 0; return; }
-        var surah = +btn.dataset.surah;
-        var ayah = +btn.dataset.ayah;
-        if (tagBtnClickTimer && tagBtnClick &&
-            tagBtnClick.surah === surah && tagBtnClick.ayah === ayah) {
-          clearTimeout(tagBtnClickTimer);
-          tagBtnClickTimer = null;
-          tagBtnClick = null;
-          applyQuickTag(surah, ayah, btn);
-          return;
-        }
-        clearTimeout(tagBtnClickTimer);
-        tagBtnClickTimer = setTimeout(function () {
-          tagBtnClickTimer = null;
-          tagBtnClick = null;
-          openTagMenu(surah, ayah, btn);
-        }, 250);
-        tagBtnClick = { surah: surah, ayah: ayah };
-        return;
-      }
+      /* Long-press / double-click for .tag-btn and .ayah-num are owned by
+         trackPress above; chips keep their handler here. */
       var chip = e.target.closest('.verse-tag-chip');
       if (chip) { openVerseTagContext(chip); return; }
-      var numTap = ayahNumFromEvent(e);
-      if (numTap) {
-        if (ayahNumLongPressAt && Date.now() - ayahNumLongPressAt < 400) { ayahNumLongPressAt = 0; return; }
-        if (ayahNumClickTimer && ayahNumClick &&
-            ayahNumClick.surah === numTap.surah && ayahNumClick.ayah === numTap.ayah) {
-          clearTimeout(ayahNumClickTimer);
-          ayahNumClickTimer = null;
-          ayahNumClick = null;
-          openAyahNumMenu(numTap);
-          return;
-        }
-        clearTimeout(ayahNumClickTimer);
-        ayahNumClickTimer = setTimeout(function () {
-          ayahNumClickTimer = null;
-          ayahNumClick = null;
-        }, 300);
-        ayahNumClick = { surah: numTap.surah, ayah: numTap.ayah };
-        return;
-      }
       /* Search mode: a plain tap on a matched verse exits the search, shows
          the full surah again and scrolls to that ayah. Tag controls above
          keep their own behavior; text selection never navigates. */
-      if (state.surahQuery && state.surahQuery.trim() && !e.target.closest('.ayah-num')) {
+      if (state.surahQuery && state.surahQuery.trim() && !e.target.closest('.ayah-num') && !e.target.closest('.tag-btn')) {
         var verseEl = e.target.closest('.verse[data-ayah]');
         if (verseEl) {
           var sel = '';
@@ -4324,8 +4252,6 @@
     }
     mushaf.appendChild(frag);
   }
-
-  function measureAllWords() { return; }
 
   function applyMemLevel() {
     if (!memState || !memState.active) return;
@@ -5695,6 +5621,17 @@
       if (el.parentNode) el.parentNode.removeChild(el);
     }, 3200);
   }
+
+  (function checkStorageHealth() {
+    try {
+      localStorage.setItem('qaloon_probe', '1');
+      var ok = localStorage.getItem('qaloon_probe') === '1';
+      localStorage.removeItem('qaloon_probe');
+      if (!ok) throw new Error('unpersisted');
+    } catch (e) {
+      showAppError('التخزين المحلي محظور في هذا المتصفح — الوسوم والخطط والتمييز لن تُحفظ. اسمح بالتخزين المحلي ثم أعد التحميل.');
+    }
+  })();
 
   loadData().then(render).then(function () {
     try { maybeNotifyPlansDue(); } catch (e) {}

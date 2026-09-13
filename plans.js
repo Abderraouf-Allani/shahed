@@ -202,18 +202,7 @@
     chunk.reviewIdx = 0;
     chunk.nextReview = plansDayKey(PLAN_REVIEW_STEPS[0]);
     plan.pointer = (plan.pointer || 0) + 1;
-    var all = plansLoad();
-    var idx = all.indexOf(plan);
-    if (idx < 0) {
-      /* plan object not from this load (e.g. memorize-completion path): match by id */
-      for (var i = 0; i < all.length; i++) {
-        if (all[i].id === plan.id) { idx = i; break; }
-      }
-    }
-    if (idx >= 0) {
-      all[idx] = plan;
-      plansSave(all);
-    }
+    plansPersistPlan(plan);
   }
 
   function plansDayKey(offsetDays) {
