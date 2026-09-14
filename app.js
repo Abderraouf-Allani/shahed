@@ -2033,6 +2033,13 @@
     var el = document.getElementById('headerReading');
     if (!el) return;
     var route = parseHash();
+    /* The reading/memorization shortcut is meaningless on utility pages:
+       the plans page shows plan state instead, tags/lab are their own worlds. */
+    if (route.plans || route.tags || route.lab) {
+      el.setAttribute('hidden', '');
+      el.href = '#/';
+      return;
+    }
     if (route.memorize) {
       var mem = null;
       try { mem = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
@@ -2041,9 +2048,10 @@
         var ms = surahByNumber(+secs[0].surah);
         var ml = surahByNumber(+secs[secs.length - 1].surah);
         if (ms && ml) {
+          var cur = mem.planType === 'revise' ? 'المراجعة' : 'الحفظ';
           el.textContent = secs.length > 1
-            ? 'الحفظ: ' + ms.nameAr + ' ' + secs[0].from + ' ← ' + ml.nameAr + ' ' + secs[secs.length - 1].to
-            : 'الحفظ: ' + ms.nameAr + ' · ' + secs[0].from + '-' + secs[0].to;
+            ? cur + ': ' + ms.nameAr + ' ' + secs[0].from + ' ← ' + ml.nameAr + ' ' + secs[secs.length - 1].to
+            : cur + ': ' + ms.nameAr + ' · ' + secs[0].from + '-' + secs[0].to;
           el.href = '#/memorize';
           el.removeAttribute('hidden');
           return;
@@ -3950,7 +3958,7 @@
     if (memMushaf) {
       /* Memorize page: zoom is session-local (never touches the reader's
          saved size) and wins over auto-fit from here on. */
-      memState.fontPx = Math.min(46, Math.max(14, (memState.fontPx || state.fontPx || 32) + delta));
+      memState.fontPx = Math.min(46, Math.max(24, (memState.fontPx || state.fontPx || 32) + delta));
       memState.userZoomed = true;
       memMushaf.style.setProperty('--fs', memState.fontPx + 'px');
       return;
@@ -4397,7 +4405,7 @@
     var top = mushaf.getBoundingClientRect().top;
     var avail = window.innerHeight - top - ctrlH - 16;
     var guard = 0;
-    while (size > 14 && mushaf.scrollHeight > avail && guard++ < 24) {
+    while (size > 24 && mushaf.scrollHeight > avail && guard++ < 24) {
       size -= 2;
       mushaf.style.setProperty('--fs', size + 'px');
     }
@@ -4750,6 +4758,10 @@
         planDoneBtn.style.display = 'none';
       }
     }
+    /* Reset returns to the manual setup form — meaningless for a session
+       coming from a plan (its fixed chunk replaces then-restart). */
+    var resetBtn = document.getElementById('memResetBtn');
+    if (resetBtn) resetBtn.style.display = memState.fromPlan ? 'none' : '';
 
     document.getElementById('memResetBtn').addEventListener('click', function () {
       memStopAudio();
@@ -4763,6 +4775,8 @@
       memState.planType = null;
       var planDoneBtn = document.getElementById('memPlanDoneBtn');
       if (planDoneBtn) { planDoneBtn.style.display = 'none'; planDoneBtn.disabled = false; }
+      var resetBtn = document.getElementById('memResetBtn');
+      if (resetBtn) resetBtn.style.display = '';
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
       memState.pendingAction = null;
       memState.pendingRep = 0;
@@ -5387,22 +5401,19 @@
   }
 
   /* Memorize-page shortcut: mark the plan chunk the current session came from
-     as done (revise/memorize likely). Show the state on the buried
-     memPlanDoneBtn so the user can close the day's revision without finishing
-     the whole 50-rep loop. */
+     as done (revise/memorize likely), then redirect to the plans page so the
+     user lands back on the plan they were performing. */
   function memMarkPlanChunkDone() {
     var planId = memState && memState.fromPlan;
     if (!planId) return;
     ensurePlansScript().then(function () {
       if (!window.QuranPlans || !window.QuranPlans.markPlanChunkDone) return;
       if (window.QuranPlans.markPlanChunkDone(planId)) {
-        var label = memState.planType === 'revise'
+        showAppToast(memState.planType === 'revise'
           ? 'أُتمّت المراجعة المخططة — وفّقك الله'
-          : 'أُتمّ المقطع المخطط — وفّقك الله';
-        showAppToast(label);
+          : 'أُتمّ المقطع المخطط — وفّقك الله');
         updatePlansBadge();
-        var btn = document.getElementById('memPlanDoneBtn');
-        if (btn) btn.disabled = true;
+        location.hash = '#/plans';
       }
     }).catch(function () {});
   }

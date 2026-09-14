@@ -47,7 +47,7 @@ Lives in `app.js` (after the `lab.js` bridge). Flow:
 - **`normalizeWordForMatch`**: wasla alef ٱ→ا first, then removes ALL diacritics + Qur'anic annotation signs (`\u0610-\u061A`, `\u064B-\u065F`, `\u0670`, `\u06D6-\u06ED`, `\u0640`, `\u08F0-\u08FF`) so `بِٱللَّهِ`→`بالله`, `اِ۬لدِّينِ`→`الدين` stay one token. Keep-range includes `\u06D0-\u06D3`.
 
 ## Service worker
-Bump `const CACHE = 'quran-tag-vNN'` in `sw.js` for ANY change to precached assets (app.js, lab.js, styles.css, index.html, fonts, icons, manifest, `surahs/quran/numbering.json`) — stale caches have caused phantom errors before. `hafs.json` + seed books are fetched lazily (runtime cache-first, offline once fetched).
+Bump `const CACHE = 'quran-tag-vNN'` in `sw.js` for ANY change to precached assets (app.js, lab.js, styles.css, index.html, fonts, icons, manifest, `surahs/quran/numbering.json`) — stale caches have caused phantom errors before. `hafs.json` + seed books are fetched lazily (runtime cache-first, offline once fetched). **When bumping the SW cache, ALWAYS update the footer version in `index.html` (`.app-version`) to the same `vNN` — they must stay in lockstep** (the footer is the user-visible cache/build tag; a stale value signals an outdated bundle).
 
 ## Audio / riwaya
 RIWAYA = `{ qaloon, hafs }`; `currentRiwaya()` reads LS `qaloon_riwaya`. Shared builder `riwayaAudioUrl(surah, ayah)` resolves by `currentRiwaya()`; `memAudioUrl` and `rdrAudioUrl` both delegate to it.
