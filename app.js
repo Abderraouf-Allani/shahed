@@ -4377,8 +4377,21 @@
     var size = memState.fontPx || state.fontPx || 32;
     mushaf.style.setProperty('--fs', size + 'px');
     var controls = document.querySelector('.mem-controls');
+    var ctrlH = controls ? controls.offsetHeight : 0;
+    /* Phase 1 hides the tall two-line rep button; fit against the projected
+       phase-2 controls height so the font stays put when step 2 begins. */
+    var repBtn = document.getElementById('memRepBtn');
+    if (repBtn && repBtn.style.display === 'none' && memState.reps === null) {
+      var savedHTML = repBtn.innerHTML;
+      repBtn.innerHTML = '<span class="mem-rep-num">50</span><span class="mem-rep-label">اضغط بعد كل تلاوة للمقطع</span>';
+      repBtn.style.display = '';
+      var ph2H = controls ? controls.offsetHeight : ctrlH;
+      repBtn.style.display = 'none';
+      repBtn.innerHTML = savedHTML;
+      ctrlH = Math.max(ctrlH, ph2H);
+    }
     var top = mushaf.getBoundingClientRect().top;
-    var avail = window.innerHeight - top - (controls ? controls.offsetHeight : 0) - 16;
+    var avail = window.innerHeight - top - ctrlH - 16;
     var guard = 0;
     while (size > 14 && mushaf.scrollHeight > avail && guard++ < 24) {
       size -= 2;
