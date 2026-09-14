@@ -6,7 +6,7 @@
   var countNoun = B.countNoun;
 
   var esc = B.esc;
-  var toAr = B.toAr;
+  var toAr = B.toAr, toWest = B.toWest;
   var relLabel = B.relLabel;
   var RELATIONSHIPS = B.RELATIONSHIPS;
   var state = B.state;
@@ -195,7 +195,7 @@
         + '<div class="lab-node-head">'
         + '<span class="lab-node-dot"></span>'
         + '<span class="lab-node-name">' + esc(t.name) + '</span>'
-        + '<span class="lab-node-count">' + toAr(verses.length) + '</span>'
+        + '<span class="lab-node-count">' + toWest(verses.length) + '</span>'
         + '<button type="button" class="lab-node-toggle' + (n.showAyahs ? '' : ' off') + '" data-act="toggle" title="' + (n.showAyahs ? 'إخفاء الآيات' : 'إظهار الآيات') + '">' + TRIANGLE_SVG + '</button>'
         + '<button type="button" class="lab-node-remove" data-act="remove" title="إزالة من المخطط">✕</button>'
         + '</div>'
@@ -229,8 +229,8 @@
 
     var stats = document.getElementById('labStats');
     if (stats) {
-      stats.textContent = countNoun(Object.keys(cfg.nodes).length, toAr, 'وسم', 'وسمان', 'وسوم')
-        + ' على المخطط — ' + countNoun(cfg.edges.length, toAr, 'علاقة', 'علاقتان', 'علاقات');
+      stats.textContent = countNoun(Object.keys(cfg.nodes).length, toWest, 'وسم', 'وسمان', 'وسوم')
+        + ' على المخطط — ' + countNoun(cfg.edges.length, toWest, 'علاقة', 'علاقتان', 'علاقات');
     }
   }
 
@@ -327,7 +327,7 @@
           saveLab();
           renderLabCanvas();
           if (!imported) alert('لم يتم العثور على تصنيفات مطابقة لاستيراد مخططاتها.');
-          else alert('تم استيراد مخططات ' + countNoun(imported, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات') + '.');
+          else alert('تم استيراد مخططات ' + countNoun(imported, toWest, 'تصنيف', 'تصنيفان', 'تصنيفات') + '.');
         } catch (err) {
           alert('ملف غير صالح.');
         }

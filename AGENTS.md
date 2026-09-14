@@ -27,6 +27,11 @@ Tag verse keys `"surah:ayah"` and memorize session ranges are stored in **Hafs (
 - `saveTags()` stamps `num:'hafs'`; memorize saves `{num:'hafs', from, to}` via `canonAyah`. `migrateLegacyNumbering()` is a one-time boot migration of pre-canonical qaloon keys (keys beyond the qaloon verse count are treated as already-hafs). Hafs dataset fetch failure reverts riwaya to qaloon.
 - **Audio numbering is different**: 1:1 with the ACTIVE dataset's rendered ayah numbers (see below) — never mix with canonical keys.
 
+## Digit display (toAr/toWest)
+- **"Arabic numbers" in this project = Western shapes 0123456789** (via `toWest`). Tags page, plans page + plan-review rows, missed-plan notifications/badges/toasts, memorize status line + rep counter + surah select, doc-import progress messages, `fmtDuration`, ayah-search result counts, `uniqueTagName` suffixes, and lab node counts/import toasts all render 0-9.
+- `toAr` (٠-٩) survives ONLY in mushaf-adjacent contexts: reader ayah numbers, verse/surah badges, reader-meta tags, copy-with-marker ﴿N﴾, tag-menu/tag-context ayah references, lab ayah refs. Never introduce a new `toAr` output outside those; migrate on touch.
+- `toAr` **and** `toWest` are both exposed on `QuranLabBridge` and `QuranPlansBridge`; `plans.js` defines its own local `toWest` (do not re-import `toAr` there). `countNoun`/`dayNoun` take the formatter as a param — pass `toWest`, not `toAr`.
+
 ## Tag-suggestion engine (ontology)
 Lives in `app.js` (after the `lab.js` bridge). Flow:
 1. `loadOntology()` fetches `data/ontology.json` once (`ontologyStatus` idle→loading→ready). 569 concepts `{ w, d[] }` mapping lexicon words to thematic domains (c1..c24) from «التفسير الموضوعي لسور القرآن الكريم».
@@ -64,9 +69,9 @@ Expect `fails=0` (last run: `passes=17741 fails=0 mapped=59 identity=55`). Harne
 ## Plans module (خطة قراءة/استماع/مراجعة/حفظ) — lazy-loaded
 `plans.js` (IIFE over `window.QuranPlansBridge`, same pattern as `lab.js`); route `#/plans` triggers `lazyLoadPlans()` in `app.js`. Up to 8 plans in LS `qaloon_plans_v1`.
 - **Partitioning is canonical**: chunks are built in Hafs numbering via `plansBuildChunks` (`plansHafsCount` derives a surah's hafs ayah count from `numbering.json`'s max range end — no hafs.json fetch needed); rendering converts via `activeAyahOf`. Verified by `plans_diag.js` harness in the temp opencode dir (extracts functions from `plans.js`; whole-mushaf 5-ayahs/day partition = 1248 chunks covering 6236 hafs ayahs exactly once).
-- **Types**: read/listen/revise/memorize. Deep-links: memorize → `#/memorize` (`plansPrefillMemorize` writes `LS.memSession` canonical `{surah, num:'hafs', from, to}` on click, before navigation); listen/read/revise → `#/surah/N/M` in active-riwaya ayahs, listening sets sessionStorage flag `qaloon_plan_listen` consumed by `plansMaybeAutoplayReader` (app.js wrapper at the end of `renderReader`) to autostart `rdrStartAudio`.
+- **Types**: read/listen/revise/memorize. Deep-links: memorize → `#/memorize` (`plansPrefillMemorize` writes `LS.memSession` canonical `{surah, num:'hafs', from, to}` on click, before navigation); listen/read/revise → `#/surah/N/M` in active-riwaya ayahs, listening sets sessionStorage flag `qaloon_plan_listen` consumed by `plansMaybeAutoplayReader` (app.js wrapper at the end of `renderReader`) to autostart `rdrStartAudio`. Phrase preparation is centralized in `plansPrepareChunk(p, c)` — reused by the plan-level go pill `plansOnGo` and by each due-review row's chunk action (`a[data-rgo]`, label via `plansGoLabel`, href via `plansDeepLink`) so overdue chunks are re-engagable directly from «مراجعات اليوم».
 - **Spaced repetition** (`PLAN_REVIEW_STEPS = [1,3,7,14,30]` days): checking a revise/memorize chunk stamps `done` + `nextReview`; due reviews render per-plan («مراجعات اليوم», rollover automatic since any `nextReview <= today` shows). Completing the 50-rep loop in memorize (`memState.reps === 0`) fires `plansNotifyMemorizeDone` — an app.js wrapper that **loads plans.js on demand** (`ensurePlansScript`) then auto-checks the current memorize chunk, so it works even if `#/plans` was never visited.
-- `plans.js` is SW-precached (like `lab.js`) but executed only on first `#/plans` visit or memorize completion; the header icon + «الخطط» pills live in `index.html` / reader/tags toolbars.
+- `plans.js` is SW-precached (like `lab.js`) but executed only on first `#/plans` visit or memorize completion; the header icon + «الخطط» pill live in `index.html` and the reader toolbar (the tags-page plans pill was removed).
 
 ## Editing quirks
 - The `edit` tool intermittently fails on `app.js` even with the correct path. Reliable fallback: python3 heredocs against the relative path with cwd = repo root.

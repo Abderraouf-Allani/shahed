@@ -553,6 +553,15 @@
         if (it) plansPrefillMemorize(it);
       });
     });
+    area.querySelectorAll('a[data-rgo]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        var card = a.closest('.plan-card');
+        var all = plansLoad();
+        var p = all && all[+card.dataset.i];
+        if (!p) return;
+        plansPrepareChunk(p, (p.chunks || [])[+a.dataset.rgo]);
+      });
+    });
   }
 
   /* Quality self-rating (good/bad) applies to memorize/revise reviews only.
@@ -571,6 +580,7 @@
         rows += '<div class="plan-review-row">'
           + '<span class="plan-chunk-label">' + c.label + '</span>'
           + (late > 0 ? '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>' : '')
+          + '<a class="pill plan-review-go" href="' + plansDeepLink(p, c) + '" data-rgo="' + ci + '">' + plansGoLabel(p) + '</a>'
           + '<span class="plan-actions">'
           + (rated
             ? '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
@@ -716,12 +726,10 @@
     return '#/surah/' + s.surah + '/' + s.from;
   }
 
-  /* On deep-link click: listening sets the autoplay flag; memorize prefills the session. */
-  function plansOnGo(i) {
-    var all = plansLoad();
-    var p = all[i];
-    if (!p) return;
-    var c = (p.chunks || [])[p.pointer || 0];
+  /* Prepare the plan state so the deep-link target works: listening sets the
+     autoplay flag, memorize/revise prefill the session. Shared by the plan-level
+     go pill and the per-review-row chunk action. */
+  function plansPrepareChunk(p, c) {
     if (!c) return;
     if (p.type === 'memorize' || p.type === 'revise') {
       plansPrefillMemorize(c, p.id, p.type);
@@ -731,6 +739,13 @@
         try { sessionStorage.setItem('qaloon_plan_listen', segs[0].surah + ':' + segs[0].from); } catch (e) {}
       }
     }
+  }
+
+  function plansOnGo(i) {
+    var all = plansLoad();
+    var p = all[i];
+    if (!p) return;
+    plansPrepareChunk(p, (p.chunks || [])[p.pointer || 0]);
   }
 
   /* Prefill the memorize setup form via the existing canonical memSession format.

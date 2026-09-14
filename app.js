@@ -961,7 +961,7 @@
     var n = 2;
     var name = base;
     while (tagState.tags.some(function (u) { return norm(u.name) === norm(name); })) {
-      name = base + ' (' + toAr(n) + ')';
+      name = base + ' (' + toWest(n) + ')';
       n++;
     }
     return name;
@@ -1691,7 +1691,7 @@
     });
     saveTags();
     var chaptersMsg = result.chapters > 1
-      ? ' موزعة على ' + toAr(result.chapters) + ' فصول.'
+      ? ' موزعة على ' + toWest(result.chapters) + ' فصول.'
       : '';
     alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + chaptersMsg);
     renderTagArea();
@@ -1714,7 +1714,7 @@
         var buf = reader.result;
         var textPromise = isPdf
           ? extractPdfText(buf, function (p, m) {
-            showDocProgress('يجري استخراج النص من الصفحة ' + toAr(p) + ' من ' + toAr(m) + '…', p / m);
+            showDocProgress('يجري استخراج النص من الصفحة ' + toWest(p) + ' من ' + toWest(m) + '…', p / m);
           })
           : extractDocxText(buf);
         textPromise.then(function (out) {
@@ -1728,7 +1728,7 @@
           showDocProgress('جاري فحص فصول المستند…', 0);
           indexDocumentParagraphs(paras, function (ci, cn, name) {
             showDocProgress(
-              'جاري مطابقة آيات الفصل ' + toAr(ci) + ' من ' + toAr(cn) + (name ? ' — ' + name : '') + '…',
+              'جاري مطابقة آيات الفصل ' + toWest(ci) + ' من ' + toWest(cn) + (name ? ' — ' + name : '') + '…',
               ci / cn
             );
           }, function (result) {
@@ -1985,7 +1985,7 @@
     var m = Math.floor((sec % 3600) / 60);
     var s = sec % 60;
     var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-    var out = h ? toAr(h) + ':' + toAr(pad(m)) + ':' + toAr(pad(s)) : toAr(m) + ':' + toAr(pad(s));
+    var out = h ? toWest(h) + ':' + toWest(pad(m)) + ':' + toWest(pad(s)) : toWest(m) + ':' + toWest(pad(s));
     return 'المدة: ' + out;
   }
 
@@ -2957,10 +2957,10 @@
       return;
     }
     var list = searchAyahs(state.ayahQuery);
-    if (stats) stats.textContent = countNoun(list.length, toAr, 'آية', 'آيتان', 'آيات');
+    if (stats) stats.textContent = countNoun(list.length, toWest, 'آية', 'آيتان', 'آيات');
     var html = '';
     html += '<div class="ayah-results-head">'
-      + '<span>نتائج البحث في الآيات — ' + toAr(list.length) + '</span>'
+      + '<span>نتائج البحث في الآيات — ' + toWest(list.length) + '</span>'
       + '<button type="button" class="ayah-results-close" title="إغلاق" aria-label="إغلاق">✕</button>'
       + '</div>';
     if (list.length) {
@@ -4034,6 +4034,7 @@
   window.QuranLabBridge = {
     esc: esc,
     toAr: toAr,
+    toWest: toWest,
     relLabel: relLabel,
     RELATIONSHIPS: RELATIONSHIPS,
     state: state,
@@ -4560,7 +4561,7 @@
     var surahOptions = '';
     for (var i = 1; i <= 114; i++) {
       var s = surahByNumber(i);
-      surahOptions += '<option value="' + i + '"' + (i === defSurah ? ' selected' : '') + '>' + toAr(i) + '. ' + esc(s.nameAr) + '</option>';
+      surahOptions += '<option value="' + i + '"' + (i === defSurah ? ' selected' : '') + '>' + toWest(i) + '. ' + esc(s.nameAr) + '</option>';
     }
     var html = '';
     html += '<div class="mem-wrap">';
@@ -4960,10 +4961,10 @@
     if (!item) { st.textContent = ''; return; }
     var parts = [];
     parts.push('سورة ' + surahByNumber(item.surah).nameAr);
-    parts.push('الآية ' + toAr(item.ayah) + ' من ' + toAr(flat.length));
+    parts.push('الآية ' + toWest(item.ayah) + ' من ' + toWest(flat.length));
     parts.push('تكرار الآية ' + (memAudio.ayahInf ? '∞' : String(memAudio.ayahRepLeft) + ' / ' + String(memAudio.ayahRep)));
     if (memAudio.surahInf) parts.push('تكرار الحصة ∞');
-    else if (memAudio.surahRep > 1) parts.push('تكرار الحصة ' + toAr(memAudio.pass) + ' / ' + toAr(memAudio.surahRep));
+    else if (memAudio.surahRep > 1) parts.push('تكرار الحصة ' + toWest(memAudio.pass) + ' / ' + toWest(memAudio.surahRep));
     st.textContent = parts.join(' — ');
   }
 
@@ -5265,6 +5266,7 @@
   window.QuranPlansBridge = {
     esc: esc,
     toAr: toAr,
+    toWest: toWest,
     surahByNumber: surahByNumber,
     newId: newId,
     showAppToast: showAppToast,
