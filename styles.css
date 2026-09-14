@@ -1667,6 +1667,13 @@ html.dark .loader-caption { color: #9a917f; }
   padding-inline-start: 1rem !important;
   border-inline-start: 2px solid var(--border);
 }
+.mem-plan-done-btn {
+  background: var(--surface-2) !important;
+  border-color: #27ae60 !important; color: #27ae60 !important;
+  margin-inline-start: 0.6rem;
+  padding-inline-start: 1rem !important;
+  border-inline-start: 2px solid var(--border);
+}
 .mem-rep-btn {
   background: var(--accent) !important;
   border-color: var(--accent) !important; color: var(--surface) !important;

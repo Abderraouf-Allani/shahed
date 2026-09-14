@@ -2169,10 +2169,12 @@
     var menu = document.createElement('div');
     menu.className = 'ayah-menu';
     var emph = isEmphAyah(surah, ayah);
+    var isPlanEnd = !!planEndAyahsForSurah(surah)[ayah];
     menu.innerHTML =
       '<button type="button" data-act="play" title="تشغيل تلاوة الآية" aria-label="تشغيل تلاوة الآية">🔊</button>'
       + '<button type="button" data-act="copy" title="نسخ الآية برقمها" aria-label="نسخ الآية برقمها">📋</button>'
-      + '<button type="button" data-act="emph" title="تمييز الآية أو إلغاء تمييزها" aria-label="تمييز الآية أو إلغاء تمييزها">' + (emph ? '⭐' : '☆') + '</button>';
+      + '<button type="button" data-act="emph" title="تمييز الآية أو إلغاء تمييزها" aria-label="تمييز الآية أو إلغاء تمييزها">' + (emph ? '⭐' : '☆') + '</button>'
+      + (isPlanEnd ? '<button type="button" data-act="plan-done" title="إنهاء القراءة المخططة" aria-label="إنهاء القراءة المخططة">✅</button>' : '');
     document.body.appendChild(menu);
     menu._anchor = anchor;
     positionTagMenu(menu, anchor);
@@ -2193,6 +2195,8 @@
         var el = document.getElementById('ayah-' + surah + '-' + ayah);
         if (el) el.classList.toggle('verse-emph', on);
         showAppToast(on ? 'مُيّزت الآية ' + toAr(ayah) : 'أُلغي تمييز الآية ' + toAr(ayah));
+      } else if (act === 'plan-done') {
+        plansMarkReadDone(surah, ayah);
       }
     });
   }
@@ -4538,6 +4542,8 @@
     document.title = 'الحفظ — شاهد من القرآن';
     memStopAudio();
     memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, busy: false };
+    memState.fromPlan = null;
+    memState.planType = null;
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(LS.memSession)); } catch (e) {}
     /* Plan deep-link (memorize/revise): show the full chunk at once, even
@@ -4549,6 +4555,8 @@
         memState.level = 0;
         memState.reps = null;
         memState.sections = planned;
+        memState.fromPlan = saved.fromPlan || null;
+        memState.planType = saved.planType || null;
         memState.peeking = false;
         memState.featReady = false;
         memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -4619,6 +4627,7 @@
     html += '<button id="memHideBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أخفِ المزيد">' + MEM_ICON_HIDE + '</button>';
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
     html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
+    html += '<button id="memPlanDoneBtn" class="pill mem-ctrl-btn mem-plan-done-btn" title="إنهاء المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتممت المخطط</button>';
     html += '<button id="memResetBtn" class="pill mem-ctrl-btn mem-reset-btn">' + MEM_ICON_RESET + ' من جديد</button>';
     html += '</div>';
     html += '</div>';
@@ -4726,6 +4735,22 @@
       memRequestAction('help');
     });
 
+    var planDoneBtn = document.getElementById('memPlanDoneBtn');
+    if (planDoneBtn) {
+      planDoneBtn.addEventListener('click', function () { memMarkPlanChunkDone(); });
+      if (memState.fromPlan) {
+        planDoneBtn.style.display = '';
+        if (memState.planType === 'revise') {
+          planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت المراجعة';
+        } else if (memState.planType === 'memorize') {
+          planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت الحفظ';
+        }
+        planDoneBtn.title = 'إنهاء المقطع المخطط';
+      } else {
+        planDoneBtn.style.display = 'none';
+      }
+    }
+
     document.getElementById('memResetBtn').addEventListener('click', function () {
       memStopAudio();
       memState.active = false;
@@ -4734,6 +4759,10 @@
       memState.sections = [];
       memState.peeking = false;
       memState.featReady = false;
+      memState.fromPlan = null;
+      memState.planType = null;
+      var planDoneBtn = document.getElementById('memPlanDoneBtn');
+      if (planDoneBtn) { planDoneBtn.style.display = 'none'; planDoneBtn.disabled = false; }
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
       memState.pendingAction = null;
       memState.pendingRep = 0;
@@ -5355,6 +5384,54 @@
   /* Called at the end of renderReader: autostart listening-plan recitation. */
   function plansMaybeAutoplayReader(surah) {
     if (window.QuranPlans) window.QuranPlans.maybeAutoplayReader(surah);
+  }
+
+  /* Memorize-page shortcut: mark the plan chunk the current session came from
+     as done (revise/memorize likely). Show the state on the buried
+     memPlanDoneBtn so the user can close the day's revision without finishing
+     the whole 50-rep loop. */
+  function memMarkPlanChunkDone() {
+    var planId = memState && memState.fromPlan;
+    if (!planId) return;
+    ensurePlansScript().then(function () {
+      if (!window.QuranPlans || !window.QuranPlans.markPlanChunkDone) return;
+      if (window.QuranPlans.markPlanChunkDone(planId)) {
+        var label = memState.planType === 'revise'
+          ? 'أُتمّت المراجعة المخططة — وفّقك الله'
+          : 'أُتمّ المقطع المخطط — وفّقك الله';
+        showAppToast(label);
+        updatePlansBadge();
+        var btn = document.getElementById('memPlanDoneBtn');
+        if (btn) btn.disabled = true;
+      }
+    }).catch(function () {});
+  }
+
+  /* Reader shortcut: mark the current read/listen plan chunk done from its
+     highlighted plan-end ayah menu. Loads plans.js on demand, then clears the
+     plan-end styling (and any other now-stale ones) in the open surah so the
+     highlight disappears without a full re-render. */
+  function plansMarkReadDone(surah, ayah) {
+    ensurePlansScript().then(function () {
+      if (window.QuranPlans && window.QuranPlans.markChunkDoneFromReader &&
+          window.QuranPlans.markChunkDoneFromReader(surah, ayah)) {
+        showAppToast('أُتمّت القراءة المخططة — وفّقك الله');
+        updatePlansBadge();
+        var ends = planEndAyahsForSurah(surah);
+        document.querySelectorAll('#mushaf .verse[data-ayah]').forEach(function (el) {
+          var a = +el.getAttribute('data-ayah');
+          var num = el.querySelector('.ayah-num');
+          if (!num) return;
+          if (ends[a]) {
+            num.classList.add('plan-end');
+            num.setAttribute('title', 'نهاية المقطع المخطط');
+          } else {
+            num.classList.remove('plan-end');
+            num.removeAttribute('title');
+          }
+        });
+      }
+    }).catch(function () {});
   }
 
   /* Called when the memorize 50-rep loop completes: auto-check today's chunk.

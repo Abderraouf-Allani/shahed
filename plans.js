@@ -295,6 +295,26 @@
     }
   }
 
+  /* Manual "mark plan done" from the memorize controls: checks off the chunk
+     of a SPECIFIC plan (the one whose id landed in memSession.fromPlan), same
+     bookkeeping as the plans-page «أتممت» pill. Returns true when it checked
+     something off. */
+  function plansMarkPlanChunkDone(planId) {
+    if (!planId) return false;
+    var all = plansLoad();
+    for (var i = 0; i < all.length; i++) {
+      var p = all[i];
+      if (p.id !== planId) continue;
+      if (p.type !== 'memorize' && p.type !== 'revise') return false;
+      if (p.pointer >= (p.chunks || []).length) return false;
+      var c = p.chunks[p.pointer || 0];
+      if (!c || c.done) return false;
+      plansScheduleReview(p, c);
+      return true;
+    }
+    return false;
+  }
+
   /* Absolute [start,end] hafs span of canonical sections. */
   function plansRangeAbs(sections) {
     var min = Infinity, max = -Infinity;
@@ -748,6 +768,27 @@
     plansPrepareChunk(p, (p.chunks || [])[p.pointer || 0]);
   }
 
+  /* Reader shortcut: "mark this plan chunk done" fired from the read/listen
+     plan-end ayah menu in the surah page (same action as the plans-page
+     «أتممت» pill). The chunk is the one whose end ayah (in the ACTIVE
+     riwaya) corresponds to the given surah:ayah. Returns true when a plan
+     was actually checked off. */
+  function plansMarkChunkDoneFromReader(surah, ayah) {
+    var all = plansLoad();
+    var marked = false;
+    all.forEach(function (p) {
+      if (p.type !== 'read' && p.type !== 'listen') return;
+      var c = (p.chunks || [])[p.pointer || 0];
+      if (!c || c.done || !c.to) return;
+      var parts = String(c.to).split(':');
+      if (+parts[0] !== surah) return;
+      if (activeAyahEndOf(surah, +parts[1]) !== ayah) return;
+      plansScheduleReview(p, c);
+      marked = true;
+    });
+    return marked;
+  }
+
   /* Prefill the memorize setup form via the existing canonical memSession format.
      Stores the FULL chunk (all surahs comprised) as canonical sections so the
      memorize page can show the whole range, not just the first surah. */
@@ -912,6 +953,8 @@
     unitLabel: plansUnitLabel,
     buildChunks: plansBuildChunks,
     rateReview: plansRateReview,
+    markChunkDoneFromReader: plansMarkChunkDoneFromReader,
+    markPlanChunkDone: plansMarkPlanChunkDone,
     struggleRate: struggleRate,
     getStruggle: struggleLoad,
     struggleTarget: STRUGGLE_TARGET
