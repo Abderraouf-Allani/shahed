@@ -229,6 +229,18 @@
     return plansAddDays(p.created, p.pointer || 0);
   }
 
+  /* Shift a plan's timeline so its current (pointer) chunk becomes due today,
+     used when the plan fell more than 2 days behind. Keeps the same per-day
+     cadence going forward; completed chunks and review schedules are untouched. */
+  function plansReschedule(i) {
+    var all = plansLoad();
+    var p = all[i];
+    if (!p || !p.created) return;
+    p.created = plansAddDays(plansDayKey(0), -(p.pointer || 0));
+    plansSave(all);
+    showAppToast('أُعيدت جدولة الخطة — المقطع الحالي مستحق اليوم، وفّقك الله');
+  }
+
   /* Missed work across all plans: overdue daily chunks + due spaced reviews. */
   function plansDueSummary() {
     var today = plansDayKey(0);
@@ -310,6 +322,41 @@
       var c = p.chunks[p.pointer || 0];
       if (!c || c.done) return false;
       plansScheduleReview(p, c);
+      return true;
+    }
+    return false;
+  }
+
+  /* Rate the chunk a plan-originated memorize session is carrying (good=true
+     «أتقنت» / false «تعثرت»), mirroring the plans-page review-row rating:
+     a not-yet-done chunk is checked off (schedule next review, and a bad
+     rating also re-adds the section to «حفظ متعثر»); an already-done chunk
+     advances through its spaced-review steps (bad → struggle too). The chunk
+     is identified by the canonical key carried in the session, falling back
+     to the plan's pointer chunk. Returns true when it rated something. */
+  function plansRatePlanChunk(planId, key, good) {
+    if (!planId) return false;
+    var all = plansLoad();
+    for (var i = 0; i < all.length; i++) {
+      var p = all[i];
+      if (p.id !== planId) continue;
+      if (p.type !== 'memorize' && p.type !== 'revise') return false;
+      if (p.pointer >= (p.chunks || []).length) return false;
+      var ci = -1;
+      if (key) {
+        for (var j = 0; j < (p.chunks || []).length; j++) {
+          if ((p.chunks[j].from + '|' + p.chunks[j].to) === key) { ci = j; break; }
+        }
+      }
+      if (ci < 0) ci = p.pointer || 0;
+      var c = p.chunks && p.chunks[ci];
+      if (!c) return false;
+      if (c.done) {
+        plansRateReview(i, ci, good);
+      } else {
+        plansScheduleReview(p, c);
+        if (!good) struggleAddChunk(c);
+      }
       return true;
     }
     return false;
@@ -517,6 +564,12 @@
         html += '<a class="pill" data-go="' + i + '" href="' + plansDeepLink(p, cur) + '">' + plansGoLabel(p) + '</a>';
         html += '<button type="button" class="pill" data-done="' + (p.pointer || 0) + '">أتممت</button>';
         html += '</span>';
+        if (lateDays > 2) {
+          /* Deeply overdue: offer to shift the whole plan timeline so the
+             current chunk becomes due today. */
+          html += '<div class="plan-resched"><span class="plan-resched-msg">تأخرت ' + dayNoun(lateDays, toWest, '') + ' — هل تعيد جدولة الخطة لتبدأ من اليوم؟</span>'
+            + '<button type="button" class="pill plan-resched-btn" data-resched="' + i + '">أعد جدولتها</button></div>';
+        }
         html += '</div>';
       } else {
         html += '<div class="plan-done-msg">✓ اكتملت الخطة</div>';
@@ -530,7 +583,7 @@
     area.innerHTML = html;
     plans.forEach(function (p, i) { renderPlanReviews(p, i); });
     area.onclick = function (e) {
-      var t = e.target.closest('button[data-done],button[data-del],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
+      var t = e.target.closest('button[data-done],button[data-del],button[data-resched],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
       if (!t) return;
       if (t.dataset.struggleGood !== undefined) {
         struggleRate(+t.dataset.struggleGood, true);
@@ -561,6 +614,9 @@
         renderPlansArea();
       } else if (t.dataset.del !== undefined) {
         if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); renderPlansAlert(); renderPlansArea(); }
+      } else if (t.dataset.resched !== undefined) {
+        plansReschedule(+t.dataset.resched);
+        renderPlansAlert(); renderPlansArea();
       }
     };
     area.querySelectorAll('a[data-go]').forEach(function (a) {
@@ -818,7 +874,8 @@
         sections: canon,
         auto: true,
         fromPlan: planId || null,
-        planType: planType || null
+        planType: planType || null,
+        memKey: (c.from + '|' + c.to)
       }));
     } catch (e) {}
   }
@@ -955,6 +1012,7 @@
     rateReview: plansRateReview,
     markChunkDoneFromReader: plansMarkChunkDoneFromReader,
     markPlanChunkDone: plansMarkPlanChunkDone,
+    ratePlanChunk: plansRatePlanChunk,
     struggleRate: struggleRate,
     getStruggle: struggleLoad,
     struggleTarget: STRUGGLE_TARGET

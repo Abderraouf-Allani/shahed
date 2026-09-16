@@ -4565,6 +4565,7 @@
         memState.sections = planned;
         memState.fromPlan = saved.fromPlan || null;
         memState.planType = saved.planType || null;
+        memState.memKey = saved.memKey || null;
         memState.peeking = false;
         memState.featReady = false;
         memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -4635,7 +4636,9 @@
     html += '<button id="memHideBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أخفِ المزيد">' + MEM_ICON_HIDE + '</button>';
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
     html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
-    html += '<button id="memPlanDoneBtn" class="pill mem-ctrl-btn mem-plan-done-btn" title="إنهاء المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتممت المخطط</button>';
+    html += '<button id="memPlanDoneBtn" class="pill mem-ctrl-btn mem-plan-done-btn" title="إنهاء المقطع المخطط" style="display:none">' + MEM_ICON_DONE + ' أتممت المخطط</button>';
+    html += '<button id="memPlanGoodBtn" class="pill mem-ctrl-btn mem-plan-good-btn" title="أتقنت المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتقنت ✓</button>';
+    html += '<button id="memPlanBadBtn" class="pill mem-ctrl-btn mem-plan-bad-btn" title="تعثرت في المراجعة المخططة" style="display:none">تعثرت</button>';
     html += '<button id="memResetBtn" class="pill mem-ctrl-btn mem-reset-btn">' + MEM_ICON_RESET + ' من جديد</button>';
     html += '</div>';
     html += '</div>';
@@ -4744,19 +4747,36 @@
     });
 
     var planDoneBtn = document.getElementById('memPlanDoneBtn');
+    var planGoodBtn = document.getElementById('memPlanGoodBtn');
+    var planBadBtn = document.getElementById('memPlanBadBtn');
     if (planDoneBtn) {
       planDoneBtn.addEventListener('click', function () { memMarkPlanChunkDone(); });
-      if (memState.fromPlan) {
+    }
+    if (planGoodBtn) {
+      planGoodBtn.addEventListener('click', function () { memRatePlanChunk(true); });
+    }
+    if (planBadBtn) {
+      planBadBtn.addEventListener('click', function () { memRatePlanChunk(false); });
+    }
+    if (memState.fromPlan && memState.planType === 'revise') {
+      /* Revise sessions: show the two performance-evaluation buttons,
+         hide the plain-done button. */
+      if (planDoneBtn) planDoneBtn.style.display = 'none';
+      if (planGoodBtn) { planGoodBtn.style.display = ''; }
+      if (planBadBtn) { planBadBtn.style.display = ''; }
+    } else if (memState.fromPlan) {
+      /* Memorize sessions: single plain-done button. */
+      if (planDoneBtn) {
         planDoneBtn.style.display = '';
-        if (memState.planType === 'revise') {
-          planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت المراجعة';
-        } else if (memState.planType === 'memorize') {
-          planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت الحفظ';
-        }
+        planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت الحفظ';
         planDoneBtn.title = 'إنهاء المقطع المخطط';
-      } else {
-        planDoneBtn.style.display = 'none';
       }
+      if (planGoodBtn) planGoodBtn.style.display = 'none';
+      if (planBadBtn) planBadBtn.style.display = 'none';
+    } else {
+      if (planDoneBtn) planDoneBtn.style.display = 'none';
+      if (planGoodBtn) planGoodBtn.style.display = 'none';
+      if (planBadBtn) planBadBtn.style.display = 'none';
     }
     /* Reset returns to the manual setup form — meaningless for a session
        coming from a plan (its fixed chunk replaces then-restart). */
@@ -4773,8 +4793,13 @@
       memState.featReady = false;
       memState.fromPlan = null;
       memState.planType = null;
+      memState.memKey = null;
       var planDoneBtn = document.getElementById('memPlanDoneBtn');
       if (planDoneBtn) { planDoneBtn.style.display = 'none'; planDoneBtn.disabled = false; }
+      var planGoodBtn = document.getElementById('memPlanGoodBtn');
+      if (planGoodBtn) planGoodBtn.style.display = 'none';
+      var planBadBtn = document.getElementById('memPlanBadBtn');
+      if (planBadBtn) planBadBtn.style.display = 'none';
       var resetBtn = document.getElementById('memResetBtn');
       if (resetBtn) resetBtn.style.display = '';
       memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -5412,6 +5437,22 @@
         showAppToast(memState.planType === 'revise'
           ? 'أُتمّت المراجعة المخططة — وفّقك الله'
           : 'أُتمّ المقطع المخطط — وفّقك الله');
+        updatePlansBadge();
+        location.hash = '#/plans';
+      }
+    }).catch(function () {});
+  }
+
+  /* Memorize-page shortcut: rate the carried revise-plan session's chunk with
+     the self-evaluation buttons «أتقنت»/«تعثرت» (mirroring the plans-page
+     review rows), then redirect back to the plans page. */
+  function memRatePlanChunk(good) {
+    var planId = memState && memState.fromPlan;
+    if (!planId) return;
+    var key = memState && memState.memKey;
+    ensurePlansScript().then(function () {
+      if (!window.QuranPlans || !window.QuranPlans.ratePlanChunk) return;
+      if (window.QuranPlans.ratePlanChunk(planId, key, good)) {
         updatePlansBadge();
         location.hash = '#/plans';
       }

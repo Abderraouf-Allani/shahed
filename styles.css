@@ -1674,6 +1674,18 @@ html.dark .loader-caption { color: #9a917f; }
   padding-inline-start: 1rem !important;
   border-inline-start: 2px solid var(--border);
 }
+.mem-plan-good-btn {
+  background: var(--surface-2) !important;
+  border-color: #27ae60 !important; color: #27ae60 !important;
+  margin-inline-start: 0.6rem;
+  padding-inline-start: 1rem !important;
+  border-inline-start: 2px solid var(--border);
+}
+.mem-plan-bad-btn {
+  background: var(--surface-2) !important;
+  border-color: #c0392b !important; color: #e74c3c !important;
+  padding-inline-start: 1rem !important;
+}
 .mem-rep-btn {
   background: var(--accent) !important;
   border-color: var(--accent) !important; color: var(--surface) !important;
@@ -1955,6 +1967,24 @@ a.plans-alert-link:hover { filter: brightness(0.98); }
   font-weight: 700;
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
+  white-space: nowrap;
+}
+
+.plan-resched {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(231, 126, 34, 0.1);
+  border: 1px dashed #e67e22;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.plan-resched-btn {
   white-space: nowrap;
 }
 
