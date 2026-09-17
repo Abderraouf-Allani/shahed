@@ -272,6 +272,66 @@
     showAppToast('أُعيدت جدولة الخطة — المقطع الحالي مستحق اليوم، وفّقك الله');
   }
 
+  /* Start a new iteration of a finished plan: same type/unit/pace/range/
+     riwaya, fresh chunks and review ladder, created today. Auto-revise
+     linkage is dropped — the copy is a standalone plan. */
+  function plansRepeatPlan(planIdx) {
+    var all = plansLoad();
+    var p = all[planIdx];
+    if (!p) return;
+    if (all.length >= 8) { showAppToast('الحد الأقصى ٨ خطط'); return; }
+    var mkRepeat = function () {
+      var num = plansNum(p);
+      var plan = {
+        id: newId('p'),
+        type: p.type,
+        unit: p.unit,
+        perDay: p.perDay,
+        num: num,
+        fromSurah: p.fromSurah, fromAyah: p.fromAyah,
+        toSurah: p.toSurah, toAyah: p.toAyah,
+        pointer: 0,
+        created: plansDayKey(0),
+        chunks: plansBuildChunks({ unit: p.unit, perDay: p.perDay, num: num, fromSurah: p.fromSurah, fromAyah: p.fromAyah, toSurah: p.toSurah, toAyah: p.toAyah })
+      };
+      var fresh = plansLoad();
+      fresh.push(plan);
+      plansSave(fresh);
+      renderPlansAlert();
+      renderPlansArea();
+      showAppToast('بدأت جولة جديدة من الخطة — وفّقك الله');
+    };
+    if (PLAN_AHZAB_SPAN[p.unit]) {
+      plansEnsureAhzab().then(mkRepeat).catch(function () {
+        showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
+      });
+    } else {
+      mkRepeat();
+    }
+  }
+
+  /* Spread a plan's currently-due spaced reviews one per day starting
+     tomorrow, oldest first — for when the «مراجعات اليوم» pile grows too
+     big. Future-scheduled reviews are untouched; the review ladder
+     (reviewIdx) is preserved, only nextReview dates move. */
+  function plansSpreadReviews(planIdx) {
+    var all = plansLoad();
+    var p = all[planIdx];
+    if (!p) return;
+    var today = plansDayKey(0);
+    var due = [];
+    (p.chunks || []).forEach(function (c) {
+      if (c.done && c.nextReview && c.nextReview !== 'done' && c.nextReview <= today) due.push(c);
+    });
+    if (!due.length) return;
+    due.sort(function (a, b) { return a.nextReview < b.nextReview ? -1 : (a.nextReview > b.nextReview ? 1 : 0); });
+    due.forEach(function (c, k) {
+      c.nextReview = plansAddDays(today, k + 1);
+    });
+    plansPersistPlan(p);
+    showAppToast('وُزّعت ' + countNoun(due.length, toWest, 'مراجعة مستحقة', 'مراجعتان مستحقتان', 'مراجعات مستحقة') + ' على الأيام القادمة — واحدة يومياً بدءاً من الغد، وفّقك الله');
+  }
+
   /* Missed work across all plans: overdue daily chunks + due spaced reviews. */
   function plansDueSummary() {
     var today = plansDayKey(0);
@@ -608,6 +668,10 @@
         html += '</div>';
       } else {
         html += '<div class="plan-done-msg">✓ اكتملت الخطة</div>';
+        /* Finished plans offer a fresh iteration: same type/pace/range,
+           new chunk and review state, created today. */
+        html += '<div class="plan-repeat"><span class="plan-repeat-msg">أحسنت! هل تبدأ جولة جديدة من نفس الخطة؟</span>'
+          + '<button type="button" class="pill plan-repeat-btn" data-repeat="' + i + '">ابدأ جولة جديدة</button></div>';
       }
       html += '<div class="plan-reviews" data-reviews="' + i + '"></div>';
       html += '<div class="plan-actions plan-foot-actions">';
@@ -618,7 +682,7 @@
     area.innerHTML = html;
     plans.forEach(function (p, i) { renderPlanReviews(p, i); });
     area.onclick = function (e) {
-      var t = e.target.closest('button[data-done],button[data-del],button[data-resched],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
+      var t = e.target.closest('button[data-done],button[data-del],button[data-resched],button[data-rev-spread],button[data-repeat],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
       if (!t) return;
       if (t.dataset.struggleGood !== undefined) {
         struggleRate(+t.dataset.struggleGood, true);
@@ -652,6 +716,11 @@
       } else if (t.dataset.resched !== undefined) {
         plansReschedule(+t.dataset.resched);
         renderPlansAlert(); renderPlansArea();
+      } else if (t.dataset.revSpread !== undefined) {
+        plansSpreadReviews(i);
+        renderPlansAlert(); renderPlansArea();
+      } else if (t.dataset.repeat !== undefined) {
+        plansRepeatPlan(i);
       }
     };
     area.querySelectorAll('a[data-go]').forEach(function (a) {
@@ -683,10 +752,11 @@
     if (!el) return;
     var today = plansDayKey(0);
     var rated = (p.type === 'memorize' || p.type === 'revise');
-    var rows = '';
+    var rows = '', dueCount = 0;
     (p.chunks || []).forEach(function (c, ci) {
       if (!c.done || !c.nextReview || c.nextReview === 'done') return;
       if (c.nextReview <= today) {
+        dueCount++;
         var late = plansDaysBetween(c.nextReview, today);
         rows += '<div class="plan-review-row">'
           + '<span class="plan-review-info"><span class="plan-chunk-label">' + c.label + '</span>'
@@ -702,7 +772,10 @@
           + '</div>';
       }
     });
-    el.innerHTML = rows ? '<div class="plan-review-title">مراجعات اليوم</div>' + rows : '';
+    el.innerHTML = rows
+      ? '<div class="plan-review-title">مراجعات اليوم</div>' + rows
+        + '<button type="button" class="pill plan-spread-btn" data-rev-spread>أعد جدولة المراجعات (' + toWest(dueCount) + ') — واحدة يومياً بدءاً من الغد</button>'
+      : '';
   }
 
   function plansPersistPlan(plan) {
