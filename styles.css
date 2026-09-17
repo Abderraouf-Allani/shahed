@@ -1902,16 +1902,25 @@ html.dark .plan-del-btn:hover { background: rgba(238, 136, 136, 0.1); }
 }
 
 .plan-review-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.6rem;
-  flex-wrap: wrap;
   background: var(--surface-2);
   border-radius: 10px;
   padding: 0.45rem 0.7rem;
   margin-bottom: 0.35rem;
 }
+
+.plan-review-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.plan-review-row > .plan-actions { grid-column: -1; }
 
 .plan-review-late { color: #a85b3b; font-size: 0.85rem; font-weight: 600; }
 .plan-review-wait { color: var(--text-muted); font-size: 0.85rem; }

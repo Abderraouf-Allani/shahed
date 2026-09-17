@@ -340,17 +340,6 @@
     return x ? x.split(' ') : [];
   }
 
-  function nameSimilarity(a, b) {
-    a = (a || '').trim(); b = (b || '').trim();
-    if (!a || !b) return 0;
-    if (a === b) return 1;
-    var ra = arabicRoot(a), rb = arabicRoot(b);
-    if (ra && rb && ra === rb) return 0.85;
-    if (a.indexOf(b) !== -1 || b.indexOf(a) !== -1) return 0.5;
-    if (!/\s/.test(a) && !/\s/.test(b) && ra && rb && ra[0] === rb[0] && ra[1] === rb[1]) return 0.35;
-    return 0;
-  }
-
   function readLabGraph() {
     try { return JSON.parse(localStorage.getItem(LS.lab) || '{}'); } catch (e) { return {}; }
   }
@@ -802,24 +791,6 @@
       saveTags();
     }
     rememberLastTag(tagId);
-  }
-
-  /* Add a verse key to a tag's set WITHOUT re-saving each time (batched). */
-  function addTagIfMissingStateOnly(vkey, tagId) {
-    var sp = vkey.split(':');
-    var nk = canonVerseKey(+sp[0], +sp[1]);
-    var ids = tagState.verses[nk] || [];
-    if (ids.indexOf(tagId) === -1) { ids.push(tagId); tagState.verses[nk] = ids; }
-  }
-
-  /* Record a tag-to-tag relationship edge in the Tag Lab graph storage. */
-  function recordSuggestionEdge(catId, fromId, toId, rel) {
-    var lab = readLabGraph();
-    var perCat = lab[catId] || (lab[catId] = { nodes: {}, edges: [] });
-    if (perCat.nodes && !perCat.nodes[fromId]) perCat.nodes[fromId] = { x: 0, y: 0, showAyahs: false };
-    perCat.edges.push({ from: fromId, to: toId, rel: rel || 'related-to' });
-    saveTags();
-    try { localStorage.setItem(LS.lab, JSON.stringify(lab)); } catch (e) {}
   }
 
   function removeTagFromVerse(surah, ayah, tagId) {
@@ -4121,6 +4092,7 @@
   var MEM_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
   var MEM_ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/></svg>';
   var MEM_ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-9 6 9 6z"/></svg>';
+  var MEM_ICON_AUDIO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.6 5.4a9 9 0 0 1 0 13.2"/></svg>';
   var MEM_REP_PRIMES = [];
   (function () {
     var n, q, isPrime;
@@ -4311,6 +4283,23 @@
     mushaf.appendChild(frag);
   }
 
+  /* Hiding schedule per memorize profile: adults climb 5 rungs, children 7
+     gentler ones. Both end at 1.0 (hide-all); both pass through 0.8 so the
+     revise preset (open near-80%-hidden) works for either profile. */
+  function memRungsForProfile() {
+    return state.memProfile === 'child'
+      ? [0.15, 0.3, 0.45, 0.6, 0.8, 0.9, 1.0]
+      : [0.2, 0.4, 0.6, 0.8, 1.0];
+  }
+
+  /* First rung at or past `frac` (revise sessions open near-80%-hidden). */
+  function memLevelForFrac(rungs, frac) {
+    for (var i = 0; i < rungs.length; i++) {
+      if (rungs[i] >= frac - 1e-9) return i;
+    }
+    return rungs.length - 1;
+  }
+
   function applyMemLevel() {
     if (!memState || !memState.active) return;
     if (memState.reps !== null) return;
@@ -4321,7 +4310,7 @@
     var visible = allWords.filter(function (w) { return !w.hidden; });
     if (!visible.length) { memUnlockBtns(); return; }
     var MH = window.QuranMemHide;
-    var rungs = memState.rungs || [0.2, 0.4, 0.6, 0.8, 1.0];
+    var rungs = memState.rungs || memRungsForProfile();
     memState.rungs = rungs;
     var frac = rungs[Math.min(memState.level, rungs.length - 1)];
     var toHide;
@@ -4332,13 +4321,14 @@
         memState.featRiwaya = state.riwaya;
       }
       var profKey = state.memProfile === 'child' ? 'child' : 'adult';
-      toHide = MH.selectHideSet(allWords, profKey, frac);
+      toHide = MH.selectHideSet(allWords, profKey, frac, !!memState.reverse);
     } else {
       /* Module failed to load (shouldn't happen: SW-precached): hide the
          contract increment sequentially so the button never breaks. */
       var hiddenNow = allWords.filter(function (w) { return w.hidden; }).length;
       var need = (frac >= 1 ? allWords.length : Math.ceil(allWords.length * frac)) - hiddenNow;
-      toHide = visible.slice(0, Math.max(0, need));
+      need = Math.max(0, need);
+      toHide = memState.reverse ? visible.slice(Math.max(0, visible.length - need)) : visible.slice(0, need);
     }
     toHide.forEach(function (w) { w.hidden = true; });
     memState.level++;
@@ -4394,7 +4384,7 @@
       /* Regression: splice a midpoint breakpoint into the AHEAD interval so
          the onward climb gains a rest stop (V1+tweak). */
       var MH = window.QuranMemHide;
-      var rungs = memState.rungs || [0.2, 0.4, 0.6, 0.8, 1.0];
+      var rungs = memState.rungs || memRungsForProfile();
       memState.rungs = MH ? MH.insertBreakpoint(rungs, memState.level) : rungs;
     }
     renderMemWords();
@@ -4585,8 +4575,11 @@
       var planned = memBuildSectionsFromSaved(saved);
       if (planned) {
         memState.active = true;
-        memState.level = (saved.planType === 'revise') ? 3 : 0;
+        memState.level = 0;
         memState.revisePreset = (saved.planType === 'revise');
+        /* Revision hides hard-first (easiest stay visible); memorization
+           hides easy-first. The direction persists for the whole session. */
+        memState.reverse = (saved.planType === 'revise');
         memState.reps = null;
         memState.sections = planned;
         memState.fromPlan = saved.fromPlan || null;
@@ -4594,7 +4587,8 @@
         memState.memKey = saved.memKey || null;
         memState.peeking = false;
         memState.featReady = false;
-        memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+        memState.rungs = memRungsForProfile();
+        if (saved.planType === 'revise') memState.level = memLevelForFrac(memState.rungs, 0.8);
         memState.pendingAction = null;
         memState.pendingRep = 0;
         memState.fontPx = state.fontPx;
@@ -4645,7 +4639,7 @@
     html += '<div class="mem-ctrl-top">';
     html += '<div class="mem-level" id="memLevel"></div>';
     html += '</div>';
-    html += '<div class="mem-audio-row">';
+    html += '<div class="mem-audio-row" style="display:none">';
     html += '<div class="mem-audio">';
     html += '<button id="memPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
     html += '<button id="memPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
@@ -4659,6 +4653,7 @@
     html += '</div>';
     html += '<div class="mem-ctrl-btns">';
     html += '<button id="memRepBtn" class="pill mem-ctrl-btn mem-rep-btn" title="اضغط بعد كل تلاوة للمقطع" style="display:none"></button>';
+    html += '<button id="memAudioBtn" class="pill mem-ctrl-btn mem-icon-btn" title="إظهار/إخفاء أدوات التلاوة">' + MEM_ICON_AUDIO + '</button>';
     html += '<button id="memHideBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أخفِ المزيد">' + MEM_ICON_HIDE + '</button>';
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
     html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
@@ -4683,10 +4678,12 @@
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
-      /* Revise sessions start at the natural level-4 state: one applyMemLevel
-         pass targets rungs[3]=0.8, so the mushaf opens ~80% hidden (text still
-         partially visible, level shown as 4) instead of showing 0% hidden and
-         letting the first hide click jump straight to 100% + step 2. */
+      /* Revise sessions open near-80%-hidden: one applyMemLevel pass at the
+         first rung >= 0.8 (memLevelForFrac). Revision hides hard-first
+         (reverse order), so the hidden band holds the most difficult words
+         and the visible remainder are the easiest anchors — instead of
+         showing 0% hidden and letting the first hide click jump straight
+         to 100% + step 2. */
       if (memState.revisePreset) {
         memState.revisePreset = false;
         ensureMemHideScript().then(applyMemLevel).catch(function () { applyMemLevel(); });
@@ -4742,11 +4739,12 @@
       sections.push({ surah: surahNum, from: from, to: to, ayahWords: ayahWords });
       memState.active = true;
       memState.level = 0;
+      memState.reverse = false;
       memState.reps = null;
       memState.sections = sections;
       memState.peeking = false;
       memState.featReady = false;
-      memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+      memState.rungs = memRungsForProfile();
       memState.pendingAction = null;
       memState.pendingRep = 0;
       memState.fontPx = state.fontPx;
@@ -4779,6 +4777,18 @@
     document.getElementById('memHelpBtn').addEventListener('click', function () {
       memRequestAction('help');
     });
+
+    /* Audio controls are hidden by default; this toggles the row only —
+       playback state is untouched. */
+    var audioBtn = document.getElementById('memAudioBtn');
+    var audioRow = document.querySelector('.mem-area .mem-audio-row');
+    if (audioBtn && audioRow) {
+      audioBtn.addEventListener('click', function () {
+        var show = audioRow.style.display === 'none';
+        audioRow.style.display = show ? '' : 'none';
+        if (show) audioBtn.classList.add('on'); else audioBtn.classList.remove('on');
+      });
+    }
 
     var planDoneBtn = document.getElementById('memPlanDoneBtn');
     var planGoodBtn = document.getElementById('memPlanGoodBtn');
@@ -4821,6 +4831,7 @@
       memStopAudio();
       memState.active = false;
       memState.level = 0;
+      memState.reverse = false;
       memState.reps = null;
       memState.sections = [];
       memState.peeking = false;
@@ -4836,7 +4847,7 @@
       if (planBadBtn) planBadBtn.style.display = 'none';
       var resetBtn = document.getElementById('memResetBtn');
       if (resetBtn) resetBtn.style.display = '';
-      memState.rungs = [0.2, 0.4, 0.6, 0.8, 1.0];
+      memState.rungs = memRungsForProfile();
       memState.pendingAction = null;
       memState.pendingRep = 0;
       memUnlockBtns();
@@ -5594,11 +5605,6 @@
     var d = new Date(key + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() + (n || 0));
     return d.toISOString().slice(0, 10);
-  }
-
-  function plansLocalDaysBetween(k1, k2) {
-    var a = new Date(k1 + 'T00:00:00'), b = new Date(k2 + 'T00:00:00');
-    return Math.round((b - a) / 86400000);
   }
 
   function getPlansDueCount() {

@@ -164,18 +164,31 @@ function memTargetForFrac(prof, frac) {
   return prof.targets[lo] + (prof.targets[hi] - prof.targets[lo]) * (k - lo);
 }
 
-function memHideScore(w, prof, target, progress, C) {
+function memHideScore(w, prof, target, progress, C, reverse) {
+  if (reverse) return memHideScoreReverse(w, prof, target, progress, C);
   var D = w._D;
   var dist = (D <= target) ? (target - D) : 2 * (D - target);
   var fit = 1 - Math.min(1, dist);
   return 0.60 * fit + 0.40 * (1 - D) + 0.15 * w._I * progress - prof.alpha * w._A - prof.beta * C;
 }
 
+/* Hard-first order for revision sessions: strict descending difficulty, so
+   each pass hides the next hardest band (0.8 hides the hardest 80%, showing
+   the easiest 20%). No band target: real _D values compress into a narrow
+   band where a fit-peak would scramble the order; the count schedule
+   (`need`) already paces the progression. Deliberately NO anchor term:
+   anchors protect distinctive (usually rare, i.e. hard) words, which would
+   defeat hard-first hiding — in reverse the shown easy words are the recall
+   cues. Interference nudge + adjacency penalty + run/ambiguity guards stay. */
+function memHideScoreReverse(w, prof, target, progress, C) {
+  return w._D + 0.15 * w._I * progress - prof.beta * C;
+}
+
 /* Contract selection over flat word list (collectMemWords order).
    Returns words to hide now. The final rung (frac>=1) hides every remainder (explicit
    invariant); otherwise ranked pick with run/transition constraints and a
    progressive-relaxation fallback guaranteeing the exact increment. */
-function memSelectHideSet(allWords, profKey, frac) {
+function memSelectHideSet(allWords, profKey, frac, reverse) {
   var prof = (profKey === 'child') ? MEMV1_CHILD : MEMV1_ADULT;
   var N = allWords.length;
   var hidden = allWords.map(function (w) { return !!w.hidden; });
@@ -191,7 +204,7 @@ function memSelectHideSet(allWords, profKey, frac) {
     if (w.hidden) return;
     var left = (idx > 0 && hidden[idx - 1]) ? 1 : 0;
     var right = (idx < N - 1 && hidden[idx + 1]) ? 1 : 0;
-    scored.push({ w: w, idx: idx, s: memHideScore(w, prof, target, progress, (left + right) / 2) });
+    scored.push({ w: w, idx: idx, s: memHideScore(w, prof, target, progress, (left + right) / 2, reverse) });
   });
   scored.sort(function (a, b) { return (b.s - a.s) || (a.w._seq - b.w._seq); });
   var selFlag = {}, selected = [];

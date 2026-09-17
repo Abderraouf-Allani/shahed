@@ -8,16 +8,14 @@
   var surahByNumber = B.surahByNumber;
   var newId = B.newId;
   var showAppToast = B.showAppToast;
-  var activeAyahOf = B.activeAyahOf;
-  var activeAyahEndOf = B.activeAyahEndOf || activeAyahOf;
+  var activeAyahEndOf = B.activeAyahEndOf;
   var countNoun = B.countNoun;
   var dayNoun = B.dayNoun;
   var startReaderAt = B.startReaderAt;
   var numberingForSurah = B.numberingForSurah;
   var getAyahCount = B.getAyahCount;
-  var canonAyah = B.canonAyah;
   var ayahOfNum = B.ayahOfNum;
-  var ayahEndOfNum = B.ayahEndOfNum || ayahOfNum;
+  var ayahEndOfNum = B.ayahEndOfNum;
   var canonFromOfNum = B.canonFromOfNum;
   var canonToOfNum = B.canonToOfNum;
   var currentRiwaya = B.currentRiwaya;
@@ -450,6 +448,7 @@
       });
       target.fromSurah = A.surah; target.fromAyah = A.ayah;
       target.toSurah = E.surah; target.toAyah = E.ayah;
+      target.num = num;
       target.chunks = fresh;
       target.pointer = 0;
       for (i = 0; i < fresh.length; i++) {
@@ -549,10 +548,11 @@
       var dueNow = !it.nextReview || it.nextReview <= today;
       var late = (it.nextReview && it.nextReview < today) ? plansDaysBetween(it.nextReview, today) : 0;
       html += '<div class="plan-review-row">';
-      html += '<span class="plan-chunk-label">' + it.label + '</span>';
+      html += '<span class="plan-review-info"><span class="plan-chunk-label">' + it.label + '</span>';
       html += '<span class="plan-streak">إتقان متتالٍ: ' + toWest(it.streak || 0) + ' / ' + toWest(STRUGGLE_TARGET) + '</span>';
       if (late > 0) html += '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>';
       else if (!dueNow) html += '<span class="plan-review-wait">' + dayNoun(plansDaysBetween(today, it.nextReview), toWest, 'بعد ') + '</span>';
+      html += '</span>';
       html += '<span class="plan-actions">';
       html += '<a class="pill" data-sgo="' + idx + '" href="#/memorize">راجع</a>';
       html += '<button type="button" class="pill" data-struggle-good="' + idx + '">أتقنت ✓</button>';
@@ -689,8 +689,9 @@
       if (c.nextReview <= today) {
         var late = plansDaysBetween(c.nextReview, today);
         rows += '<div class="plan-review-row">'
-          + '<span class="plan-chunk-label">' + c.label + '</span>'
+          + '<span class="plan-review-info"><span class="plan-chunk-label">' + c.label + '</span>'
           + (late > 0 ? '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>' : '')
+          + '</span>'
           + '<a class="pill plan-review-go" href="' + plansDeepLink(p, c) + '" data-rgo="' + ci + '">' + plansGoLabel(p) + '</a>'
           + '<span class="plan-actions">'
           + (rated
