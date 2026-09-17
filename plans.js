@@ -16,6 +16,12 @@
   var numberingForSurah = B.numberingForSurah;
   var getAyahCount = B.getAyahCount;
   var canonAyah = B.canonAyah;
+  var ayahOfNum = B.ayahOfNum;
+  var ayahEndOfNum = B.ayahEndOfNum || ayahOfNum;
+  var canonFromOfNum = B.canonFromOfNum;
+  var canonToOfNum = B.canonToOfNum;
+  var currentRiwaya = B.currentRiwaya;
+  var enterRiwaya = B.enterRiwaya;
   var LS = B.LS;
   var appEl = B.appEl;
 
@@ -42,6 +48,19 @@
 
   function plansSave(plans) {
     localStorage.setItem(LS.plans, JSON.stringify(plans));
+  }
+
+  /* Riwaya a plan is numbered in: 'hafs' (canonical; the default for legacy
+     plans) or 'qaloon' (plans created while the app was in qaloon mode). */
+  function plansNum(p) { return (p && p.num === 'qaloon') ? 'qaloon' : 'hafs'; }
+
+  /* Ayah count of a surah in a given riwaya's numbering. */
+  function plansCountOfNum(surah, num) {
+    if (num === 'qaloon') {
+      var t = numberingForSurah(surah);
+      if (t) return t.length;
+    }
+    return plansHafsCount(surah);
   }
 
   /* Hafs ayah count of a surah from the ACTIVE dataset + numbering (no hafs fetch). */
@@ -72,7 +91,8 @@
   }
 
   /* Canonical hizb-division boundaries (Hafs/Medina, from data/ahzab.json):
-     240 rub' START keys. Juz'=8 rub', hizb=4, half=2. Plans partition in these
+     240 rub' START keys, plus 480 thumn' START keys (eighths of a hizb).
+     Juz'=8 rub', hizb=4, half=2, thumn=½ rub'. Plans partition in these
      quanta exactly like ayahs; rendering converts to the active riwaya. */
   var plansAhzabCache = null;
   var plansAhzabPromise = null;
@@ -84,22 +104,32 @@
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       }).then(function (d) {
-        if (!d || !Array.isArray(d.rub) || d.rub.length !== 240) throw new Error('bad ahzab');
-        plansAhzabCache = d.rub;
+        if (!d || !Array.isArray(d.rub) || d.rub.length !== 240 || !Array.isArray(d.thumn) || d.thumn.length !== 480) throw new Error('bad ahzab');
+        plansAhzabCache = d;
         return plansAhzabCache;
       }).catch(function (err) { plansAhzabPromise = null; throw err; });
     }
     return plansAhzabPromise;
   }
 
-  var PLAN_AHZAB_SPAN = { rub: 1, half: 2, hizb: 4, juz: 8 };
+  var PLAN_AHZAB_SPAN = { thumn: 1, rub: 1, half: 2, hizb: 4, juz: 8 };
 
   /* Quanta of `unit` as canonical hafs abs spans [{start, end}]. */
   function plansAhzabQuanta(unit) {
-    var rub = plansAhzabCache;
-    var per = PLAN_AHZAB_SPAN[unit] || 1;
+    var rub = plansAhzabCache.rub || plansAhzabCache;
     var total = plansHafsAbs(114, plansHafsCount(114));
     var out = [];
+    if (unit === 'thumn') {
+      var thumn = plansAhzabCache.thumn || rub;
+      var n = thumn.length;
+      for (var t = 0; t < n; t++) {
+        var ts = plansHafsAbs(thumn[t][0], thumn[t][1]);
+        var te = (t + 1 < n) ? plansHafsAbs(thumn[t + 1][0], thumn[t + 1][1]) - 1 : total;
+        out.push({ start: ts, end: te });
+      }
+      return out;
+    }
+    var per = PLAN_AHZAB_SPAN[unit] || 1;
     for (var k = 0; k < 240; k += per) {
       var start = plansHafsAbs(rub[k][0], rub[k][1]);
       var end = (k + per < 240) ? plansHafsAbs(rub[k + per][0], rub[k + per][1]) - 1 : total;
@@ -110,6 +140,7 @@
 
   var PLAN_UNIT_LABELS = {
     ayahs:  { one: 'آية/يوم', two: 'آيتان/يوم', few: 'آيات/يوم' },
+    thumn:  { one: 'ثمن/يوم', two: 'ثمنان/يوم', few: 'أثمان/يوم' },
     rub:    { one: 'ربع/يوم', two: 'ربعان/يوم', few: 'أرباع/يوم' },
     half:   { one: 'نصف/يوم', two: 'نصفان/يوم', few: 'أنصاف/يوم' },
     hizb:   { one: 'حزب/يوم', two: 'حزبان/يوم', few: 'أحزاب/يوم' },
@@ -124,10 +155,11 @@
 
   /* Build canonical chunks: range [fromSurah:fromAyah, toSurah:toAyah] (hafs)
      partitioned into perDay pieces. unit: 'ayahs', 'surahs', or an ahzab
-     quantum ('rub'/'half'/'hizb'/'juz', grouped and clipped to the range). */
+     quantum ('thumn'/'rub'/'half'/'hizb'/'juz', grouped and clipped to the range). */
   function plansBuildChunks(p) {
     var chunks = [];
     var i, a, e, A, B;
+    var num = plansNum(p);
     if (PLAN_AHZAB_SPAN[p.unit]) {
       if (!plansAhzabCache) throw new Error('ahzab-missing');
       var absStart = plansHafsAbs(p.fromSurah, p.fromAyah);
@@ -166,15 +198,16 @@
       var fs = c.from.split(':'), ts = c.to.split(':');
       var S = surahByNumber(+fs[0]);
       c.label = (+fs[0] === +ts[0])
-        ? esc(S.nameAr) + ' — ' + toWest(fs[1]) + '-' + toWest(ts[1])
-        : esc(S.nameAr) + ' ' + toWest(fs[1]) + ' → ' + esc(surahByNumber(+ts[0]).nameAr) + ' ' + toWest(ts[1]);
+        ? esc(S.nameAr) + ' — ' + toWest(ayahOfNum(+fs[0], +fs[1], num)) + '-' + toWest(ayahEndOfNum(+ts[0], +ts[1], num))
+        : esc(S.nameAr) + ' ' + toWest(ayahOfNum(+fs[0], +fs[1], num)) + ' → ' + esc(surahByNumber(+ts[0]).nameAr) + ' ' + toWest(ayahEndOfNum(+ts[0], +ts[1], num));
       c.ayahCount = plansChunkAyahCount(c);
     });
     return chunks;
   }
 
-  /* Chunk endpoints converted to ACTIVE-riwaya ayahs: [{surah, from, to}] */
-  function plansChunkActive(c) {
+  /* Chunk endpoints converted to a target riwaya's ayahs: [{surah, from, to}].
+     Pass the plan's pinned riwaya (plansNum(p)); defaults to hafs/canonical. */
+  function plansChunkActive(c, num) {
     var fs = c.from.split(':'), ts = c.to.split(':');
     var fromS = +fs[0], fromH = +fs[1], toS = +ts[0], toH = +ts[1];
     var out = [];
@@ -182,7 +215,7 @@
       var f = (s === fromS) ? fromH : 1;
       var t = (s === toS) ? toH : plansHafsCount(s);
       if (f > t) continue;
-      out.push({ surah: s, from: activeAyahOf(s, f), to: activeAyahEndOf(s, t) });
+      out.push({ surah: s, from: ayahOfNum(s, f, num), to: ayahEndOfNum(s, t, num) });
     }
     return out;
   }
@@ -303,7 +336,7 @@
     });
     if (done) showAppToast('أُنجز هدف حفظ اليوم — وفّقك الله');
     if (extra && extra.fromPlan && extra.sections && extra.sections.length) {
-      plansEnsureAutoRevise(extra.sections, extra.fromPlan);
+      plansEnsureAutoRevise(extra.sections, extra.fromPlan, extra.num);
     }
   }
 
@@ -377,12 +410,13 @@
   /* Create (or extend, when the new section is close: overlapping/adjacent to)
      the auto revision plan linked to a memorize plan. Chunk done/review state
      of identical ranges is preserved across the rebuild. */
-  function plansEnsureAutoRevise(sections, memPlanId) {
+  function plansEnsureAutoRevise(sections, memPlanId, num) {
     var all = plansLoad();
     var memPlan = null, i, p;
     for (i = 0; i < all.length; i++) {
       if (all[i].id === memPlanId) { memPlan = all[i]; break; }
     }
+    num = num || (memPlan && plansNum(memPlan)) || 'hafs';
     var r = plansRangeAbs(sections);
     if (r.start === Infinity) return;
     var target = null, targetRange = null;
@@ -396,7 +430,7 @@
     var perDay = (target || memPlan || {}).perDay || 5;
     if (PLAN_AHZAB_SPAN[unit] && !plansAhzabCache) {
       plansEnsureAhzab().then(function () {
-        plansEnsureAutoRevise(sections, memPlanId);
+        plansEnsureAutoRevise(sections, memPlanId, num);
       }).catch(function () {
         showAppToast('تعذّر تحميل حدود الأرباع — أُجّلت خطة المراجعة');
       });
@@ -409,7 +443,7 @@
       var A = plansSurahOfAbs(ns), E = plansSurahOfAbs(ne);
       var oldByKey = {};
       (target.chunks || []).forEach(function (c) { oldByKey[c.from + '-' + c.to] = c; });
-      var fresh = plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: A.surah, fromAyah: A.ayah, toSurah: E.surah, toAyah: E.ayah });
+      var fresh = plansBuildChunks({ unit: unit, perDay: perDay, num: num, fromSurah: A.surah, fromAyah: A.ayah, toSurah: E.surah, toAyah: E.ayah });
       fresh.forEach(function (c) {
         var o = oldByKey[c.from + '-' + c.to];
         if (o && o.done) { c.done = o.done; c.reviewIdx = o.reviewIdx; c.nextReview = o.nextReview; }
@@ -438,7 +472,8 @@
       pointer: 0,
       created: plansDayKey(0),
       autoReviseFor: memPlanId,
-      chunks: plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: S.surah, fromAyah: S.ayah, toSurah: T.surah, toAyah: T.ayah })
+      num: num,
+      chunks: plansBuildChunks({ unit: unit, perDay: perDay, num: num, fromSurah: S.surah, fromAyah: S.ayah, toSurah: T.surah, toAyah: T.ayah })
     };
     all.push(plan);
     plansSave(all);
@@ -547,7 +582,7 @@
       var finished = !cur || (p.pointer || 0) >= total;
       html += '<div class="plan-card" data-i="' + i + '">';
       html += '<div class="plan-head">';
-      html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + '</span>';
+      html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + (plansNum(p) === 'qaloon' ? ' <span class="plan-riwaya">قالون</span>' : '') + '</span>';
       html += '<span class="plan-target">' + plansUnitLabel(p.unit, p.perDay) + '</span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
@@ -620,7 +655,7 @@
       }
     };
     area.querySelectorAll('a[data-go]').forEach(function (a) {
-      a.addEventListener('click', function () { plansOnGo(+a.dataset.go); });
+      a.addEventListener('click', function (e) { plansOnGo(+a.dataset.go, e); });
     });
     area.querySelectorAll('a[data-sgo]').forEach(function (a) {
       a.addEventListener('click', function () {
@@ -630,12 +665,12 @@
       });
     });
     area.querySelectorAll('a[data-rgo]').forEach(function (a) {
-      a.addEventListener('click', function () {
+      a.addEventListener('click', function (e) {
         var card = a.closest('.plan-card');
         var all = plansLoad();
         var p = all && all[+card.dataset.i];
         if (!p) return;
-        plansPrepareChunk(p, (p.chunks || [])[+a.dataset.rgo]);
+        plansExecute(p, (p.chunks || [])[+a.dataset.rgo], e);
       });
     });
   }
@@ -796,7 +831,7 @@
      chunk's first ACTIVE-riwaya ayah. */
   function plansDeepLink(p, c) {
     if (p.type === 'memorize' || p.type === 'revise') return '#/memorize';
-    var segs = plansChunkActive(c);
+    var segs = plansChunkActive(c, plansNum(p));
     if (!segs.length) return '#/';
     var s = segs[0];
     return '#/surah/' + s.surah + '/' + s.from;
@@ -808,20 +843,35 @@
   function plansPrepareChunk(p, c) {
     if (!c) return;
     if (p.type === 'memorize' || p.type === 'revise') {
-      plansPrefillMemorize(c, p.id, p.type);
+      plansPrefillMemorize(c, p.id, p.type, plansNum(p));
     } else if (p.type === 'listen') {
-      var segs = plansChunkActive(c);
+      var segs = plansChunkActive(c, plansNum(p));
       if (segs.length) {
         try { sessionStorage.setItem('qaloon_plan_listen', segs[0].surah + ':' + segs[0].from); } catch (e) {}
       }
     }
   }
 
-  function plansOnGo(i) {
+  /* Engage a plan chunk end-to-end: prepare the target (session prefill /
+     listening flag), switch the app to the plan's pinned riwaya, then navigate
+     to the deep-link so the reader/memorize page renders in that riwaya. */
+  function plansExecute(p, c, ev) {
+    if (!p || !c) return;
+    if (ev && ev.preventDefault) ev.preventDefault();
+    plansPrepareChunk(p, c);
+    var link = plansDeepLink(p, c);
+    enterRiwaya(plansNum(p)).then(function () {
+      location.hash = link;
+    }).catch(function () {
+      showAppToast('تعذّر تحميل مصحف رواية حفص — أُبقيت الخطة برواية قالون');
+    });
+  }
+
+  function plansOnGo(i, ev) {
     var all = plansLoad();
     var p = all[i];
     if (!p) return;
-    plansPrepareChunk(p, (p.chunks || [])[p.pointer || 0]);
+    plansExecute(p, (p.chunks || [])[p.pointer || 0], ev);
   }
 
   /* Reader shortcut: "mark this plan chunk done" fired from the read/listen
@@ -861,10 +911,14 @@
     return out;
   }
 
-  function plansPrefillMemorize(c, planId, planType) {
+  function plansPrefillMemorize(c, planId, planType, num) {
     var canon = plansChunkCanonical(c);
     if (!canon.length) return;
     var first = canon[0];
+    /* pinned records which riwaya the session should DISPLAY in; the
+       canonical num:'hafs' marker still holds because sections are stored
+       in canonical (hafs) numbering. */
+    var pinned = num || currentRiwaya();
     try {
       localStorage.setItem(LS.memSession, JSON.stringify({
         surah: first.surah,
@@ -875,6 +929,7 @@
         auto: true,
         fromPlan: planId || null,
         planType: planType || null,
+        pinned: pinned,
         memKey: (c.from + '|' + c.to)
       }));
     } catch (e) {}
@@ -885,6 +940,8 @@
     if (document.getElementById('planFormOverlay')) return;
     var plans = plansLoad();
     if (plans.length >= 8) { showAppToast('الحد الأقصى ٨ خطط'); return; }
+    /* The new plan is numbered in the current app riwaya (auto-captured). */
+    var formNum = currentRiwaya();
     var surahOptions = '';
     for (var i = 1; i <= 114; i++) {
       var s = surahByNumber(i);
@@ -907,6 +964,7 @@
     html += '<label>التقسيم</label>';
     html += '<div class="plan-seg">';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="ayahs" checked> آيات/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="thumn"> ثمن/يوم</label>';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="rub"> ربع/يوم</label>';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="half"> نصف/يوم</label>';
     html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="hizb"> حزب/يوم</label>';
@@ -945,10 +1003,10 @@
 
     var syncAyahMax = function () {
       var f = +fromSurah.value, t = +toSurah.value;
-      fromAyah.max = plansHafsCount(f);
-      toAyah.max = plansHafsCount(t);
-      fromAyah.value = Math.min(+fromAyah.value || 1, plansHafsCount(f));
-      toAyah.value = Math.min(+toAyah.value || plansHafsCount(t), plansHafsCount(t));
+      fromAyah.max = plansCountOfNum(f, formNum);
+      toAyah.max = plansCountOfNum(t, formNum);
+      fromAyah.value = Math.min(+fromAyah.value || 1, plansCountOfNum(f, formNum));
+      toAyah.value = Math.min(+toAyah.value || plansCountOfNum(t, formNum), plansCountOfNum(t, formNum));
     };
     fromSurah.addEventListener('change', syncAyahMax);
     toSurah.addEventListener('change', syncAyahMax);
@@ -965,21 +1023,26 @@
       var fs = +fromSurah.value, ts = +toSurah.value;
       var fa = Math.max(1, parseInt(fromAyah.value, 10) || 1);
       var ta = Math.max(1, parseInt(toAyah.value, 10) || 1);
-      fa = Math.min(fa, plansHafsCount(fs));
-      ta = Math.min(ta, plansHafsCount(ts));
+      fa = Math.min(fa, plansCountOfNum(fs, formNum));
+      ta = Math.min(ta, plansCountOfNum(ts, formNum));
       if (fs > ts) { showAppToast('سورة البداية بعد سورة النهاية'); return; }
       if (fs === ts && fa > ta) { var tmp = fa; fa = ta; ta = tmp; }
+      /* Store the range in canonical (hafs) keys; convert the typed (plan-riwaya)
+         boundaries to canonical so chunk keys/reviews stay riwaya-stable. */
+      var faCanon = canonFromOfNum(fs, fa, formNum);
+      var taCanon = canonToOfNum(ts, ta, formNum);
       var mkPlan = function () {
         var plan = {
           id: newId('p'),
           type: type,
           unit: unit,
           perDay: perDay,
-          fromSurah: fs, fromAyah: fa,
-          toSurah: ts, toAyah: ta,
+          num: formNum,
+          fromSurah: fs, fromAyah: faCanon,
+          toSurah: ts, toAyah: taCanon,
           pointer: 0,
           created: plansDayKey(0),
-          chunks: plansBuildChunks({ unit: unit, perDay: perDay, fromSurah: fs, fromAyah: fa, toSurah: ts, toAyah: ta })
+          chunks: plansBuildChunks({ unit: unit, perDay: perDay, num: formNum, fromSurah: fs, fromAyah: faCanon, toSurah: ts, toAyah: taCanon })
         };
         var all = plansLoad();
         all.push(plan);

@@ -1926,6 +1926,16 @@ html.dark .plan-del-btn:hover { background: rgba(238, 136, 136, 0.1); }
   padding: 0.05rem 0.55rem;
   white-space: nowrap;
 }
+.plan-riwaya {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
 .mem-profile-seg { margin-bottom: 0.7rem; }
 
 /* Missed-plan notifications: header badge, alert banners, late chips. */

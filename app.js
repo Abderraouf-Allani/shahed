@@ -1939,6 +1939,25 @@
     render();
   }
 
+  /* Switch the app to a specific riwaya and resolve when it is ready to
+     render in, for plans pinned to a given numbering. Hafs data is loaded on
+     demand; on failure the app is reverted to qaloon and the promise rejects. */
+  function enterRiwaya(num) {
+    var r = (num === 'hafs') ? 'hafs' : 'qaloon';
+    localStorage.setItem(LS.riwaya, r);
+    if (r === 'hafs' && !(state.quranSets && state.quranSets.hafs)) {
+      return ensureHafs().then(function () {
+        applyRiwaya();
+      }).catch(function (err) {
+        localStorage.setItem(LS.riwaya, 'qaloon');
+        applyRiwaya();
+        throw err;
+      });
+    }
+    applyRiwaya();
+    return Promise.resolve();
+  }
+
   var riwayaBtn = document.getElementById('riwayaToggle');
   if (riwayaBtn) riwayaBtn.addEventListener('click', toggleRiwaya);
 
@@ -2048,10 +2067,16 @@
         var ms = surahByNumber(+secs[0].surah);
         var ml = surahByNumber(+secs[secs.length - 1].surah);
         if (ms && ml) {
+          /* Canonical sessions are displayed in the active riwaya — plans
+             engage by switching the app to their pinned riwaya first, so this
+             matches both the mushaf text and the plan's numbering. */
+          var pin = (mem.num === 'hafs') ? state.riwaya : null;
+          var dFrom = pin ? ayahOfNum(+secs[0].surah, +secs[0].from, pin) : secs[0].from;
+          var dTo = pin ? ayahEndOfNum(+secs[secs.length - 1].surah, +secs[secs.length - 1].to, pin) : secs[secs.length - 1].to;
           var cur = mem.planType === 'revise' ? 'المراجعة' : 'الحفظ';
           el.textContent = secs.length > 1
-            ? cur + ': ' + ms.nameAr + ' ' + secs[0].from + ' ← ' + ml.nameAr + ' ' + secs[secs.length - 1].to
-            : cur + ': ' + ms.nameAr + ' · ' + secs[0].from + '-' + secs[0].to;
+            ? cur + ': ' + ms.nameAr + ' ' + dFrom + ' ← ' + ml.nameAr + ' ' + dTo
+            : cur + ': ' + ms.nameAr + ' · ' + dFrom + '-' + dTo;
           el.href = '#/memorize';
           el.removeAttribute('hidden');
           return;
@@ -4560,7 +4585,8 @@
       var planned = memBuildSectionsFromSaved(saved);
       if (planned) {
         memState.active = true;
-        memState.level = 0;
+        memState.level = (saved.planType === 'revise') ? 3 : 0;
+        memState.revisePreset = (saved.planType === 'revise');
         memState.reps = null;
         memState.sections = planned;
         memState.fromPlan = saved.fromPlan || null;
@@ -4637,7 +4663,7 @@
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
     html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
     html += '<button id="memPlanDoneBtn" class="pill mem-ctrl-btn mem-plan-done-btn" title="إنهاء المقطع المخطط" style="display:none">' + MEM_ICON_DONE + ' أتممت المخطط</button>';
-    html += '<button id="memPlanGoodBtn" class="pill mem-ctrl-btn mem-plan-good-btn" title="أتقنت المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتقنت ✓</button>';
+    html += '<button id="memPlanGoodBtn" class="pill mem-ctrl-btn mem-plan-good-btn" title="أتقنت المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتقنت</button>';
     html += '<button id="memPlanBadBtn" class="pill mem-ctrl-btn mem-plan-bad-btn" title="تعثرت في المراجعة المخططة" style="display:none">تعثرت</button>';
     html += '<button id="memResetBtn" class="pill mem-ctrl-btn mem-reset-btn">' + MEM_ICON_RESET + ' من جديد</button>';
     html += '</div>';
@@ -4657,6 +4683,14 @@
       setupEl.style.display = 'none';
       areaEl.style.display = '';
       renderMemWords();
+      /* Revise sessions start at the natural level-4 state: one applyMemLevel
+         pass targets rungs[3]=0.8, so the mushaf opens ~80% hidden (text still
+         partially visible, level shown as 4) instead of showing 0% hidden and
+         letting the first hide click jump straight to 100% + step 2. */
+      if (memState.revisePreset) {
+        memState.revisePreset = false;
+        ensureMemHideScript().then(applyMemLevel).catch(function () { applyMemLevel(); });
+      }
     }
 
     document.querySelectorAll('input[name="memProfile"]').forEach(function (r) {
@@ -5270,11 +5304,11 @@
     return canonAyahFromQaloon(surah, ayah);
   }
 
-  /* All active-riwaya ayahs whose content covers canonical `h` (hafs).
-     Usually one; two when one hafs ayah spans two qaloon ayahs
+  /* All ayahs of a given riwaya `num` whose content covers canonical `h`
+     (hafs). Usually one; two when one hafs ayah spans two qaloon ayahs
      (e.g. Fatiha 7 -> 6+7, Baqara 255 -> 253+254). */
-  function activeAyahsCovering(surah, h) {
-    if (state.riwaya === 'hafs') return [h];
+  function ayahsCoveringNum(surah, h, num) {
+    if (num !== 'qaloon') return [h];
     var t = numberingForSurah(surah);
     if (!t) return [h];
     var out = [];
@@ -5285,16 +5319,49 @@
     return out;
   }
 
+  /* First `num`-sided ayah whose content covers canonical `h`: range STARTS. */
+  function ayahOfNum(surah, h, num) {
+    return ayahsCoveringNum(surah, h, num)[0];
+  }
+
+  /* Last `num`-sided ayah covering canonical `h`: range ENDS, so a chunk
+     ending on a split hafs ayah keeps its final qaloon ayah. */
+  function ayahEndOfNum(surah, h, num) {
+    var v = ayahsCoveringNum(surah, h, num);
+    return v[v.length - 1];
+  }
+
+  /* Canonical (hafs) ayah a `num`-numbered ayah starts at: for qaloon,
+     the first hafs ayah of that qaloon ayah's coverage. */
+  function canonFromOfNum(surah, ayah, num) {
+    if (num !== 'qaloon') return ayah;
+    return canonAyahFromQaloon(surah, ayah);
+  }
+
+  /* Canonical (hafs) ayah a `num`-numbered ayah ends at: for qaloon, the
+     LAST hafs ayah of the coverage, so the whole qaloon ayah is included. */
+  function canonToOfNum(surah, ayah, num) {
+    if (num !== 'qaloon') return ayah;
+    var t = numberingForSurah(surah);
+    if (!t || !t[ayah - 1]) return ayah;
+    return t[ayah - 1][1];
+  }
+
+  /* All active-riwaya ayahs whose content covers canonical `h` (hafs). */
+  function activeAyahsCovering(surah, h) {
+    return ayahsCoveringNum(surah, h, state.riwaya);
+  }
+
   /* First active-riwaya ayah whose content covers canonical `h` (hafs):
      for range STARTS and single-verse lookups. */
   function activeAyahOf(surah, h) {
-    return activeAyahsCovering(surah, h)[0];
+    return ayahsCoveringNum(surah, h, state.riwaya)[0];
   }
 
   /* Last active-riwaya ayah covering canonical `h`: for range ENDS, so a
      chunk ending on a split hafs ayah keeps its final qaloon ayah. */
   function activeAyahEndOf(surah, h) {
-    var v = activeAyahsCovering(surah, h);
+    var v = ayahsCoveringNum(surah, h, state.riwaya);
     return v[v.length - 1];
   }
 
@@ -5353,6 +5420,12 @@
     showAppToast: showAppToast,
     activeAyahOf: activeAyahOf,
     activeAyahEndOf: activeAyahEndOf,
+    currentRiwaya: currentRiwaya,
+    enterRiwaya: enterRiwaya,
+    ayahOfNum: ayahOfNum,
+    ayahEndOfNum: ayahEndOfNum,
+    canonFromOfNum: canonFromOfNum,
+    canonToOfNum: canonToOfNum,
     startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
     refreshDueBadge: function () { updatePlansBadge(); },
     plural: plural,
@@ -5496,7 +5569,7 @@
       var ms = JSON.parse(localStorage.getItem(LS.memSession));
       if (ms && ms.fromPlan && ms.planType === 'memorize' && Array.isArray(ms.sections) && ms.sections.length) {
         if (confirm('أتممتَ حفظ المقطع — أنشئ خطة مراجعة له؟')) {
-          extra = { sections: ms.sections, fromPlan: ms.fromPlan };
+          extra = { sections: ms.sections, fromPlan: ms.fromPlan, num: (ms.pinned === 'qaloon') ? 'qaloon' : 'hafs' };
         }
       }
     } catch (e) {}
