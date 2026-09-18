@@ -20,6 +20,7 @@
   var canonToOfNum = B.canonToOfNum;
   var currentRiwaya = B.currentRiwaya;
   var enterRiwaya = B.enterRiwaya;
+  var rerender = B.rerender;
   var LS = B.LS;
   var appEl = B.appEl;
 
@@ -935,6 +936,12 @@
     plansPrepareChunk(p, c);
     var link = plansDeepLink(p, c);
     enterRiwaya(plansNum(p)).then(function () {
+      if (location.hash === link) {
+        /* Already on the target (e.g. re-engaging from that page): setting
+           the hash would not fire hashchange, so re-render explicitly. */
+        if (rerender) rerender();
+        return;
+      }
       location.hash = link;
     }).catch(function () {
       showAppToast('تعذّر تحميل مصحف رواية حفص — أُبقيت الخطة برواية قالون');

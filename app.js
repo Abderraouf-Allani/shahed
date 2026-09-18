@@ -5439,6 +5439,7 @@
     canonToOfNum: canonToOfNum,
     startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
     refreshDueBadge: function () { updatePlansBadge(); },
+    rerender: render,
     plural: plural,
     countNoun: countNoun,
     dayNoun: dayNoun,
