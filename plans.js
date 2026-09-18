@@ -273,6 +273,38 @@
     showAppToast('أُعيدت جدولة الخطة — المقطع الحالي مستحق اليوم، وفّقك الله');
   }
 
+  /* Fresh plan object: canonical range + chunks built in its own num.
+     Single construction site for the form, repeat-iteration, and the
+     auto-revise creator (which passes autoReviseFor through). */
+  function plansBuildPlan(o) {
+    var num = (o.num === 'qaloon') ? 'qaloon' : 'hafs';
+    var plan = {
+      id: newId('p'),
+      type: o.type,
+      unit: o.unit,
+      perDay: o.perDay,
+      num: num,
+      fromSurah: o.fromSurah, fromAyah: o.fromAyah,
+      toSurah: o.toSurah, toAyah: o.toAyah,
+      pointer: 0,
+      created: plansDayKey(0),
+      chunks: plansBuildChunks({ unit: o.unit, perDay: o.perDay, num: num, fromSurah: o.fromSurah, fromAyah: o.fromAyah, toSurah: o.toSurah, toAyah: o.toAyah })
+    };
+    if (o.autoReviseFor) plan.autoReviseFor = o.autoReviseFor;
+    return plan;
+  }
+
+  /* Run fn once ahzab bounds are ready (ahzab-partitioned units only). */
+  function plansWhenAhzabReady(unit, fn) {
+    if (PLAN_AHZAB_SPAN[unit]) {
+      plansEnsureAhzab().then(fn).catch(function () {
+        showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
+      });
+    } else {
+      fn();
+    }
+  }
+
   /* Start a new iteration of a finished plan: same type/unit/pace/range/
      riwaya, fresh chunks and review ladder, created today. Auto-revise
      linkage is dropped — the copy is a standalone plan. */
@@ -282,19 +314,8 @@
     if (!p) return;
     if (all.length >= 8) { showAppToast('الحد الأقصى ٨ خطط'); return; }
     var mkRepeat = function () {
-      var num = plansNum(p);
-      var plan = {
-        id: newId('p'),
-        type: p.type,
-        unit: p.unit,
-        perDay: p.perDay,
-        num: num,
-        fromSurah: p.fromSurah, fromAyah: p.fromAyah,
-        toSurah: p.toSurah, toAyah: p.toAyah,
-        pointer: 0,
-        created: plansDayKey(0),
-        chunks: plansBuildChunks({ unit: p.unit, perDay: p.perDay, num: num, fromSurah: p.fromSurah, fromAyah: p.fromAyah, toSurah: p.toSurah, toAyah: p.toAyah })
-      };
+      var plan = plansBuildPlan({ type: p.type, unit: p.unit, perDay: p.perDay, num: plansNum(p),
+        fromSurah: p.fromSurah, fromAyah: p.fromAyah, toSurah: p.toSurah, toAyah: p.toAyah });
       var fresh = plansLoad();
       fresh.push(plan);
       plansSave(fresh);
@@ -302,13 +323,7 @@
       renderPlansArea();
       showAppToast('بدأت جولة جديدة من الخطة — وفّقك الله');
     };
-    if (PLAN_AHZAB_SPAN[p.unit]) {
-      plansEnsureAhzab().then(mkRepeat).catch(function () {
-        showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
-      });
-    } else {
-      mkRepeat();
-    }
+    plansWhenAhzabReady(p.unit, mkRepeat);
   }
 
   /* Spread a plan's currently-due spaced reviews one per day starting
@@ -522,19 +537,9 @@
     }
     if (all.length >= 8) { showAppToast('تعذّر إنشاء خطة المراجعة — الحد الأقصى ٨ خطط'); return; }
     var S = plansSurahOfAbs(r.start), T = plansSurahOfAbs(r.end);
-    var plan = {
-      id: newId('p'),
-      type: 'revise',
-      unit: unit,
-      perDay: perDay,
-      fromSurah: S.surah, fromAyah: S.ayah,
-      toSurah: T.surah, toAyah: T.ayah,
-      pointer: 0,
-      created: plansDayKey(0),
-      autoReviseFor: memPlanId,
-      num: num,
-      chunks: plansBuildChunks({ unit: unit, perDay: perDay, num: num, fromSurah: S.surah, fromAyah: S.ayah, toSurah: T.surah, toAyah: T.ayah })
-    };
+    var plan = plansBuildPlan({ type: 'revise', unit: unit, perDay: perDay, num: num,
+      fromSurah: S.surah, fromAyah: S.ayah, toSurah: T.surah, toAyah: T.ayah,
+      autoReviseFor: memPlanId });
     all.push(plan);
     plansSave(all);
     showAppToast('أُنشئت خطة مراجعة تلقائية للمقطع المحفوظ — وفّقك الله');
@@ -1113,18 +1118,8 @@
       var faCanon = canonFromOfNum(fs, fa, formNum);
       var taCanon = canonToOfNum(ts, ta, formNum);
       var mkPlan = function () {
-        var plan = {
-          id: newId('p'),
-          type: type,
-          unit: unit,
-          perDay: perDay,
-          num: formNum,
-          fromSurah: fs, fromAyah: faCanon,
-          toSurah: ts, toAyah: taCanon,
-          pointer: 0,
-          created: plansDayKey(0),
-          chunks: plansBuildChunks({ unit: unit, perDay: perDay, num: formNum, fromSurah: fs, fromAyah: faCanon, toSurah: ts, toAyah: taCanon })
-        };
+        var plan = plansBuildPlan({ type: type, unit: unit, perDay: perDay, num: formNum,
+          fromSurah: fs, fromAyah: faCanon, toSurah: ts, toAyah: taCanon });
         var all = plansLoad();
         all.push(plan);
         plansSave(all);
@@ -1133,13 +1128,7 @@
         renderPlansArea();
         showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toWest));
       };
-      if (PLAN_AHZAB_SPAN[unit]) {
-        plansEnsureAhzab().then(mkPlan).catch(function () {
-          showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
-        });
-      } else {
-        mkPlan();
-      }
+      plansWhenAhzabReady(unit, mkPlan);
     });
   }
 
