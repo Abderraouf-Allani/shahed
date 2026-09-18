@@ -505,6 +505,12 @@ html[data-riwaya="hafs"] .mushaf-text {
 
 .verse { white-space: normal; }
 
+/* Keep the ayah number glued to its verse: a non-breaking space at the end
+   of the verse text removes the break opportunity before the (atomic)
+   .ayah-num circle, so the number wraps together with the verse's last
+   word and never dangles alone on a new line. */
+.verse-text::after { content: '\00A0'; }
+
 /* Surah search mode: one ayah per line (finder list) instead of continuous mushaf flow. */
 .mushaf-text.mushaf-searching { text-align: right; }
 .mushaf-text.mushaf-searching .verse {
@@ -542,6 +548,27 @@ html[data-riwaya="hafs"] .mushaf-text {
   border-color: var(--accent);
   color: var(--surface);
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+/* Ahzab division markers (juz/hizb/half/quarter/eighth): small inline pills
+   in the verse flow, mushaf-style. Injected asynchronously after render. */
+.ahzab-mark {
+  display: inline-block;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 0.52em;
+  font-weight: 700;
+  font-family: "Geeza Pro", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 0.05em 0.55em;
+  margin: 0 0.35em;
+  opacity: 0.92;
+}
+.ahzab-juz {
+  background: var(--gold);
+  color: var(--surface);
 }
 
 .surah-divider {

@@ -1782,11 +1782,19 @@
       + ' <a href="https://qurancomplex.gov.sa/en/techquran/dev/" target="_blank" rel="noopener">qurancomplex.gov.sa — صفحة المطورين</a>.'
       + '</li>'
       + '<li>تعذر الاتصال بموقع المجمع أثناء الإعداد، فجُلب النص من نسخة مطابقة منشورة على GitHub:'
-      + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>'
-      + '<li>حدود الأرباع الـ٢٤٠ (ربع الحزب، برواية حفص) من مكتبة <strong>quran-meta</strong> — رخصة MIT —'
+      + ' <a href="https://github.com/thetruetruth/quran-data-kfgqpc" target="_blank" rel="noopener">thetruetruth/quran-data-kfgqpc</a>.</li>';
+
+    /* Hizb divisions and their parts (juz/hizb/half/quarter/eighth), shown as
+       pills inside the mushaf text on the reader page. Recorded provenance is
+       data/ahzab.json → field "source". */
+    var hizbRows =
+      '<li>حدود <strong>الأرباع</strong> الـ٢٤٠ (ربع الحزب، برواية حفص) من قائمة <code>HizbQuarterList</code> في مكتبة <strong>quran-meta</strong> — رخصة MIT —'
       + ' <a href="https://github.com/quran-center/quran-meta" target="_blank" rel="noopener">github.com/quran-center/quran-meta</a>'
       + ' (متحقق منها مقابل علامات ۞ في نص المجمع، وبيانات Tarteel الوصفية، وخادم'
-      + ' <a href="https://mcp.quran.ai" target="_blank" rel="noopener">mcp.quran.ai</a>).</li>';
+      + ' <a href="https://mcp.quran.ai" target="_blank" rel="noopener">mcp.quran.ai</a>).</li>'
+      + '<li>بدايات <strong>الأثمان</strong> الـ٤٨٠ (ثمن الحزب، قائمة <code>HizbEighthList</code> برواية قالون) مُوحَّدة إلى الترقيم الحفصي عبر <code>numbering.json</code> — مع بادئة البسملة للثمن الأول وحسم تداخل آيةٍ مشتركة واحدة لصالح الأول.</li>'
+      + '<li>تدقيق الحدود: صُححت بداية الربع ١٠٦ من ١٥:٥٠ إلى ١٥:٤٩ وفق علامة <code>U+06DE</code> في نص المجمع وبيانات Tarteel (QUL)؛ وطُابقت بدايات الأجزاء (30/30) وعلامات ۞ داخل النص (199/199) مع الحدود.</li>'
+      + '<li>تُعرض هذه التقسيمات (الجزء / الحزب / النصف / الربع / الثمن) شاراتٍ داخل نص المصحف في صفحة القراءة، مُحوَّلة إلى أرقام الرواية النشطة.</li>';
 
     var audioRows =
       '<li>تلاوة <strong>قالون عن نافع</strong> — ملفات صوتية «آية بآية» (رقم التلاوة <code>257</code>) من خادم'
@@ -1836,6 +1844,7 @@
       +   '</div>'
       +   '<div class="licenses-body">'
       +     licensesSection('النص القرآني', quranRows)
+      +     licensesSection('تقسيمات المصحف (الأحزاب والأجزاء)', hizbRows)
       +     licensesSection('التلاوة الصوتية', audioRows)
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('مستودع المشروع', projectRow)
@@ -2835,6 +2844,11 @@
      plans page. Read live from LS so the mark clears when the chunk is
      checked off (pointer advances / chunk done). Chunk endpoints are
      canonical (hafs); convert to the active riwaya for display. */
+  /* Final ayah of the current read/listen plan chunk, shown with a special
+     number style in the reader until the user hits finish (أتممت) in the
+     plans page. Read live from LS so the mark clears when the chunk is
+     checked off (pointer advances / chunk done). Chunk endpoints are
+     canonical (hafs); convert to the active riwaya for display. */
   function planEndAyahsForSurah(surah) {
     var out = {};
     var plans = null;
@@ -2851,6 +2865,73 @@
       if (end >= 1 && end <= cnt) out[end] = true;
     });
     return out;
+  }
+
+  /* ---------- ahzab division markers (reader) ---------- */
+
+  var AHZAB_AR = { juz: 'الجزء', hizb: 'الحزب', half: 'النصف', quarter: 'الربع', thumn: 'الثمن' };
+  var AHZAB_RANK = { juz: 0, hizb: 1, half: 2, quarter: 3, thumn: 4 };
+  var ahzabCache = null;
+  var ahzabPromise = null;
+
+  /* Divisions data (data/ahzab.json, SW-precached): 240 rub' + 480 thumn'
+     START keys in canonical (hafs) numbering. Loaded once, on demand. */
+  function ensureAhzab() {
+    if (ahzabCache) return Promise.resolve(ahzabCache);
+    if (!ahzabPromise) {
+      ahzabPromise = fetch('data/ahzab.json').then(function (r) {
+        if (!r.ok) throw new Error('ahzab ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        if (!d || !Array.isArray(d.rub) || d.rub.length !== 240 || !Array.isArray(d.thumn) || d.thumn.length !== 480) throw new Error('bad ahzab');
+        ahzabCache = d;
+        return d;
+      }).catch(function (err) { ahzabPromise = null; throw err; });
+    }
+    return ahzabPromise;
+  }
+
+  /* Divisions starting in surah `n`, keyed by ACTIVE-riwaya ayah:
+     { ayah: { level, num } }. Coincident starts keep the highest level only
+     (juz > hizb > half > quarter > thumn). A start falling inside a qaloon
+     verse marks that verse's beginning (verse granularity). */
+  function ahzabMarksForSurah(n) {
+    var out = {};
+    if (!ahzabCache) return out;
+    var put = function (s, h, level, num) {
+      if (s !== n) return;
+      var a = activeAyahOf(s, h);
+      if (!out[a] || AHZAB_RANK[level] < AHZAB_RANK[out[a].level]) out[a] = { level: level, num: num };
+    };
+    ahzabCache.rub.forEach(function (st, k) {
+      var level = (k % 8 === 0) ? 'juz' : (k % 4 === 0) ? 'hizb' : (k % 2 === 0) ? 'half' : 'quarter';
+      var num = (k % 8 === 0) ? (k / 8 + 1) : (k % 4 === 0) ? (k / 4 + 1) : (k % 2 === 0) ? (k / 2 + 1) : (k + 1);
+      put(st[0], st[1], level, num);
+    });
+    ahzabCache.thumn.forEach(function (st, t) {
+      put(st[0], st[1], 'thumn', t + 1);
+    });
+    return out;
+  }
+
+  /* Insert the division pills at the top of their verses (async, after the
+     reader HTML is in place; silent when offline or navigated away). */
+  function injectAhzabMarks(n) {
+    ensureAhzab().then(function () {
+      if (!parseHash().surah || parseHash().surah !== n) return;
+      var mushaf = document.getElementById('mushaf');
+      if (!mushaf) return;
+      var marks = ahzabMarksForSurah(n);
+      Object.keys(marks).forEach(function (a) {
+        var verse = mushaf.querySelector('.verse[data-ayah="' + a + '"]');
+        if (!verse || verse.querySelector(':scope > .ahzab-mark')) return;
+        var m = marks[a];
+        var el = document.createElement('span');
+        el.className = 'ahzab-mark ahzab-' + m.level;
+        el.textContent = '۞ ' + AHZAB_AR[m.level];
+        verse.insertBefore(el, verse.firstChild);
+      });
+    }).catch(function () {});
   }
 
   function renderVerse(q, surah, ayah, text, isPlanEnd) {
@@ -3175,6 +3256,7 @@
     appEl.innerHTML = html;
 
     applyFontSize();
+    injectAhzabMarks(n);
 
     document.getElementById('fsMinus').addEventListener('click', function () { changeFontSize(-2); });
     document.getElementById('fsPlus').addEventListener('click', function () { changeFontSize(2); });
