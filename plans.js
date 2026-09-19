@@ -294,11 +294,12 @@
     return plan;
   }
 
-  /* Run fn once ahzab bounds are ready (ahzab-partitioned units only). */
-  function plansWhenAhzabReady(unit, fn) {
+  /* Run fn once ahzab bounds are ready (ahzab-partitioned units only).
+     failMsg overrides the default connection-error toast. */
+  function plansWhenAhzabReady(unit, fn, failMsg) {
     if (PLAN_AHZAB_SPAN[unit]) {
       plansEnsureAhzab().then(fn).catch(function () {
-        showAppToast('تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
+        showAppToast(failMsg || 'تعذّر تحميل حدود الأرباع — تحقق من الاتصال وحاول مجدداً');
       });
     } else {
       fn();
@@ -319,8 +320,7 @@
       var fresh = plansLoad();
       fresh.push(plan);
       plansSave(fresh);
-      renderPlansAlert();
-      renderPlansArea();
+      plansRefreshViews();
       showAppToast('بدأت جولة جديدة من الخطة — وفّقك الله');
     };
     plansWhenAhzabReady(p.unit, mkRepeat);
@@ -337,7 +337,7 @@
     var today = plansDayKey(0);
     var due = [];
     (p.chunks || []).forEach(function (c) {
-      if (c.done && c.nextReview && c.nextReview !== 'done' && c.nextReview <= today) due.push(c);
+      if (plansIsReviewDue(c, today)) due.push(c);
     });
     if (!due.length) return;
     due.sort(function (a, b) { return a.nextReview < b.nextReview ? -1 : (a.nextReview > b.nextReview ? 1 : 0); });
@@ -362,10 +362,8 @@
         }
       }
       chunks.forEach(function (c, ci) {
-        if (!c.done || !c.nextReview || c.nextReview === 'done') return;
-        if (c.nextReview <= today) {
-          out.reviews.push({ plan: p, ci: ci, chunk: c, late: plansDaysBetween(c.nextReview, today) });
-        }
+        if (!plansIsReviewDue(c, today)) return;
+        out.reviews.push({ plan: p, ci: ci, chunk: c, late: plansDaysBetween(c.nextReview, today) });
       });
     });
     var st = struggleLoad();
@@ -414,24 +412,45 @@
     }
   }
 
+  /* Finished plan views need both the banner and the cards rebuilt after
+     every mutation; single call site for that pair. */
+  function plansRefreshViews() {
+    renderPlansAlert();
+    renderPlansArea();
+  }
+
+  /* A spaced review is due when checked off with a pending nextReview date
+     of today or earlier ('done' means the ladder finished). */
+  function plansIsReviewDue(c, today) {
+    return !!(c && c.done && c.nextReview && c.nextReview !== 'done' && c.nextReview <= (today || plansDayKey(0)));
+  }
+
+  /* Unfinished memorize/revise plan by id, for the memorize-controls and
+     review-row actions. Returns {all, i, p} or null. */
+  function plansFindMemPlan(planId) {
+    if (!planId) return null;
+    var all = plansLoad();
+    for (var i = 0; i < all.length; i++) {
+      var p = all[i];
+      if (p.id !== planId) continue;
+      if (p.type !== 'memorize' && p.type !== 'revise') return null;
+      if (p.pointer >= (p.chunks || []).length) return null;
+      return { all: all, i: i, p: p };
+    }
+    return null;
+  }
+
   /* Manual "mark plan done" from the memorize controls: checks off the chunk
      of a SPECIFIC plan (the one whose id landed in memSession.fromPlan), same
      bookkeeping as the plans-page «أتممت» pill. Returns true when it checked
      something off. */
   function plansMarkPlanChunkDone(planId) {
-    if (!planId) return false;
-    var all = plansLoad();
-    for (var i = 0; i < all.length; i++) {
-      var p = all[i];
-      if (p.id !== planId) continue;
-      if (p.type !== 'memorize' && p.type !== 'revise') return false;
-      if (p.pointer >= (p.chunks || []).length) return false;
-      var c = p.chunks[p.pointer || 0];
-      if (!c || c.done) return false;
-      plansScheduleReview(p, c);
-      return true;
-    }
-    return false;
+    var hit = plansFindMemPlan(planId);
+    if (!hit) return false;
+    var c = hit.p.chunks[hit.p.pointer || 0];
+    if (!c || c.done) return false;
+    plansScheduleReview(hit.p, c);
+    return true;
   }
 
   /* Rate the chunk a plan-originated memorize session is carrying (good=true
@@ -442,31 +461,24 @@
      is identified by the canonical key carried in the session, falling back
      to the plan's pointer chunk. Returns true when it rated something. */
   function plansRatePlanChunk(planId, key, good) {
-    if (!planId) return false;
-    var all = plansLoad();
-    for (var i = 0; i < all.length; i++) {
-      var p = all[i];
-      if (p.id !== planId) continue;
-      if (p.type !== 'memorize' && p.type !== 'revise') return false;
-      if (p.pointer >= (p.chunks || []).length) return false;
-      var ci = -1;
-      if (key) {
-        for (var j = 0; j < (p.chunks || []).length; j++) {
-          if ((p.chunks[j].from + '|' + p.chunks[j].to) === key) { ci = j; break; }
-        }
+    var hit = plansFindMemPlan(planId);
+    if (!hit) return false;
+    var p = hit.p, ci = -1;
+    if (key) {
+      for (var j = 0; j < (p.chunks || []).length; j++) {
+        if ((p.chunks[j].from + '|' + p.chunks[j].to) === key) { ci = j; break; }
       }
-      if (ci < 0) ci = p.pointer || 0;
-      var c = p.chunks && p.chunks[ci];
-      if (!c) return false;
-      if (c.done) {
-        plansRateReview(i, ci, good);
-      } else {
-        plansScheduleReview(p, c);
-        if (!good) struggleAddChunk(c);
-      }
-      return true;
     }
-    return false;
+    if (ci < 0) ci = p.pointer || 0;
+    var c = p.chunks && p.chunks[ci];
+    if (!c) return false;
+    if (c.done) {
+      plansRateReview(hit.i, ci, good);
+    } else {
+      plansScheduleReview(p, c);
+      if (!good) struggleAddChunk(c);
+    }
+    return true;
   }
 
   /* Absolute [start,end] hafs span of canonical sections. */
@@ -502,12 +514,9 @@
     }
     var unit = (target || memPlan || {}).unit || 'ayahs';
     var perDay = (target || memPlan || {}).perDay || 5;
+    var doRevise = function () { plansEnsureAutoRevise(sections, memPlanId, num); };
     if (PLAN_AHZAB_SPAN[unit] && !plansAhzabCache) {
-      plansEnsureAhzab().then(function () {
-        plansEnsureAutoRevise(sections, memPlanId, num);
-      }).catch(function () {
-        showAppToast('تعذّر تحميل حدود الأرباع — أُجّلت خطة المراجعة');
-      });
+      plansWhenAhzabReady(unit, doRevise, 'تعذّر تحميل حدود الأرباع — أُجّلت خطة المراجعة');
       return;
     }
     if (target) {
@@ -692,11 +701,11 @@
       if (!t) return;
       if (t.dataset.struggleGood !== undefined) {
         struggleRate(+t.dataset.struggleGood, true);
-        renderPlansAlert(); renderPlansArea(); return;
+        plansRefreshViews(); return;
       }
       if (t.dataset.struggleBad !== undefined) {
         struggleRate(+t.dataset.struggleBad, false);
-        renderPlansAlert(); renderPlansArea(); return;
+        plansRefreshViews(); return;
       }
       var all = plansLoad();
       var i = +((t.closest('.plan-card') || {}).dataset || {}).i;
@@ -704,27 +713,24 @@
       if (!p) return;
       if (t.dataset.done !== undefined) {
         var c = (p.chunks || [])[+t.dataset.done];
-        if (c && !c.done) { plansScheduleReview(p, c); renderPlansAlert(); renderPlansArea(); }
+        if (c && !c.done) { plansScheduleReview(p, c); plansRefreshViews(); }
       } else if (t.dataset.reviewGood !== undefined) {
         plansRateReview(i, +t.dataset.reviewGood, true);
-        renderPlansAlert();
-        renderPlansArea();
+        plansRefreshViews();
       } else if (t.dataset.reviewBad !== undefined) {
         plansRateReview(i, +t.dataset.reviewBad, false);
-        renderPlansAlert();
-        renderPlansArea();
+        plansRefreshViews();
       } else if (t.dataset.reviewPlain !== undefined) {
         plansCompleteReview(p, +t.dataset.reviewPlain);
-        renderPlansAlert();
-        renderPlansArea();
+        plansRefreshViews();
       } else if (t.dataset.del !== undefined) {
-        if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); renderPlansAlert(); renderPlansArea(); }
+        if (confirm('حذف هذه الخطة؟')) { all.splice(i, 1); plansSave(all); plansRefreshViews(); }
       } else if (t.dataset.resched !== undefined) {
         plansReschedule(+t.dataset.resched);
-        renderPlansAlert(); renderPlansArea();
+        plansRefreshViews();
       } else if (t.dataset.revSpread !== undefined) {
         plansSpreadReviews(i);
-        renderPlansAlert(); renderPlansArea();
+        plansRefreshViews();
       } else if (t.dataset.repeat !== undefined) {
         plansRepeatPlan(i);
       }
@@ -760,23 +766,21 @@
     var rated = (p.type === 'memorize' || p.type === 'revise');
     var rows = '', dueCount = 0;
     (p.chunks || []).forEach(function (c, ci) {
-      if (!c.done || !c.nextReview || c.nextReview === 'done') return;
-      if (c.nextReview <= today) {
-        dueCount++;
-        var late = plansDaysBetween(c.nextReview, today);
-        rows += '<div class="plan-review-row">'
-          + '<span class="plan-review-info"><span class="plan-chunk-label">' + c.label + '</span>'
-          + (late > 0 ? '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>' : '')
-          + '</span>'
-          + '<a class="pill plan-review-go" href="' + plansDeepLink(p, c) + '" data-rgo="' + ci + '">' + plansGoLabel(p) + '</a>'
-          + '<span class="plan-actions">'
-          + (rated
-            ? '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
-              + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
-            : '<button type="button" class="pill" data-review-plain="' + ci + '">راجعت</button>')
-          + '</span>'
-          + '</div>';
-      }
+      if (!plansIsReviewDue(c, today)) return;
+      dueCount++;
+      var late = plansDaysBetween(c.nextReview, today);
+      rows += '<div class="plan-review-row">'
+        + '<span class="plan-review-info"><span class="plan-chunk-label">' + c.label + '</span>'
+        + (late > 0 ? '<span class="plan-review-late">' + dayNoun(late, toWest, 'متأخرة ') + '</span>' : '')
+        + '</span>'
+        + '<a class="pill plan-review-go" href="' + plansDeepLink(p, c) + '" data-rgo="' + ci + '">' + plansGoLabel(p) + '</a>'
+        + '<span class="plan-actions">'
+        + (rated
+          ? '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
+            + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
+          : '<button type="button" class="pill" data-review-plain="' + ci + '">راجعت</button>')
+        + '</span>'
+        + '</div>';
     });
     el.innerHTML = rows
       ? '<div class="plan-review-title">مراجعات اليوم</div>' + rows
@@ -1049,13 +1053,13 @@
     html += '<div class="plan-form-row">';
     html += '<label>التقسيم</label>';
     html += '<div class="plan-seg">';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="ayahs" checked> آيات/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="thumn"> ثمن/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="rub"> ربع/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="half"> نصف/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="hizb"> حزب/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="juz"> جزء/يوم</label>';
-    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="surahs"> سور/يوم</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="ayahs" checked> آيات</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="surahs"> سور</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="thumn"> ثمن</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="rub"> ربع</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="half"> نصف</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="hizb"> حزب</label>';
+    html += '<label class="plan-seg-opt"><input type="radio" name="planUnit" value="juz"> جزء</label>';
     html += '</div>';
     html += '</div>';
     html += '<div class="plan-form-row">';
@@ -1087,15 +1091,51 @@
     var fromAyah = document.getElementById('planFromAyah');
     var toAyah = document.getElementById('planToAyah');
 
+    var selectedUnit = function () {
+      var r = overlay.querySelector('input[name="planUnit"]:checked');
+      return r ? r.value : 'ayahs';
+    };
+    /* Ahzab-span units align the typed boundaries OUT to the enclosing
+       division edges (displayed in the form's riwaya numbering; clamped to
+       the chosen surahs when a division crosses a surah boundary). */
+    var snapAyahsToQuanta = function () {
+      var unit = selectedUnit();
+      if (!PLAN_AHZAB_SPAN[unit] || !plansAhzabCache) return;
+      var fs = +fromSurah.value, ts = +toSurah.value;
+      var fa = Math.min(Math.max(parseInt(fromAyah.value, 10) || 1, 1), plansCountOfNum(fs, formNum));
+      var ta = Math.min(Math.max(parseInt(toAyah.value, 10) || 1, 1), plansCountOfNum(ts, formNum));
+      var absF = plansHafsAbs(fs, canonFromOfNum(fs, fa, formNum));
+      var absT = plansHafsAbs(ts, canonToOfNum(ts, ta, formNum));
+      var lo = Math.min(absF, absT), hi = Math.max(absF, absT);
+      var quanta = plansAhzabQuanta(unit);
+      var qf = null, qt = null;
+      for (var i = 0; i < quanta.length; i++) {
+        if (!qf && lo >= quanta[i].start && lo <= quanta[i].end) qf = quanta[i];
+        if (hi >= quanta[i].start && hi <= quanta[i].end) { qt = quanta[i]; break; }
+      }
+      if (!qf || !qt) return;
+      var A = plansSurahOfAbs(qf.start), B = plansSurahOfAbs(qt.end);
+      if (!A || !B) return;
+      fromAyah.value = (A.surah < fs) ? 1 : ayahOfNum(fs, A.ayah, formNum);
+      toAyah.value = (B.surah > ts) ? plansCountOfNum(ts, formNum) : ayahEndOfNum(ts, B.ayah, formNum);
+    };
     var syncAyahMax = function () {
       var f = +fromSurah.value, t = +toSurah.value;
       fromAyah.max = plansCountOfNum(f, formNum);
       toAyah.max = plansCountOfNum(t, formNum);
       fromAyah.value = Math.min(+fromAyah.value || 1, plansCountOfNum(f, formNum));
       toAyah.value = Math.min(+toAyah.value || plansCountOfNum(t, formNum), plansCountOfNum(t, formNum));
+      var u = selectedUnit();
+      if (PLAN_AHZAB_SPAN[u]) plansWhenAhzabReady(u, snapAyahsToQuanta);
     };
     fromSurah.addEventListener('change', syncAyahMax);
     toSurah.addEventListener('change', syncAyahMax);
+    overlay.querySelectorAll('input[name="planUnit"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var u = selectedUnit();
+        if (PLAN_AHZAB_SPAN[u]) plansWhenAhzabReady(u, snapAyahsToQuanta);
+      });
+    });
     syncAyahMax();
 
     document.getElementById('planCancel').addEventListener('click', function () {
@@ -1104,7 +1144,7 @@
 
     document.getElementById('planSave').addEventListener('click', function () {
       var type = document.getElementById('planType').value;
-      var unit = document.querySelector('input[name="planUnit"]:checked').value;
+      var unit = selectedUnit();
       var perDay = Math.max(1, parseInt(document.getElementById('planPerDay').value, 10) || 5);
       var fs = +fromSurah.value, ts = +toSurah.value;
       var fa = Math.max(1, parseInt(fromAyah.value, 10) || 1);
@@ -1124,8 +1164,7 @@
         all.push(plan);
         plansSave(all);
         overlay.remove();
-        renderPlansAlert();
-        renderPlansArea();
+        plansRefreshViews();
         showAppToast('أُنشئت الخطة — ' + dayNoun(plan.chunks.length, toWest));
       };
       plansWhenAhzabReady(unit, mkPlan);

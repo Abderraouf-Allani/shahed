@@ -2108,11 +2108,18 @@
 
   window.addEventListener('hashchange', render);
 
-  /* Confirm page refresh/reload so the reader doesn't lose their place
-     (active memorization level, audio position, open forms) by accident.
+  /* Confirm page refresh/reload only when there is unsaved, ephemeral work
+     that a reload would destroy: an active memorize session (reps progress
+     and hide level live only in memory), the new-plan form, or an in-place
+     tag/category rename. Everything else (reader place, tags, plans, saved
+     session setups) persists, so plain reloads stay silent — and cancelling
+     the dialog leaves the page untouched (nothing runs on unload).
      The browser shows its own generic confirmation message. */
   window.addEventListener('beforeunload', function (e) {
-    e.preventDefault();
+    var dirty = (memState && memState.active)
+      || !!document.getElementById('planFormOverlay')
+      || !!document.getElementById('editName');
+    if (dirty) e.preventDefault();
   });
 
   /* ---------- emphasized ayahs + ayah-number menu (surah page) ---------- */
@@ -5782,8 +5789,21 @@
   function render() {
     closeTagMenu();
     closeAyahMenu();
+    closeTagFilterMenu();
+    closeTagContextPopup();
+    closeTagContextEditor();
+    closeLicensesModalDom();
+    hideDocProgress();
     stopAyahPreview();
     closeLabEdgePopup();
+    /* Body-level transient UI outlives the appEl re-render: drop the plan
+       form, toasts and banners so stale popups never follow a navigation
+       (Back included). Menu/modal refs are nulled by their own closers
+       above; the form and toasts are recreated on demand. */
+    ['planFormOverlay', 'appToast', 'appErrorBanner'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    });
     window.scrollTo(0, 0);
     var route = parseHash();
     if (!route.memorize) memStopAudio();
