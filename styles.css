@@ -571,6 +571,11 @@ html[data-riwaya="hafs"] .mushaf-text {
   color: var(--surface);
 }
 
+/* Marker + verse-first-word travel as one unbreakable unit, so a division
+   marker never dangles alone at a line end (it wraps together with the
+   word to the next line's start, attached to its verse). */
+.verse-head { white-space: nowrap; }
+
 .surah-divider {
   text-align: center;
   margin: 2rem 0;

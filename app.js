@@ -1794,7 +1794,7 @@
       + ' <a href="https://mcp.quran.ai" target="_blank" rel="noopener">mcp.quran.ai</a>).</li>'
       + '<li>بدايات <strong>الأثمان</strong> الـ٤٨٠ (ثمن الحزب، قائمة <code>HizbEighthList</code> برواية قالون) مُوحَّدة إلى الترقيم الحفصي عبر <code>numbering.json</code> — مع بادئة البسملة للثمن الأول وحسم تداخل آيةٍ مشتركة واحدة لصالح الأول.</li>'
       + '<li>تدقيق الحدود: صُححت بداية الربع ١٠٦ من ١٥:٥٠ إلى ١٥:٤٩ وفق علامة <code>U+06DE</code> في نص المجمع وبيانات Tarteel (QUL)؛ وطُابقت بدايات الأجزاء (30/30) وعلامات ۞ داخل النص (199/199) مع الحدود.</li>'
-      + '<li>تُعرض هذه التقسيمات (الجزء / الحزب / النصف / الربع / الثمن) شاراتٍ داخل نص المصحف في صفحة القراءة، مُحوَّلة إلى أرقام الرواية النشطة.</li>';
+      + '<li>تُعرض هذه التقسيمات (جزء / حزب / نصف / ربع / ثمن) شاراتٍ داخل نص المصحف في صفحة القراءة، في مواضع الرواية النشطة.</li>';
 
     var audioRows =
       '<li>تلاوة <strong>قالون عن نافع</strong> — ملفات صوتية «آية بآية» (رقم التلاوة <code>257</code>) من خادم'
@@ -2844,11 +2844,6 @@
      plans page. Read live from LS so the mark clears when the chunk is
      checked off (pointer advances / chunk done). Chunk endpoints are
      canonical (hafs); convert to the active riwaya for display. */
-  /* Final ayah of the current read/listen plan chunk, shown with a special
-     number style in the reader until the user hits finish (أتممت) in the
-     plans page. Read live from LS so the mark clears when the chunk is
-     checked off (pointer advances / chunk done). Chunk endpoints are
-     canonical (hafs); convert to the active riwaya for display. */
   function planEndAyahsForSurah(surah) {
     var out = {};
     var plans = null;
@@ -2869,7 +2864,7 @@
 
   /* ---------- ahzab division markers (reader) ---------- */
 
-  var AHZAB_AR = { juz: 'الجزء', hizb: 'الحزب', half: 'النصف', quarter: 'الربع', thumn: 'الثمن' };
+  var AHZAB_AR = { juz: 'جزء', hizb: 'حزب', half: 'نصف', quarter: 'ربع', thumn: 'ثمن' };
   var AHZAB_RANK = { juz: 0, hizb: 1, half: 2, quarter: 3, thumn: 4 };
   var ahzabCache = null;
   var ahzabPromise = null;
@@ -2914,8 +2909,11 @@
     return out;
   }
 
-  /* Insert the division pills at the top of their verses (async, after the
-     reader HTML is in place; silent when offline or navigated away). */
+  /* Insert the division pills glued to their verses' first word (async, after
+     the reader HTML is in place; silent when offline or navigated away).
+     The marker + first word travel in an unbreakable head span, so a marker
+     never dangles alone at a line end. Reader verse-text is always a single
+     text node (filter toggles classes only; copy uses data). */
   function injectAhzabMarks(n) {
     ensureAhzab().then(function () {
       if (!parseHash().surah || parseHash().surah !== n) return;
@@ -2924,12 +2922,26 @@
       var marks = ahzabMarksForSurah(n);
       Object.keys(marks).forEach(function (a) {
         var verse = mushaf.querySelector('.verse[data-ayah="' + a + '"]');
-        if (!verse || verse.querySelector(':scope > .ahzab-mark')) return;
+        if (!verse || verse.querySelector('.ahzab-mark')) return;
         var m = marks[a];
         var el = document.createElement('span');
         el.className = 'ahzab-mark ahzab-' + m.level;
         el.textContent = '۞ ' + AHZAB_AR[m.level];
-        verse.insertBefore(el, verse.firstChild);
+        var vt = verse.querySelector(':scope > .verse-text');
+        var tn = vt && vt.firstChild;
+        if (vt && tn && tn.nodeType === Node.TEXT_NODE) {
+          var head = document.createElement('span');
+          head.className = 'verse-head';
+          var sep = /(\s+)/.exec(tn.textContent);
+          var first = sep ? tn.textContent.slice(0, sep.index) : tn.textContent;
+          var rest = sep ? tn.textContent.slice(sep.index) : '';
+          head.appendChild(el);
+          head.appendChild(document.createTextNode(first));
+          vt.insertBefore(head, tn);
+          if (rest) tn.textContent = rest; else tn.remove();
+        } else {
+          verse.insertBefore(el, verse.firstChild);
+        }
       });
     }).catch(function () {});
   }
