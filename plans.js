@@ -632,6 +632,7 @@
       html += '<a class="pill" data-sgo="' + idx + '" href="#/memorize">راجع</a>';
       html += '<button type="button" class="pill" data-struggle-good="' + idx + '">أتقنت ✓</button>';
       html += '<button type="button" class="pill" data-struggle-bad="' + idx + '">تعثرت</button>';
+      html += '<button type="button" class="pill" data-struggle-del="' + idx + '">إلغاء</button>';
       html += '</span></div>';
     });
     html += '</div>';
@@ -697,7 +698,7 @@
     area.innerHTML = html;
     plans.forEach(function (p, i) { renderPlanReviews(p, i); });
     area.onclick = function (e) {
-      var t = e.target.closest('button[data-done],button[data-del],button[data-resched],button[data-rev-spread],button[data-repeat],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad]');
+      var t = e.target.closest('button[data-done],button[data-del],button[data-resched],button[data-rev-spread],button[data-repeat],button[data-review-good],button[data-review-bad],button[data-review-plain],button[data-struggle-good],button[data-struggle-bad],button[data-struggle-del]');
       if (!t) return;
       if (t.dataset.struggleGood !== undefined) {
         struggleRate(+t.dataset.struggleGood, true);
@@ -706,6 +707,10 @@
       if (t.dataset.struggleBad !== undefined) {
         struggleRate(+t.dataset.struggleBad, false);
         plansRefreshViews(); return;
+      }
+      if (t.dataset.struggleDel !== undefined) {
+        if (confirm('إزالة هذا المقطع من «حفظ متعثر»؟')) { struggleRemove(+t.dataset.struggleDel); plansRefreshViews(); }
+        return;
       }
       var all = plansLoad();
       var i = +((t.closest('.plan-card') || {}).dataset || {}).i;
@@ -901,6 +906,16 @@
       struggleSave(st);
       showAppToast('سُجِّل التعثر — أُعيدت جدولة المقطع للغد');
     }
+  }
+
+  /* Drop a section from «حفظ متعثر» without graduating it (user cancel). */
+  function struggleRemove(itemIdx) {
+    var st = struggleLoad();
+    var it = st && st.items[itemIdx];
+    if (!it) return;
+    st.items.splice(itemIdx, 1);
+    struggleSave(st);
+    showAppToast('أُزيل المقطع من «حفظ متعثر»');
   }
 
   function plansGoLabel(p) {

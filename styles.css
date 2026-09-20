@@ -508,7 +508,10 @@ html[data-riwaya="hafs"] .mushaf-text {
 /* Keep the ayah number glued to its verse: a non-breaking space at the end
    of the verse text removes the break opportunity before the (atomic)
    .ayah-num circle, so the number wraps together with the verse's last
-   word and never dangles alone on a new line. */
+   word and never dangles alone on a new line. INVARIANT: .ayah-num must
+   immediately follow .verse-text with no intervening elements — atomic
+   boxes (tag button, chips) between them reintroduce break opportunities
+   the NBSP cannot bridge. UI annotations go after the number. */
 .verse-text::after { content: '\00A0'; }
 
 /* Surah search mode: one ayah per line (finder list) instead of continuous mushaf flow. */

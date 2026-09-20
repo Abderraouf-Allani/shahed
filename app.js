@@ -2673,9 +2673,12 @@
       if (!chipsEl) {
         chipsEl = document.createElement('span');
         chipsEl.className = 'verse-chips';
-        var numEl = el.querySelector('.ayah-num');
-        if (numEl) {
-          el.insertBefore(chipsEl, numEl);
+        /* Annotations must never come between .verse-text and .ayah-num
+           (atomic boxes there reintroduce the line-break the NBSP glue
+           removes): park chips after the number, before the tag button. */
+        var tagBtnEl = el.querySelector('.tag-btn');
+        if (tagBtnEl) {
+          el.insertBefore(chipsEl, tagBtnEl);
         } else {
           el.appendChild(chipsEl);
         }
@@ -2962,9 +2965,9 @@
     var emphCls = isEmphAyah(surah, ayah) ? ' verse-emph' : '';
     return '<span class="verse' + emphCls + '" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
       + '<span class="verse-text">' + esc(text) + '</span>'
+      + '<span class="ayah-num' + (isPlanEnd ? ' plan-end' : '') + '"' + (isPlanEnd ? ' title="نهاية المقطع المخطط"' : '') + '>' + toAr(ayah) + '</span>'
       + tagBtn
       + chips
-      + '<span class="ayah-num' + (isPlanEnd ? ' plan-end' : '') + '"' + (isPlanEnd ? ' title="نهاية المقطع المخطط"' : '') + '>' + toAr(ayah) + '</span>'
       + '</span> ';
   }
 
@@ -3969,7 +3972,7 @@
     var q = state.quran && state.quran[surah - 1];
     var text = q && q.verses[ayah - 1];
     if (!text) return '';
-    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + fmt(ayah) + '</span></span> ';
+    return '<span class="tayah-ctxayah">' + esc(text) + ' <span class="ayah-num">' + fmt(ayah) + '</span></span> ';
   }
 
   /* hideTags: search popup follows the surah tags display config (showTags);
@@ -3999,7 +4002,7 @@
         + '</div>';
     }
     var tagged = '<a class="tayah-ayahlink' + (withScope && n > 0 ? ' tayah-principal' : '') + '" href="#/surah/' + a.surah + '/' + a.ayah + '">'
-      + esc(a.text) + ' <span class="ayah-num">' + fmt(a.ayah) + '</span></a> ';
+      + esc(a.text) + ' <span class="ayah-num">' + fmt(a.ayah) + '</span></a> ';
     return '<div class="tayah-card">'
       + scope
       + '<div class="tayah-meta">سورة ' + esc(surah.nameAr) + ' — الآية ' + fmt(a.ayah) + ' <span dir="ltr">· ' + esc(surah.nameEn) + '</span></div>'
