@@ -2204,11 +2204,12 @@
     var menu = document.createElement('div');
     menu.className = 'ayah-menu';
     var emph = isEmphAyah(surah, ayah);
+    var emphStar = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" fill="' + (emph ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
     var isPlanEnd = !!planEndAyahsForSurah(surah)[ayah];
     menu.innerHTML =
       '<button type="button" data-act="play" title="تشغيل تلاوة الآية" aria-label="تشغيل تلاوة الآية">🔊</button>'
       + '<button type="button" data-act="copy" title="نسخ الآية برقمها" aria-label="نسخ الآية برقمها">📋</button>'
-      + '<button type="button" data-act="emph" title="تمييز الآية أو إلغاء تمييزها" aria-label="تمييز الآية أو إلغاء تمييزها">' + (emph ? '⭐' : '☆') + '</button>'
+      + '<button type="button" data-act="emph" title="تمييز الآية أو إلغاء تمييزها" aria-label="تمييز الآية أو إلغاء تمييزها">' + emphStar + '</button>'
       + (isPlanEnd ? '<button type="button" data-act="plan-done" title="إنهاء القراءة المخططة" aria-label="إنهاء القراءة المخططة">✅</button>' : '');
     document.body.appendChild(menu);
     menu._anchor = anchor;

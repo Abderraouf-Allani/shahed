@@ -918,6 +918,10 @@ html.dark .verse-emph { background: rgba(233, 192, 101, 0.13); }
   cursor: pointer;
 }
 .ayah-menu button:hover { background: var(--surface-2); }
+/* The emphasize star is an inline SVG in currentColor: gold keeps the
+   outline star visible on the dark surface (the old monochrome ☆ glyph
+   painted near-black on dark mode). Filled state = ayah emphasized. */
+.ayah-menu button[data-act="emph"] { color: var(--gold); }
 
 .flash { animation: ayahFlash 2s ease; }
 @keyframes ayahFlash {
