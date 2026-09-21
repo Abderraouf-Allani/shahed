@@ -505,14 +505,14 @@ html[data-riwaya="hafs"] .mushaf-text {
 
 .verse { white-space: normal; }
 
-/* Keep the ayah number glued to its verse: a non-breaking space at the end
-   of the verse text removes the break opportunity before the (atomic)
-   .ayah-num circle, so the number wraps together with the verse's last
-   word and never dangles alone on a new line. INVARIANT: .ayah-num must
-   immediately follow .verse-text with no intervening elements — atomic
-   boxes (tag button, chips) between them reintroduce break opportunities
-   the NBSP cannot bridge. UI annotations go after the number. */
-.verse-text::after { content: '\00A0'; }
+/* Keep the ayah number glued to its verse with a REAL non-breaking space
+   text node (U+00A0) between .verse-text and .ayah-num (see renderVerse).
+   A CSS ::after pseudo NBSP did NOT glue: browsers may allow a break
+   between a pseudo/anonymous inline and the following atomic .ayah-num,
+   so the number wrapped alone (repro at Hud 11:63, 42px). INVARIANT:
+   .ayah-num must immediately follow .verse-text (glued by that NBSP node)
+   with no intervening atomic boxes — those reintroduce break
+   opportunities. UI annotations go after the number. */
 
 /* Surah search mode: one ayah per line (finder list) instead of continuous mushaf flow. */
 .mushaf-text.mushaf-searching { text-align: right; }
@@ -527,14 +527,10 @@ html[data-riwaya="hafs"] .mushaf-text {
 }
 
 .ayah-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline;
   vertical-align: middle;
-  min-width: 1.35em;
-  height: 1.35em;
   margin: 0 0.22em;
-  padding: 0 0.2em;
+  padding: 0.26em 0.32em;
   font-size: 0.52em;
   font-family: "Geeza Pro", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
   font-weight: 700;
@@ -543,7 +539,12 @@ html[data-riwaya="hafs"] .mushaf-text {
   border-radius: 50%;
   line-height: 1;
   position: relative;
-  top: -0.1em;
+  top: -0.15em;
+  /* Must stay a plain INLINE box: display:inline-flex/inline-block make the
+     number an atomic inline, which the line-breaker may split before even
+     when the preceding characters are non-breaking — orphaning the number
+     on its own line (repro: Hud 11:63, qaloon, 42px). padding + line-height
+     emulate the circular badge since width/height are inert on inline. */
 }
 
 .ayah-num.plan-end {

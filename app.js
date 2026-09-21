@@ -2028,6 +2028,21 @@
     return firstFully !== null ? firstFully : firstVisible;
   }
 
+  /* The topmost ayah with any part currently in the viewport below the
+     sticky header — the "first ayah in the screen", used to keep the URL's
+     ayah in sync with the reading position via history.replaceState. */
+  function firstScreenAyah() {
+    var header = document.querySelector('.app-header');
+    var vt = header ? header.offsetHeight : 0;
+    var vh = window.innerHeight;
+    var verses = document.querySelectorAll('#mushaf .verse');
+    for (var i = 0; i < verses.length; i++) {
+      var r = verses[i].getBoundingClientRect();
+      if (r.height > 0 && r.bottom > vt && r.top < vh) return +verses[i].dataset.ayah;
+    }
+    return null;
+  }
+
   function updateHeaderReading() {
     var el = document.getElementById('headerReading');
     if (!el) return;
@@ -2526,10 +2541,20 @@
     if (!route.surah || !document.getElementById('mushaf')) return;
     if (readScrollTimer) clearTimeout(readScrollTimer);
     readScrollTimer = setTimeout(function () {
+      var r = parseHash();
+      if (!r.surah) return;
       var a = computeLastReadAyah();
       if (a) {
-        persistLast(route.surah, a);
+        persistLast(r.surah, a);
         updateHeaderReading();
+      }
+      /* Keep the URL's ayah pointing at the first ayah in the screen.
+         history.replaceState (not location.hash) so no hashchange → no
+         re-render loop, and the back-stack is not polluted by scrolling. */
+      var first = firstScreenAyah();
+      if (first) {
+        var target = '#/surah/' + r.surah + '/' + first;
+        if (location.hash !== target) history.replaceState(null, '', target);
       }
     }, 250);
   }, true);
@@ -2964,7 +2989,7 @@
       : '';
     var emphCls = isEmphAyah(surah, ayah) ? ' verse-emph' : '';
     return '<span class="verse' + emphCls + '" id="ayah-' + surah + '-' + ayah + '" data-surah="' + surah + '" data-ayah="' + ayah + '">'
-      + '<span class="verse-text">' + esc(text) + '</span>'
+      + '<span class="verse-text">' + esc(text) + '</span>\u00A0'
       + '<span class="ayah-num' + (isPlanEnd ? ' plan-end' : '') + '"' + (isPlanEnd ? ' title="نهاية المقطع المخطط"' : '') + '>' + toAr(ayah) + '</span>'
       + tagBtn
       + chips
@@ -4545,7 +4570,7 @@
         sec.ayahWords.forEach(function (aw) {
           var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
           html += '<span class="verse" id="ayah-' + sec.surah + '-' + aw.ayah + '" data-surah="' + sec.surah + '" data-ayah="' + aw.ayah + '">';
-          html += '<span class="verse-text">' + esc(fullText) + '</span>';
+          html += '<span class="verse-text">' + esc(fullText) + '</span>\u00A0';
           html += '<span class="ayah-num">' + toAr(aw.ayah) + '</span>';
           html += '</span> ';
         });
