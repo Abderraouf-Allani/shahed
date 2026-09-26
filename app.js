@@ -2962,7 +2962,7 @@
         var m = marks[a];
         var el = document.createElement('span');
         el.className = 'ahzab-mark ahzab-' + m.level;
-        el.textContent = '۞ ' + AHZAB_AR[m.level];
+        el.textContent = '۞ ' + AHZAB_AR[m.level] + (m.level === 'juz' ? ' ' + toAr(m.num) : '');
         var vt = verse.querySelector(':scope > .verse-text');
         var tn = vt && vt.firstChild;
         if (vt && tn && tn.nodeType === Node.TEXT_NODE) {

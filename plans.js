@@ -230,9 +230,16 @@
   /* ---- spaced repetition ---- */
   function plansScheduleReview(plan, chunk) {
     chunk.done = plansDayKey(0);
-    chunk.reviewIdx = 0;
-    chunk.nextReview = plansDayKey(PLAN_REVIEW_STEPS[0]);
     plan.pointer = (plan.pointer || 0) + 1;
+    if (plan && plan.type !== 'revise') {
+      chunk.reviewIdx = 0;
+      chunk.nextReview = plansDayKey(PLAN_REVIEW_STEPS[0]);
+    } else {
+      /* Revise-type plans already run their own review cadence daily, so a
+         completed chunk must not re-enter the spaced «مراجعات اليوم» ladder. */
+      delete chunk.reviewIdx;
+      delete chunk.nextReview;
+    }
     plansPersistPlan(plan);
   }
 
@@ -362,6 +369,7 @@
         }
       }
       chunks.forEach(function (c, ci) {
+        if (p.type === 'revise') return; /* revise plans sit outside the ladder */
         if (!plansIsReviewDue(c, today)) return;
         out.reviews.push({ plan: p, ci: ci, chunk: c, late: plansDaysBetween(c.nextReview, today) });
       });
@@ -767,6 +775,7 @@
   function renderPlanReviews(p, planIdx) {
     var el = document.querySelector('.plan-reviews[data-reviews="' + planIdx + '"]');
     if (!el) return;
+    if (p.type === 'revise') { el.innerHTML = ''; return; }
     var today = plansDayKey(0);
     var rated = (p.type === 'memorize' || p.type === 'revise');
     var rows = '', dueCount = 0;
