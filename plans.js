@@ -5,6 +5,7 @@
   if (!B) return;
 
   var esc = B.esc;
+  var emptyState = B.emptyState;
   var surahByNumber = B.surahByNumber;
   var newId = B.newId;
   var showAppToast = B.showAppToast;
@@ -654,7 +655,7 @@
     var plans = plansLoad();
     var struggleHtml = renderStruggleCard();
     if (!plans.length && !struggleHtml) {
-      area.innerHTML = '<div class="empty-state">لا خطط بعد — أنشئ خطة قراءة أو استماع أو مراجعة أو حفظ.</div>';
+      area.innerHTML = emptyState('لا خطط بعد — أنشئ خطة قراءة أو استماع أو مراجعة أو حفظ.');
       return;
     }
     var html = struggleHtml;

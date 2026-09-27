@@ -309,18 +309,6 @@
   });
 
   /* ---------- tag suggestion engine ---------- */
-  var REL_WEIGHT = {
-    'same-as': 1.0, 'equivalent': 0.95, 'synonym': 0.9,
-    'is-a': 1.0, 'subclass': 0.95, 'instance-of': 0.85,
-    'part-of': 0.9, 'has-part': 0.85, 'member-of': 0.8,
-    'causes': 0.85, 'depends-on': 0.8, 'precondition-for': 0.75, 'enables': 0.75,
-    'opposite-of': 0.7, 'complementary-to': 0.8, 'implies': 0.8, 'contradicts': 0.7,
-    'related-to': 0.55, 'similar-to': 0.7,
-    'used-for': 0.6, 'capable-of': 0.5, 'performs': 0.5,
-    'has-property': 0.65, 'property-of': 0.6,
-    'located-in': 0.5, 'before': 0.4, 'after': 0.4
-  };
-
   function arabicRoot(name) {
     var s = (name || '')
       .replace(/[\u064E-\u0652\u0670\u0640]/g, '')
@@ -338,10 +326,6 @@
   function arabicTokens(x) {
     x = normalizeWordForMatch(x).replace(/\s+/g, ' ').trim();
     return x ? x.split(' ') : [];
-  }
-
-  function readLabGraph() {
-    try { return JSON.parse(localStorage.getItem(LS.lab) || '{}'); } catch (e) { return {}; }
   }
 
   /* ---------- ontology (language-model) tag suggestions ----------
@@ -1061,13 +1045,13 @@
 
     saveTags();
 
-    var msg = 'تم استيراد ' + countNoun(createdTags, toAr, 'وسم', 'وسمان', 'وسوم', 'وسماً')
-      + ' و' + countNoun(createdCats, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات', 'تصنيفاً')
-      + '، مع ' + countNoun(assocKeys, toAr, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة')
-      + ' (' + countNoun(addedAssoc, toAr, 'رابطة', 'رابطتان', 'روابط') + ').';
-    if (metaKeys) msg += '\nاستُعيدت بيانات ' + countNoun(metaKeys, toAr, 'رابطة', 'رابطتان', 'روابط') + ' من وسم.';
-    if (mergedCats) msg += '\nدُمجت ' + countNoun(mergedCats, toAr, 'تصنيف', 'تصنيفان', 'تصنيفات') + ' بنفس اسم تصنيف موجود.';
-    if (renamedTags) msg += '\nأُعيد تسمية ' + countNoun(renamedTags, toAr, 'وسم مطابق', 'وسمان مطابقان', 'وسوم مطابقة', 'وسماً مطابقاً') + ' لاسم وسم موجود.';
+    var msg = 'تم استيراد ' + countNoun(createdTags, toWest, 'وسم', 'وسمان', 'وسوم', 'وسماً')
+      + ' و' + countNoun(createdCats, toWest, 'تصنيف', 'تصنيفان', 'تصنيفات', 'تصنيفاً')
+      + '، مع ' + countNoun(assocKeys, toWest, 'آية موسومة', 'آيتان موسومتان', 'آيات موسومة')
+      + ' (' + countNoun(addedAssoc, toWest, 'رابطة', 'رابطتان', 'روابط') + ').';
+    if (metaKeys) msg += '\nاستُعيدت بيانات ' + countNoun(metaKeys, toWest, 'رابطة', 'رابطتان', 'روابط') + ' من وسم.';
+    if (mergedCats) msg += '\nدُمجت ' + countNoun(mergedCats, toWest, 'تصنيف', 'تصنيفان', 'تصنيفات') + ' بنفس اسم تصنيف موجود.';
+    if (renamedTags) msg += '\nأُعيد تسمية ' + countNoun(renamedTags, toWest, 'وسم مطابق', 'وسمان مطابقان', 'وسوم مطابقة', 'وسماً مطابقاً') + ' لاسم وسم موجود.';
     report(true, msg);
   }
 
@@ -1095,8 +1079,6 @@
   }
 
   /* ---------- document upload (PDF/DOCX) ---------- */
-
-  var DOC_MIN_MATCH = 26;
 
   var docAyahIndex = null;
   var docProgressEl = null;
@@ -1282,7 +1264,7 @@
         spans.push({ key: idx[i].key, start: s, end: e });
       }
       if (i < idx.length) {
-        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
+        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toWest, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
         setTimeout(pass1, 0);
       } else {
         i = 0;
@@ -1301,7 +1283,7 @@
         candidates.push(cand);
       }
       if (i < idx.length) {
-        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
+        showDocProgress('يجري مطابقة الآيات… (' + countNoun(matched.length, toWest, 'آية', 'آيتان', 'آيات') + ' حتى الآن)', i / idx.length);
         setTimeout(pass2, 0);
       } else {
         candidates.sort(function (x, y) {
@@ -1664,7 +1646,7 @@
     var chaptersMsg = result.chapters > 1
       ? ' موزعة على ' + toWest(result.chapters) + ' فصول.'
       : '';
-    alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + countNoun(matched.length, toAr, 'آية', 'آيتان', 'آيات') + chaptersMsg);
+    alert('تم إنشاء وسم «' + tag.name + '» في تصنيف «' + cat.name + '» وربطه بـ ' + countNoun(matched.length, toWest, 'آية', 'آيتان', 'آيات') + chaptersMsg);
     renderTagArea();
   }
 
@@ -1971,6 +1953,11 @@
   });
 
   /* ---------- helpers ---------- */
+  function emptyState(msg) { return '<div class="empty-state">' + msg + '</div>'; }
+
+  function searchIcon(size) {
+    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+  }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -2371,7 +2358,7 @@
     menu.innerHTML =
       '<div class="tag-menu-title">وسم الآية ' + toAr(ayah) + ' من ' + esc(surahName) + '</div>'
       + '<div class="tag-menu-search">'
-      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>'
+      + searchIcon(14)
       + '<input type="search" class="tag-menu-filter-input" placeholder="ابحث عن وسم…" autocomplete="off">'
       + '</div>'
       + '<div class="tag-menu-list">' + rows + '</div>'
@@ -3008,7 +2995,7 @@
     var html = '';
     html += '<div class="index-toolbar">';
     html += '<div class="search-box">';
-    html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += searchIcon(20);
     html += '<input type="search" id="surahSearch" placeholder="ابحث عن سورة بالاسم أو الرقم…" value="' + esc(state.query) + '">';
     html += '</div>';
     html += '<span class="index-stats" id="indexStats"></span>';
@@ -3017,7 +3004,7 @@
     html += '<div class="ayah-search-wrap">';
     html += '<div class="index-toolbar">';
     html += '<div class="search-box">';
-    html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += searchIcon(20);
     html += '<input type="search" id="ayahSearch" placeholder="ابحث في آيات القرآن…" value="' + esc(state.ayahQuery) + '">';
     html += '</div>';
     html += '<span class="index-stats" id="ayahStats"></span>';
@@ -3108,10 +3095,10 @@
       }
       html += '</div></div>';
       if (list.length > 200) {
-        html += '<div class="hint-box">يوجد ' + countNoun(list.length - 200, toAr, 'نتيجة أخرى', 'نتيجتان أخريان', 'نتائج أخرى') + '. قم بتضييق البحث.</div>';
+        html += '<div class="hint-box">يوجد ' + countNoun(list.length - 200, toWest, 'نتيجة أخرى', 'نتيجتان أخريان', 'نتائج أخرى') + '. قم بتضييق البحث.</div>';
       }
     } else {
-      html += '<div class="empty-state">لا توجد آيات مطابقة لبحثك</div>';
+      html += emptyState('لا توجد آيات مطابقة لبحثك');
     }
     box.innerHTML = html;
   }
@@ -3139,12 +3126,12 @@
     }, 0);
 
     if (stats) {
-      stats.textContent = countNoun(list.length, toAr, 'سورة', 'سورتان', 'سور')
-        + (state.query ? ' — ' + countNoun(totalVerses, toAr, 'آية', 'آيتان', 'آيات') : ' — ' + countNoun(grandTotal, toAr, 'آية', 'آيتان', 'آيات'));
+      stats.textContent = countNoun(list.length, toWest, 'سورة', 'سورتان', 'سور')
+        + (state.query ? ' — ' + countNoun(totalVerses, toWest, 'آية', 'آيتان', 'آيات') : ' — ' + countNoun(grandTotal, toWest, 'آية', 'آيتان', 'آيات'));
     }
 
     if (!list.length) {
-      grid.innerHTML = '<div class="empty-state">لا توجد نتائج مطابقة</div>';
+      grid.innerHTML = emptyState('لا توجد نتائج مطابقة');
       return;
     }
 
@@ -3254,7 +3241,7 @@
 
     html += '<div class="reader-options">';
     html += '<div class="search-box surah-search">';
-    html += '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += searchIcon(18);
     html += '<input type="search" id="surahAyahSearch" placeholder="ابحث في الآيات…" value="' + esc(state.surahQuery) + '">';
     html += '<span class="surah-search-count" id="surahSearchCount"></span>';
     html += '</div>';
@@ -3464,7 +3451,7 @@
       + '<button type="button" class="io-btn" data-io="export" title="تصدير الوسوم والتصنيفات والآيات الموسومة إلى ملف">تصدير</button>'
       + '</div>';
     html += '<div class="search-box">';
-    html += '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>';
+    html += searchIcon(20);
     html += '<input type="search" id="tagSearch" placeholder="ابحث عن وسم…" value="' + esc(state.tagQuery) + '">';
     html += '</div>';
     html += '<span class="index-stats" id="tagStats"></span>';
@@ -3634,29 +3621,25 @@
     });
   }
 
+  function suggestPanelShell(catId, msg) {
+    return '<div class="suggest-panel" data-catid="' + catId + '">'
+      + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
+      + '<div class="suggest-empty">' + msg + '</div>'
+      + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
+      + '</div>';
+  }
+
   function renderSuggestPanel(cat) {
     if (ontologyStatus === 'idle' || ontologyStatus === 'loading') {
       retrySuggestWhenReady();
-      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
-        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
-        + '<div class="suggest-empty">جارٍ تحميل المفردات…</div>'
-        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
-        + '</div>';
+      return suggestPanelShell(cat.id, 'جارٍ تحميل المفردات…');
     }
     if (ontologyStatus === 'error') {
-      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
-        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
-        + '<div class="suggest-empty">تعذّر تحميل المفردات — تحقق من اتصالك وأعد المحاولة.</div>'
-        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
-        + '</div>';
+      return suggestPanelShell(cat.id, 'تعذّر تحميل المفردات — تحقق من اتصالك وأعد المحاولة.');
     }
     var candidates = suggestTagsForCategory(cat.id, 10);
     if (!candidates.length) {
-      return '<div class="suggest-panel" data-catid="' + cat.id + '">'
-        + '<div class="suggest-header"><span class="suggest-title">اقتراح وسوم</span></div>'
-        + '<div class="suggest-empty">لا توجد اقتراحات مطابقة — أضف وسوماً وربطها بآيات أولاً.</div>'
-        + '<div class="suggest-actions"><button type="button" class="suggest-close">إغلاق</button></div>'
-        + '</div>';
+      return suggestPanelShell(cat.id, 'لا توجد اقتراحات مطابقة — أضف وسوماً وربطها بآيات أولاً.');
     }
     var items = candidates.map(function (r) {
       return '<label class="suggest-item">'
@@ -3697,7 +3680,7 @@
     if (!area) return;
 
     if (!seedTagsLoaded) {
-      area.innerHTML = '<div class="empty-state">جار تحميل كتب الوسوم…</div>';
+      area.innerHTML = emptyState('جار تحميل كتب الوسوم…');
       return;
     }
 
@@ -3722,7 +3705,7 @@
     html += '<div class="cat-toolbar"><button type="button" class="cat-add">+ تصنيف جديد</button></div>';
 
     if (!tagState.tags.length) {
-      html += '<div class="empty-state">لا توجد وسوم بعد.<br>افتح أي سورة واضغط على أيقونة الوسم بجانب أي آية لإضافتها، أو أضف وسماً جديداً داخل أي تصنيف أدناه.</div>';
+      html += emptyState('لا توجد وسوم بعد.<br>افتح أي سورة واضغط على أيقونة الوسم بجانب أي آية لإضافتها، أو أضف وسماً جديداً داخل أي تصنيف أدناه.');
     }
 
     var showSections = false;
@@ -3763,7 +3746,7 @@
 
     html += '</div>';
 
-    if (!showSections) html += '<div class="empty-state">لا توجد وسوم مطابقة لبحثك</div>';
+    if (!showSections) html += emptyState('لا توجد وسوم مطابقة لبحثك');
 
     var selTag = state.selectedTagId ? tagState.byId[state.selectedTagId] : null;
 
@@ -3776,7 +3759,7 @@
           html += renderAyahCard(a, true, false, true);
         });
       } else {
-        html += '<div class="empty-state">لا توجد آيات تحت هذا الوسم</div>';
+        html += emptyState('لا توجد آيات تحت هذا الوسم');
       }
       html += '</div>';
     } else {
@@ -4180,7 +4163,7 @@
     LS: LS,
     appEl: appEl,
     positionTagMenu: positionTagMenu,
-    plural: plural,
+    emptyState: emptyState,
     countNoun: countNoun
   };
 
@@ -4191,7 +4174,7 @@
       if (window.QuranLab) {
         window.QuranLab.render();
       } else {
-        appEl.innerHTML = '<div class="empty-state">تعذّر تحميل المختبر.</div>';
+        appEl.innerHTML = emptyState('تعذّر تحميل المختبر.');
       }
     };
     if (window.QuranLab) { boot(); return; }
@@ -4207,7 +4190,7 @@
       labScriptPromise.catch(function () { labScriptPromise = null; });
     }
     labScriptPromise.then(boot).catch(function () {
-      appEl.innerHTML = '<div class="empty-state">تعذّر تحميل صفحة المختبر.</div>';
+      appEl.innerHTML = emptyState('تعذّر تحميل صفحة المختبر.');
     });
   }
 
@@ -4786,7 +4769,7 @@
     html += '<button id="memAudioBtn" class="pill mem-ctrl-btn mem-icon-btn" title="إظهار/إخفاء أدوات التلاوة">' + MEM_ICON_AUDIO + '</button>';
     html += '<button id="memHideBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أخفِ المزيد">' + MEM_ICON_HIDE + '</button>';
     html += '<button id="memPeekBtn" class="pill mem-ctrl-btn mem-icon-btn mem-peek-btn" title="أرني الكلمة">' + MEM_ICON_PEEK + '</button>';
-    html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
+    html += '<button id="memHelpBtn" class="pill mem-ctrl-btn mem-icon-btn mem-help-btn" title="أرني المزيد">' + MEM_ICON_HELP + '</button>';
     html += '<button id="memPlanDoneBtn" class="pill mem-ctrl-btn mem-plan-done-btn" title="إنهاء المقطع المخطط" style="display:none">' + MEM_ICON_DONE + ' أتممت المخطط</button>';
     html += '<button id="memPlanGoodBtn" class="pill mem-ctrl-btn mem-plan-good-btn" title="أتقنت المراجعة المخططة" style="display:none">' + MEM_ICON_DONE + ' أتقنت</button>';
     html += '<button id="memPlanBadBtn" class="pill mem-ctrl-btn mem-plan-bad-btn" title="تعثرت في المراجعة المخططة" style="display:none">تعثرت</button>';
@@ -5559,7 +5542,6 @@
     surahByNumber: surahByNumber,
     newId: newId,
     showAppToast: showAppToast,
-    activeAyahOf: activeAyahOf,
     activeAyahEndOf: activeAyahEndOf,
     currentRiwaya: currentRiwaya,
     enterRiwaya: enterRiwaya,
@@ -5570,14 +5552,13 @@
     startReaderAt: function (ayah) { rdrJumpTo((+ayah || 1) - 1); },
     refreshDueBadge: function () { updatePlansBadge(); },
     rerender: render,
-    plural: plural,
     countNoun: countNoun,
     dayNoun: dayNoun,
     numberingForSurah: numberingForSurah,
     getAyahCount: getAyahCount,
-    canonAyah: canonAyah,
     LS: LS,
-    appEl: appEl
+    appEl: appEl,
+    emptyState: emptyState
   };
 
   /* Smart-hiding V1 (memhide.js) bridge + lazy loader. Preloaded on the
@@ -5628,10 +5609,10 @@
       if (window.QuranPlans) {
         window.QuranPlans.render();
       } else {
-        appEl.innerHTML = '<div class="empty-state">تعذّر تحميل الخطط.</div>';
+        appEl.innerHTML = emptyState('تعذّر تحميل الخطط.');
       }
     }).catch(function () {
-      appEl.innerHTML = '<div class="empty-state">تعذّر تحميل صفحة الخطط.</div>';
+      appEl.innerHTML = emptyState('تعذّر تحميل صفحة الخطط.');
     });
   }
 
@@ -6040,7 +6021,7 @@
     try { maybeNotifyPlansDue(); } catch (e) {}
     if (window.__quranLoader) window.__quranLoader.done();
   }).catch(function (err) {
-    appEl.innerHTML = '<div class="empty-state">تعذّر تحميل البيانات: ' + esc(err.message) + '</div>';
+    appEl.innerHTML = emptyState('تعذّر تحميل البيانات: ' + esc(err.message));
     if (window.__quranLoader) window.__quranLoader.done();
   });
 })();

@@ -6,6 +6,7 @@
   var countNoun = B.countNoun;
 
   var esc = B.esc;
+  var emptyState = B.emptyState;
   var toAr = B.toAr, toWest = B.toWest;
   var relLabel = B.relLabel;
   var RELATIONSHIPS = B.RELATIONSHIPS;
@@ -168,7 +169,7 @@
     var stage = document.getElementById('labStage');
     if (!stage) return;
     if (!tagState.byCatId[labCatId]) labCatId = tagState.categories.length ? tagState.categories[0].id : null;
-    if (!labCatId) { stage.innerHTML = '<div class="empty-state">لا توجد تصنيفات بعد.</div>'; return; }
+    if (!labCatId) { stage.innerHTML = emptyState('لا توجد تصنيفات بعد.'); return; }
     localStorage.setItem(LS.labCat, labCatId);
 
     var cfg = labEnsure(labCatId);
@@ -501,7 +502,7 @@
     closeLabEdgePopup();
     if (!tagState.categories.length) {
       appEl.innerHTML = '<div class="index-toolbar"><div class="nav-pills"><a class="pill" href="#/">الفهرس</a></div></div>'
-        + '<div class="empty-state">لا توجد تصنيفات بعد. أنشئ تصنيفاً ووسوماً من صفحة الوسوم أولاً.</div>';
+        + emptyState('لا توجد تصنيفات بعد. أنشئ تصنيفاً ووسوماً من صفحة الوسوم أولاً.');
       return;
     }
     if (!tagState.byCatId[labCatId]) labCatId = tagState.categories[0].id;
