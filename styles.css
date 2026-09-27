@@ -1731,6 +1731,34 @@ html.dark .istiaadha-letter.lit {
   outline: none;
 }
 .mem-audio-sel:focus { border-color: var(--accent); }
+
+/* Reader: once a recitation session starts, the control row docks to the
+   bottom (same treatment as .mem-controls on the memorize page) so play,
+   prev/next and the rep selects stay reachable at any scroll depth. It
+   stays docked after an end/error stop (restart = play) and undocks only
+   on reader re-render or navigation away. */
+body.rdr-audio-active .reader-audio-row {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  margin: 0;
+  max-width: none;
+  padding: 0.55rem 1.1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+body.rdr-audio-active .reader-audio-row .mem-audio-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.rdr-audio-active .app-main { padding-bottom: 7rem; }
+@media (max-width: 899px) {
+  body.rdr-audio-active .reader-audio-row > .mem-audio { flex: 1 1 auto; }
+}
 @media (min-width: 900px) {
   .mem-audio-row { flex-wrap: nowrap; justify-content: space-between; }
   .mem-audio-row > .mem-audio,

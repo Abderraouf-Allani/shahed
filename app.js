@@ -3206,6 +3206,7 @@
     document.title = s.nameAr + ' — شاهد من القرآن (' + RIWAYA[state.riwaya].name + ')';
 
     rdrSurah = n;
+    rdrAudio.docked = false;
     rdrStopAudio();
 
     var total = state.surahs.length;
@@ -3249,7 +3250,7 @@
     if (showTags) html += '<button type="button" class="pill" id="tagFilterToggle">تصفية الوسوم</button>';
     html += '</div>';
 
-    html += '<div class="mem-audio-row">';
+    html += '<div class="mem-audio-row reader-audio-row">';
     html += '<div class="mem-audio reader-audio">';
     html += '<button id="rdrPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
     html += '<button id="rdrPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
@@ -5221,7 +5222,7 @@
 
   var rdrSurah = 0;
   var rdrAudio = {
-    el: null, active: false, playing: false, idx: 0,
+    el: null, active: false, playing: false, docked: false, idx: 0,
     ayahRepLeft: 1, ayahRep: 1, ayahInf: false,
     pass: 1, surahRep: 1, surahInf: false, errorStreak: 0
   };
@@ -5293,6 +5294,7 @@
     rdrAudioEl();
     rdrReadPrefs();
     rdrAudio.active = true;
+    rdrAudio.docked = true;
     rdrAudio.idx = 0;
     rdrAudio.pass = 1;
     rdrAudio.ayahRepLeft = rdrAudio.ayahInf ? -1 : rdrAudio.ayahRep;
@@ -5396,6 +5398,7 @@
   }
 
   function rdrUpdateUI() {
+    document.body.classList.toggle('rdr-audio-active', !!rdrAudio.docked);
     var playBtn = document.getElementById('rdrPlayBtn');
     if (playBtn) {
       playBtn.innerHTML = rdrAudio.playing ? MEM_ICON_PAUSE : MEM_ICON_PLAY;
@@ -5819,7 +5822,7 @@
     window.scrollTo(0, 0);
     var route = parseHash();
     if (!route.memorize) memStopAudio();
-    if (!route.surah) rdrStopAudio();
+    if (!route.surah) { rdrAudio.docked = false; rdrStopAudio(); }
     if (route.tags && state.quran) {
       renderTags();
       if (!seedTagsLoaded) {
