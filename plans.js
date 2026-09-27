@@ -231,12 +231,13 @@
   function plansScheduleReview(plan, chunk) {
     chunk.done = plansDayKey(0);
     plan.pointer = (plan.pointer || 0) + 1;
-    if (plan && plan.type !== 'revise') {
+    if (plan && plan.type === 'memorize') {
       chunk.reviewIdx = 0;
       chunk.nextReview = plansDayKey(PLAN_REVIEW_STEPS[0]);
     } else {
-      /* Revise-type plans already run their own review cadence daily, so a
-         completed chunk must not re-enter the spaced «مراجعات اليوم» ladder. */
+      /* Only memorize plans join the spaced ladder: revise runs its own daily
+         cadence and read/listen are plain daily chunks, so a completed chunk
+         of theirs must not re-enter «مراجعات اليوم». */
       delete chunk.reviewIdx;
       delete chunk.nextReview;
     }
@@ -369,7 +370,7 @@
         }
       }
       chunks.forEach(function (c, ci) {
-        if (p.type === 'revise') return; /* revise plans sit outside the ladder */
+        if (p.type !== 'memorize') return; /* only memorize plans join the ladder */
         if (!plansIsReviewDue(c, today)) return;
         out.reviews.push({ plan: p, ci: ci, chunk: c, late: plansDaysBetween(c.nextReview, today) });
       });
@@ -769,15 +770,13 @@
     });
   }
 
-  /* Quality self-rating (good/bad) applies to memorize/revise reviews only.
-     Read/listen reviews complete with a single neutral button: no rating,
-     and never a struggle-plan entry. */
+  /* Spaced reviews render for memorize plans only, always with quality
+     self-rating (good/bad); read/listen/revise plans have no ladder rows. */
   function renderPlanReviews(p, planIdx) {
     var el = document.querySelector('.plan-reviews[data-reviews="' + planIdx + '"]');
     if (!el) return;
-    if (p.type === 'revise') { el.innerHTML = ''; return; }
+    if (p.type !== 'memorize') { el.innerHTML = ''; return; }
     var today = plansDayKey(0);
-    var rated = (p.type === 'memorize' || p.type === 'revise');
     var rows = '', dueCount = 0;
     (p.chunks || []).forEach(function (c, ci) {
       if (!plansIsReviewDue(c, today)) return;
@@ -789,10 +788,8 @@
         + '</span>'
         + '<a class="pill plan-review-go" href="' + plansDeepLink(p, c) + '" data-rgo="' + ci + '">' + plansGoLabel(p) + '</a>'
         + '<span class="plan-actions">'
-        + (rated
-          ? '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
-            + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
-          : '<button type="button" class="pill" data-review-plain="' + ci + '">راجعت</button>')
+        + '<button type="button" class="pill" data-review-good="' + ci + '">أتقنت ✓</button>'
+        + '<button type="button" class="pill" data-review-bad="' + ci + '">تعثرت</button>'
         + '</span>'
         + '</div>';
     });

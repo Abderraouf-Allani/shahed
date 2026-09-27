@@ -5751,10 +5751,12 @@
         var due = pl.created ? plansLocalAddDays(pl.created, pl.pointer || 0) : today;
         if (due < today) overdue++;
       }
-      chunks.forEach(function (c) {
-        if (!c.done || !c.nextReview || c.nextReview === 'done') return;
-        if (c.nextReview <= today) reviews++;
-      });
+      if (pl.type === 'memorize') {
+        chunks.forEach(function (c) {
+          if (!c.done || !c.nextReview || c.nextReview === 'done') return;
+          if (c.nextReview <= today) reviews++;
+        });
+      }
     });
     var st = null;
     try { st = JSON.parse(localStorage.getItem(LS.struggle) || 'null'); } catch (e) { st = null; }
