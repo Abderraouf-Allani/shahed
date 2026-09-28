@@ -1,11 +1,24 @@
 name: Build site and deploy to GitHub Pages
 
-# data/gharib.json is unvarying (source of truth, committed in git, never
-# published). Each build regenerates its static split resources:
-#   _site/data/gharib/index.json   key index (~16 KB, fetched once)
-#   _site/data/gharib/e/<n>.txt    one definition per key (~1 KB, fetched
-#                                  per matched word)
-# so clients transfer only what they request instead of the 2.6 MB JSON.
+# Architecture (see AGENTS.md / research notes):
+#
+#   data/gharib.json          source of truth — committed to git,
+#   (never published)         str->str, "" = section marker
+#             |
+#             | this workflow (validated split)
+#             v
+#   _site/data/gharib/index.json    all non-empty keys (~16 KB, fetched once)
+#   _site/data/gharib/e/<key>.txt   one definition per entry (raw key as
+#                                   filename; the client builds the URL with
+#                                   encodeURIComponent(key), the server decodes
+#                                   it back to the raw filename)
+#
+# Clients transfer ~17 KB per first lookup instead of the 2.6 MB JSON.
+#
+# Trigger: the whole repository IS the Pages site, so every push to main
+# must deploy (app.js/styles/data changes ship too). Deliberately no
+# `paths:` filter — restricting it to gharib.json would silently skip
+# ordinary site updates.
 
 on:
   push:
@@ -29,53 +42,98 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Assemble site (exclude dev-only files)
+      - name: Assemble site (allowlist — only these paths are publishable)
         run: |
           mkdir -p _site
-          rsync -a \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.gitignore' \
-            --exclude='.DS_Store' \
-            --exclude='AGENTS.md' \
-            --exclude='opencode.json' \
-            --exclude='rewrite_spec.py' \
-            --exclude='data/gharib.json' \
-            --exclude='data/quran-new.json' \
-            ./ _site/
+          rsync -a --exclude='.DS_Store' \
+            index.html app.js styles.css sw.js lab.js memhide.js plans.js \
+            manifest.webmanifest loader-star.html USER_GUIDE.md \
+            data/adib.json data/ahzab.json data/asarar.json data/dawaa.json \
+            data/hafs.json data/jam3.json data/numbering.json \
+            data/ontology.json data/quran.json data/surahs.json \
+            fonts icons lib \
+            _site/
 
-      - name: Generate static gharib dictionary resources
+      - name: Validate data/gharib.json and generate static resources
         run: |
           python3 <<'PY'
           import json
+          import sys
           from pathlib import Path
 
           SOURCE = Path("data/gharib.json")
           OUTPUT = Path("_site/data/gharib")
           ENTRIES = OUTPUT / "e"
 
-          with SOURCE.open("r", encoding="utf-8") as f:
-              data = json.load(f)
+          data = json.loads(SOURCE.read_text(encoding="utf-8"))
 
-          # Same filter the app applied to the full dictionary: keys with an
-          # empty definition are section markers, not entries.
+          if not isinstance(data, dict):
+              sys.exit("data/gharib.json: root must be a JSON object")
+
+          # Schema: string key -> string definition ("" = section marker).
+          for key, value in data.items():
+              if not isinstance(key, str):
+                  sys.exit(f"data/gharib.json: non-string key {key!r}")
+              if not isinstance(value, str):
+                  sys.exit(
+                      f"data/gharib.json: definition for {key!r} must be a "
+                      f"string, got {type(value).__name__}"
+                  )
+
+          # Empty definitions are section markers, not entries — same rule
+          # the application applies when loading the full dictionary.
           keys = [key for key, value in data.items() if value]
 
+          # Entry filenames are the raw keys, so they must be safe on disk.
+          for key in keys:
+              size = len(key.encode("utf-8"))
+              if size > 200:
+                  sys.exit(f"data/gharib.json: key too long for a filename ({size} B): {key!r}")
+              if "/" in key or "\n" in key or "\x00" in key or key in (".", ".."):
+                  sys.exit(f"data/gharib.json: key not filesystem-safe: {key!r}")
+
           ENTRIES.mkdir(parents=True, exist_ok=True)
+
           (OUTPUT / "index.json").write_text(
               json.dumps(keys, ensure_ascii=False, separators=(",", ":")),
               encoding="utf-8",
           )
-          for i, key in enumerate(keys):
-              (ENTRIES / f"{i}.txt").write_text(data[key], encoding="utf-8")
+          for key in keys:
+              (ENTRIES / f"{key}.txt").write_text(data[key], encoding="utf-8")
+
+          # Consistency: silent corruption must fail the deployment.
+          generated = list(ENTRIES.glob("*.txt"))
+          if len(generated) != len(keys):
+              sys.exit(f"generated {len(generated)} entry files, expected {len(keys)}")
+          empty = [path.name for path in generated if path.stat().st_size == 0]
+          if empty:
+              sys.exit(f"generated empty definition files: {empty}")
 
           index_size = (OUTPUT / "index.json").stat().st_size
           print(f"index.json: {index_size} bytes / {len(keys)} keys")
-          print(f"entries:    {len(keys)} files")
+          print(f"entries:    {len(generated)} files")
           PY
 
+      - name: Verify client URL mapping (encodeURIComponent -> server decode -> file)
+        run: |
+          node <<'JS'
+          const fs = require('fs');
+          const dir = '_site/data/gharib/e/';
+          const keys = JSON.parse(fs.readFileSync('_site/data/gharib/index.json', 'utf8'));
+          const missing = keys.filter(function (key) {
+            const url = 'data/gharib/e/' + encodeURIComponent(key) + '.txt';
+            const decoded = decodeURIComponent(url.split('/').pop());
+            return !fs.existsSync(dir + decoded);
+          });
+          if (missing.length) {
+            console.error('no file for ' + missing.length + ' key(s), e.g. ' + JSON.stringify(missing.slice(0, 3)));
+            process.exit(1);
+          }
+          console.log('URL mapping OK for ' + keys.length + ' keys');
+          JS
+
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
