@@ -1,0 +1,95 @@
+name: Build site and deploy to GitHub Pages
+
+# data/gharib.json is unvarying (source of truth, committed in git, never
+# published). Each build regenerates its static split resources:
+#   _site/data/gharib/index.json   key index (~16 KB, fetched once)
+#   _site/data/gharib/e/<n>.txt    one definition per key (~1 KB, fetched
+#                                  per matched word)
+# so clients transfer only what they request instead of the 2.6 MB JSON.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site and split the gharib dictionary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Assemble site (exclude dev-only files)
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='.DS_Store' \
+            --exclude='AGENTS.md' \
+            --exclude='opencode.json' \
+            --exclude='rewrite_spec.py' \
+            --exclude='data/gharib.json' \
+            --exclude='data/quran-new.json' \
+            ./ _site/
+
+      - name: Generate static gharib dictionary resources
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          SOURCE = Path("data/gharib.json")
+          OUTPUT = Path("_site/data/gharib")
+          ENTRIES = OUTPUT / "e"
+
+          with SOURCE.open("r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          # Same filter the app applied to the full dictionary: keys with an
+          # empty definition are section markers, not entries.
+          keys = [key for key, value in data.items() if value]
+
+          ENTRIES.mkdir(parents=True, exist_ok=True)
+          (OUTPUT / "index.json").write_text(
+              json.dumps(keys, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          for i, key in enumerate(keys):
+              (ENTRIES / f"{i}.txt").write_text(data[key], encoding="utf-8")
+
+          index_size = (OUTPUT / "index.json").stat().st_size
+          print(f"index.json: {index_size} bytes / {len(keys)} keys")
+          print(f"entries:    {len(keys)} files")
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./_site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
