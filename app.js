@@ -1813,6 +1813,12 @@
       + ' <a href="https://archive.org/details/20240429_20240429_1045" target="_blank" rel="noopener">الكتاب على أرشيف الإنترنت</a>.'
       + '</li>';
 
+    var gharibRows =
+      '<li>معجم <strong>«المفردات في غريب القرآن»</strong> (تأليف <strong>الراغب الأصفهاني</strong>)'
+      + ' — مُصدَّرٌ من <strong>المكتبة الشاملة</strong>:'
+      + ' <a href="https://shamela.ws" target="_blank" rel="noopener">shamela.ws</a>'
+      + ' — يُستخدم في نافذة المعجم (النقر على الكلمة) في صفحة القراءة.</li>';
+
     var projectRow =
       '<li>مستودع المشروع (الكود المصدري):'
       + ' <a href="https://github.com/Abderraouf-Allani/shahed" target="_blank" rel="noopener">github.com/Abderraouf-Allani/shahed</a>.</li>';
@@ -1831,6 +1837,7 @@
       +     licensesSection('المكتبات', libRows)
       +     licensesSection('مستودع المشروع', projectRow)
       +     licensesSection('مفردات اقتراح الوسوم', ontologyRows)
+      +     licensesSection('معجم غريب القرآن', gharibRows)
       +     licensesSection('أدوات البناء', toolRows)
       +     licensesSection('تقنية الحفظ', memRows)
       +   '</div>'
@@ -3647,6 +3654,7 @@
     html += '</div>';
     html += '<button type="button" class="pill" id="tagsToggle">' + (showTags ? 'إخفاء الوسوم' : 'إظهار الوسوم') + '</button>';
     if (showTags) html += '<button type="button" class="pill" id="tagFilterToggle">تصفية الوسوم</button>';
+    html += '<button type="button" class="pill rdr-start-pill" id="rdrStartPill" title="تشغيل التلاوة">' + MEM_ICON_PLAY + ' التلاوة</button>';
     html += '</div>';
 
     html += '<div class="mem-audio-row reader-audio-row">';
@@ -3654,6 +3662,7 @@
     html += '<button id="rdrPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
     html += '<button id="rdrPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="rdrNextBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية التالية">' + MEM_ICON_NEXT + '</button>';
+    html += '<button id="rdrStopBtn" class="pill mem-ctrl-btn mem-icon-btn" title="إيقاف التلاوة">' + MEM_ICON_STOP + '</button>';
     html += '<span id="rdrAudioStatus" class="mem-audio-status"></span>';
     html += '</div>';
     html += '<div class="mem-audio-opts reader-audio-opts">';
@@ -3697,6 +3706,8 @@
     document.getElementById('fsPlus').addEventListener('click', function () { changeFontSize(2); });
 
     document.getElementById('rdrPlayBtn').addEventListener('click', rdrTogglePlay);
+    document.getElementById('rdrStopBtn').addEventListener('click', rdrStopAudio);
+    document.getElementById('rdrStartPill').addEventListener('click', rdrStartAudio);
     document.getElementById('rdrPrevBtn').addEventListener('click', function () { rdrJumpTo(rdrAudio.idx - 1); });
     document.getElementById('rdrNextBtn').addEventListener('click', function () { rdrJumpTo(rdrAudio.idx + 1); });
     var rdrAyahRepSel = document.getElementById('rdrAyahRep');
@@ -4605,6 +4616,7 @@
   var MEM_ICON_DONE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   var MEM_ICON_PLAY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
   var MEM_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  var MEM_ICON_STOP = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>';
   var MEM_ICON_PREV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/></svg>';
   var MEM_ICON_NEXT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-9 6 9 6z"/></svg>';
   var MEM_ICON_AUDIO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.6 5.4a9 9 0 0 1 0 13.2"/></svg>';
@@ -5159,6 +5171,7 @@
     html += '<button id="memPrevBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية السابقة">' + MEM_ICON_PREV + '</button>';
     html += '<button id="memPlayBtn" class="pill mem-ctrl-btn mem-icon-btn mem-audio-play" title="تشغيل التلاوة">' + MEM_ICON_PLAY + '</button>';
     html += '<button id="memNextBtn" class="pill mem-ctrl-btn mem-icon-btn" title="الآية التالية">' + MEM_ICON_NEXT + '</button>';
+    html += '<button id="memStopBtn" class="pill mem-ctrl-btn mem-icon-btn" title="إيقاف التلاوة">' + MEM_ICON_STOP + '</button>';
     html += '<span id="memAudioStatus" class="mem-audio-status"></span>';
     html += '</div>';
     html += '<div class="mem-audio-opts">';
@@ -5293,15 +5306,14 @@
       memRequestAction('help');
     });
 
-    /* Audio controls are hidden by default; this toggles the row only —
-       playback state is untouched. */
+    /* Audio controls are hidden by default: this reveals them; hiding the
+       row again stops an active recitation (stop => row hidden). */
     var audioBtn = document.getElementById('memAudioBtn');
     var audioRow = document.querySelector('.mem-area .mem-audio-row');
     if (audioBtn && audioRow) {
       audioBtn.addEventListener('click', function () {
         var show = audioRow.style.display === 'none';
-        audioRow.style.display = show ? '' : 'none';
-        if (show) audioBtn.classList.add('on'); else audioBtn.classList.remove('on');
+        if (show) memSetAudioRowVisible(true); else memStopAudio();
       });
     }
 
@@ -5371,6 +5383,7 @@
     });
 
     document.getElementById('memPlayBtn').addEventListener('click', memTogglePlay);
+    document.getElementById('memStopBtn').addEventListener('click', memStopAudio);
 
     document.getElementById('memPrevBtn').addEventListener('click', function () {
       if (!memState || !memState.active || !memState.sections.length) return;
@@ -5473,6 +5486,7 @@
     if (!memFlatList().length) return;
     memAudioEl();
     memReadAudioPrefs();
+    memSetAudioRowVisible(true);
     memAudio.active = true;
     memAudio.idx = 0;
     memAudio.pass = 1;
@@ -5503,7 +5517,15 @@
       try { memAudio.el.removeAttribute('src'); } catch (e) {}
       try { memAudio.el.load(); } catch (e) {}
     }
+    memSetAudioRowVisible(false);
     memUpdateAudioUI();
+  }
+
+  function memSetAudioRowVisible(show) {
+    var row = document.querySelector('.mem-area .mem-audio-row');
+    if (row) row.style.display = show ? '' : 'none';
+    var btn = document.getElementById('memAudioBtn');
+    if (btn) { if (show) btn.classList.add('on'); else btn.classList.remove('on'); }
   }
 
   function memJumpTo(idx) {
@@ -5512,6 +5534,7 @@
     if (!len) return;
     memAudioEl();
     memReadAudioPrefs();
+    memSetAudioRowVisible(true);
     memAudio.active = true;
     memAudio.idx = Math.max(0, Math.min(len - 1, idx));
     memAudio.ayahRepLeft = memAudio.ayahInf ? -1 : memAudio.ayahRep;
@@ -5719,6 +5742,7 @@
   function rdrStopAudio() {
     rdrAudio.active = false;
     rdrAudio.playing = false;
+    rdrAudio.docked = false;
     if (rdrAudio.el) {
       try { rdrAudio.el.pause(); } catch (e) {}
       try { rdrAudio.el.removeAttribute('src'); } catch (e) {}
@@ -5733,6 +5757,7 @@
     rdrAudioEl();
     rdrReadPrefs();
     rdrAudio.active = true;
+    rdrAudio.docked = true;
     rdrAudio.idx = Math.max(0, Math.min(len - 1, idx));
     rdrAudio.ayahRepLeft = rdrAudio.ayahInf ? -1 : rdrAudio.ayahRep;
     rdrPlayAyah(rdrAudio.idx, false);

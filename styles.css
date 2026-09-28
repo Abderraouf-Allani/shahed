@@ -1704,6 +1704,11 @@ html.dark .istiaadha-letter.lit {
   align-items: center; justify-content: center;
   max-width: 820px; margin: 0 auto 0.5rem;
 }
+/* Recitation rows are hidden until a session is active: the memorize row
+   is revealed by its toggle (and by starting playback), the reader row by
+   the «التلاوة» pill — stopping (stop button, session end or error) hides
+   them again. */
+.reader-audio-row { display: none; }
 .mem-audio {
   display: flex; flex-wrap: wrap; gap: 0.5rem;
   align-items: center; justify-content: center;
@@ -1732,12 +1737,13 @@ html.dark .istiaadha-letter.lit {
 }
 .mem-audio-sel:focus { border-color: var(--accent); }
 
-/* Reader: once a recitation session starts, the control row docks to the
-   bottom (same treatment as .mem-controls on the memorize page) so play,
-   prev/next and the rep selects stay reachable at any scroll depth. It
-   stays docked after an end/error stop (restart = play) and undocks only
-   on reader re-render or navigation away. */
+/* Reader: while a recitation session is active the control row docks to
+   the bottom (same treatment as .mem-controls on the memorize page) so
+   play, stop, prev/next and the rep selects stay reachable at any scroll
+   depth. Any stop — explicit ⏹, end of session or error — hides it again;
+   the «التلاوة» pill in the options bar restarts it. */
 body.rdr-audio-active .reader-audio-row {
+  display: flex;
   position: fixed;
   left: 0;
   right: 0;
@@ -1756,6 +1762,7 @@ body.rdr-audio-active .reader-audio-row .mem-audio-status {
   text-overflow: ellipsis;
 }
 body.rdr-audio-active .app-main { padding-bottom: 7rem; }
+body.rdr-audio-active .rdr-start-pill { display: none; }
 @media (max-width: 899px) {
   body.rdr-audio-active .reader-audio-row > .mem-audio { flex: 1 1 auto; }
 }
