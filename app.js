@@ -2501,6 +2501,7 @@
     if (tagContextEditor && !tagContextEditor.contains(e.target)) closeTagContextEditor();
     if (ayahMenu && !ayahMenu.contains(e.target) && !e.target.closest('.ayah-num') &&
         !(ayahNumLongPressAt && Date.now() - ayahNumLongPressAt < 400)) closeAyahMenu();
+    if (gharibPop && !gharibPop.contains(e.target)) closeGharibPop();
     if (window.QuranLab) window.QuranLab.onDocClick(e.target);
   }, true);
 
@@ -2519,6 +2520,7 @@
       closeTagContextPopup();
       closeTagContextEditor();
       closeAyahMenu();
+      closeGharibPop();
       closeLabEdgePopup();
     }
   });
@@ -2883,6 +2885,403 @@
       if (end >= 1 && end <= cnt) out[end] = true;
     });
     return out;
+  }
+
+  /* ---------- gharib dictionary: tap a word in the reader ----------
+     Lookup tiers (same as the calibrated prototype): 1 direct (folded word
+     == folded head), 2 affix (proclitic/suffix strips, dictionary-validated),
+     3 root (pattern-template radicals, 0-skip preference, hollow expansion).
+     The popup shows the tier label so root-based matches stay honest. */
+
+  /* ==== gharib engine (pure) begin ==== */
+  var GH_DIAC = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0610-\u061A\u200C\u200D\u200E\u200F\u06DD\u06DE]/g;
+  var GH_TANWIN = /[\u064B-\u064D][\u0640\u0670]*\u0627?/g;
+
+  function ghStripDia(s) {
+    return s.replace(GH_TANWIN, '').replace(GH_DIAC, '');
+  }
+
+  function ghSeats(s, to) {
+    if (to === 'alef') {
+      return s.replace(/\u0622/g, '\u0627').replace(/\u0623/g, '\u0627')
+               .replace(/\u0625/g, '\u0627').replace(/\u0671/g, '\u0627');
+    }
+    return s.replace(/\u0622/g, '\u0621').replace(/\u0623/g, '\u0621')
+             .replace(/\u0625/g, '\u0621').replace(/\u0624/g, '\u0621')
+             .replace(/\u0626/g, '\u0621');
+  }
+
+  function ghFold(s) {
+    return s.replace(/\u0649/g, '\u064A').replace(/\u06D2/g, '\u064A');
+  }
+
+  function ghVariants(s) {
+    s = ghFold(ghStripDia(s));
+    var raw = [s, ghSeats(s, 'alef'), ghSeats(s, 'hamza'), ghSeats(ghSeats(s, 'alef'), 'hamza')];
+    var seen = {}, out = [];
+    raw.forEach(function (x) {
+      if (x && !seen[x]) { seen[x] = 1; out.push(x); }
+    });
+    return out;
+  }
+
+  var GH_TEMPLATES = [
+    ['ا','س','ت','1','2','ا','3'],   /* استفعال */
+    ['ا','س','ت','1','2','3'],       /* استفعل */
+    ['م','ا','س','ت','1','2','3'],   /* مستفعل  ->خرج */
+    ['ا','ن','1','2','ا','3'],       /* انفعال */
+    ['ا','ن','1','2','3'],           /* انفعل */
+    ['ا','1','ت','2','ا','3'],       /* افتعال */
+    ['ا','1','ت','2','3'],           /* افتعل */
+    ['ت','1','2','ي','3'],           /* تفعيل */
+    ['ت','1','ا','2','3'],           /* تفاعل */
+    ['ت','1','2','3'],               /* تفعّل */
+    ['ا','1','2','ا','3'],           /* إفعال */
+    ['م','1','ا','2','3','ة'],       /* مفاعلة */
+    ['م','1','2','و','3'],           /* مفعول */
+    ['1','ا','2','3'],               /* فاعل */
+    ['1','2','ا','3'],               /* فعال */
+    ['1','2','و','3'],               /* فعول */
+    ['1','2','ي','3'],               /* فعيل */
+    ['م','1','2','ا','3'],           /* مفعال */
+    ['م','1','2','3'],               /* مفعل */
+    ['م','1','2','ة'],               /* مفعلة */
+    ['1','2','ا','ة'],               /* فعالة */
+    ['ا','1','2','3'],               /* أفعل */
+    ['1','2','3','ي'],               /* فُعلى */
+    ['1','2','3']                    /* base */
+  ];
+
+  function ghRootFromTemplate(stem, tpl) {
+    var r = 0, skips = 0, radicals = [];
+    for (var i = 0; i < tpl.length; i++) {
+      if (r >= stem.length) return null;
+      var tok = tpl[i];
+      if (tok === '1' || tok === '2' || tok === '3' || tok === '4') {
+        radicals.push(stem.charAt(r)); r++;
+      } else if (stem.charAt(r) === tok) {
+        r++;
+      } else if ('\u0627\u0648\u064A\u0649\u0629'.indexOf(tok) !== -1) {
+        skips++;
+      } else {
+        return null;
+      }
+    }
+    if (r !== stem.length || radicals.length < 3) return null;
+    return [radicals.join(''), skips];
+  }
+
+  function ghExpandRoot(root) {
+    var base = [root];
+    for (var pos = 0; pos < root.length; pos++) {
+      var ch = root.charAt(pos), alts = null;
+      if (pos === 0 && (ch === '\u0627' || ch === '\u0621')) {
+        alts = ['\u0627', '\u0621'];
+      } else if (pos >= 1 && (ch === '\u0627' || ch === '\u0648' || ch === '\u064A')) {
+        alts = ['\u0627', '\u0648', '\u064A'];
+      }
+      if (!alts) continue;
+      var next = [], seen = {};
+      for (var b = 0; b < base.length; b++) {
+        for (var a = 0; a < alts.length; a++) {
+          var w = base[b].slice(0, pos) + alts[a] + base[b].slice(pos + 1);
+          if (!seen[w]) { seen[w] = 1; next.push(w); }
+        }
+      }
+      base = next;
+    }
+    return base;
+  }
+
+  var GH_R_PREFIX = ['وال','بال','كال','فال','لل','ال','و','ف','ي','ت','أ','ن'];
+  var GH_R_SUFFIX = ['وا','نا','تم','تن','ات','ون','ين','ان','ها','هم','هن','كما','كم','كن','ن','ت','ه','ك','ي','ة'];
+  var GH_PROCLITICS = ['وال','بال','كال','فال','لل','ال','و','ف','ب','ك','ل','ي','ت','أ','ن'];
+  var GH_SUFFIXES = ['هاهمنا','هنهم','هاهمن','ها','هم','هن','كما','كم','كن','نا','ون','ين','ات','ان','ه','ك','ي'];
+
+  function ghRootCandidates(word) {
+    var w = ghFold(word);
+    var surfSeen = {}, surfaces = [];
+    [w, ghSeats(w, 'alef'), ghSeats(w, 'hamza')].forEach(function (x) {
+      if (x && !surfSeen[x]) { surfSeen[x] = 1; surfaces.push(x); }
+    });
+    var stems = [], stemSeen = {}, stripped = {};
+    function pushStem(s) { if (!stemSeen[s]) { stemSeen[s] = 1; stems.push(s); } }
+    surfaces.forEach(function (ws) {
+      var pres = [];
+      GH_R_PREFIX.forEach(function (p) {
+        if (ws.indexOf(p) === 0 && ws.length - p.length >= 3) pres.push(ws.slice(p.length));
+      });
+      if (pres.length) stripped[ws] = 1;
+      var tails = pres.length ? pres : [ws];
+      tails.forEach(function (t) {
+        GH_R_SUFFIX.forEach(function (suf) {
+          if (t.length - suf.length >= 3 && t.slice(t.length - suf.length) === suf) {
+            var u = t.slice(0, t.length - suf.length);
+            if (u.slice(0, 2) !== '\u0627\u0644') pushStem(u);
+          }
+        });
+        pushStem(t);
+      });
+    });
+    stems = stems.filter(function (s) { return !stripped[s]; });
+    var best = [], fallback = [];
+    stems.forEach(function (s) {
+      var matched = false, hits = [];
+      GH_TEMPLATES.forEach(function (tpl) {
+        var got = ghRootFromTemplate(s, tpl);
+        if (got) hits.push({ sk: got[1], r: got[0], tpl: tpl });
+      });
+      if (s.charAt(0) === '\u0627') {
+        var hasAlef = false;
+        hits.forEach(function (h) { if (h.tpl[0] === '\u0627') hasAlef = true; });
+        if (hasAlef) hits = hits.filter(function (h) { return h.tpl[0] === '\u0627'; });
+      }
+      hits.forEach(function (h) { matched = true; best.push({ sk: h.sk, r: h.r }); });
+      if (!matched && (s.length === 3 || s.length === 4)) fallback.push(s);
+    });
+    var cands;
+    if (best.length) {
+      var minskip = best[0].sk;
+      best.forEach(function (b) { if (b.sk < minskip) minskip = b.sk; });
+      cands = best.filter(function (b) { return b.sk === minskip; })
+                  .map(function (b) { return b.r; });
+    } else {
+      cands = fallback;
+    }
+    var out = [], outSeen = {};
+    cands.forEach(function (c) {
+      ghExpandRoot(c).forEach(function (v) {
+        if (!outSeen[v]) { outSeen[v] = 1; out.push(v); }
+      });
+    });
+    return out;
+  }
+
+  function ghBuild(keys) {
+    var direct = {}, rootix = {};
+    keys.forEach(function (k) {
+      var bare = k.replace(/ \(\d+\)$/, '');
+      if (!bare || bare.indexOf(' ') !== -1) return;
+      ghVariants(bare).forEach(function (v) {
+        if (!direct[v]) direct[v] = [];
+        if (direct[v].indexOf(k) === -1) direct[v].push(k);
+      });
+      ghRootCandidates(ghStripDia(bare)).forEach(function (r) {
+        if (!rootix[r]) rootix[r] = [];
+        if (rootix[r].indexOf(k) === -1) rootix[r].push(k);
+      });
+    });
+    return { direct: direct, rootix: rootix };
+  }
+
+  function ghLookup(word, ix, want) {
+    want = want || 3;
+    var w0 = ghStripDia(word);
+    var res = { direct: [], affix: [], root: [], roots: [] };
+    var seen = {};
+    function add(keys, tag, cap) {
+      for (var i2 = 0; i2 < keys.length; i2++) {
+        var k = keys[i2];
+        if (seen[k]) continue;
+        seen[k] = 1;
+        res[tag].push(k);
+        if (cap && res[tag].length >= cap) return true;
+      }
+      return false;
+    }
+    var vs = ghVariants(w0), i, j;
+    for (i = 0; i < vs.length; i++) add(ix.direct[vs[i]] || [], 'direct');
+    if (res.direct.length) return res;
+    var restForms = [], rfSeen = {};
+    function addRest(r) { if (!rfSeen[r]) { rfSeen[r] = 1; restForms.push(r); } }
+    for (i = 0; i < vs.length; i++) {
+      var v = vs[i], rests = [];
+      for (j = 0; j < GH_PROCLITICS.length; j++) {
+        var p = GH_PROCLITICS[j];
+        if (v.indexOf(p) === 0 && v.length - p.length >= 2) rests.push(v.slice(p.length));
+      }
+      for (j = 0; j < GH_SUFFIXES.length; j++) {
+        var s = GH_SUFFIXES[j];
+        if (v.length - s.length >= 3 && v.slice(v.length - s.length) === s) rests.push(v.slice(0, v.length - s.length));
+      }
+      for (j = 0; j < rests.length; j++) {
+        var rr = rests[j];
+        if (rr.slice(0, 2) !== '\u0627\u0644') addRest(rr);
+        add(ix.direct[rr] || [], 'affix', want);
+      }
+      if (res.affix.length) return res;
+    }
+    for (i = 0; i < vs.length; i++) {
+      var v2 = vs[i];
+      for (j = 0; j < GH_PROCLITICS.length; j++) {
+        var p2 = GH_PROCLITICS[j];
+        if (v2.indexOf(p2) !== 0 || v2.length - p2.length < 2) continue;
+        var rest = v2.slice(p2.length);
+        for (var k2 = 0; k2 < GH_SUFFIXES.length; k2++) {
+          var sfx = GH_SUFFIXES[k2];
+          if (rest.length - sfx.length >= 3 && rest.slice(rest.length - sfx.length) === sfx) {
+            var r3 = rest.slice(0, rest.length - sfx.length);
+            if (r3.slice(0, 2) !== '\u0627\u0644') addRest(r3);
+            add(ix.direct[r3] || [], 'affix', want);
+          }
+        }
+        if (res.affix.length) break;
+      }
+      if (res.affix.length) return res;
+    }
+    var wf = ghFold(w0);
+    var pool = [w0].concat(restForms);
+    for (i = 0; i < pool.length; i++) {
+      var cands = ghRootCandidates(pool[i]);
+      for (j = 0; j < cands.length && res.root.length < want; j++) {
+        var r4 = cands[j];
+        var keys4 = ix.rootix[r4];
+        if (!keys4 || !keys4.length) continue;
+        if (res.roots.indexOf(r4) === -1) res.roots.push(r4);
+        var sorted = keys4.slice().sort(function (a, b) {
+          var fa = ghFold(a), fb = ghFold(b);
+          var sa = (fa.indexOf(wf) !== -1 || wf.indexOf(fa) !== -1) ? 0 : 1;
+          var sb = (fb.indexOf(wf) !== -1 || wf.indexOf(fb) !== -1) ? 0 : 1;
+          return sa - sb;
+        });
+        add(sorted.slice(0, want), 'root', want);
+      }
+      if (res.root.length) break;
+    }
+    return res;
+  }
+  /* ==== gharib engine (pure) end ==== */
+
+  /* Popup UI: first click lazy-fetches data/gharib.json (2.6 MB, runtime
+     cache-first) and builds the indexes once. */
+  var gharibPop = null, gharibIX = null, gharibData = null, gharibPromise = null;
+
+  function ensureGharib() {
+    if (gharibPromise) return gharibPromise;
+    gharibPromise = fetch('data/gharib.json').then(function (r) {
+      if (!r.ok) throw new Error('gharib http ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      gharibData = j;
+      gharibIX = ghBuild(Object.keys(j).filter(function (k) { return !!j[k]; }));
+      return j;
+    }, function (e) {
+      gharibPromise = null;
+      throw e;
+    });
+    return gharibPromise;
+  }
+
+  function closeGharibPop() {
+    if (gharibPop && gharibPop.parentNode) gharibPop.parentNode.removeChild(gharibPop);
+    gharibPop = null;
+  }
+
+  function positionGharibPop(pop, x, y) {
+    var vw = document.documentElement.clientWidth;
+    var mh = pop.offsetHeight, mw = pop.offsetWidth;
+    var top = y + window.scrollY + 14;
+    if (top > window.scrollY + window.innerHeight - mh - 8) top = y + window.scrollY - mh - 14;
+    if (top < window.scrollY + 8) top = window.scrollY + 8;
+    var left = x + window.scrollX - 16;
+    if (left > vw - mw - 8) left = vw - mw - 8;
+    if (left < 6) left = 6;
+    pop.style.top = Math.round(top) + 'px';
+    pop.style.left = Math.round(left) + 'px';
+  }
+
+  var GH_WORD_CH = /[\u0621-\u063A\u0641-\u064A\u066E-\u06D5\u06D6-\u06ED\u06FA-\u06FF\u064B-\u065F\u0670\u0640\u0610-\u061A\u08F0-\u08FF]/;
+
+  function gharibWordAtPoint(x, y) {
+    var node = null, offset = 0;
+    if (document.caretPositionFromPoint) {
+      var cp = document.caretPositionFromPoint(x, y);
+      if (cp) { node = cp.offsetNode; offset = cp.offset; }
+    }
+    if ((!node || node.nodeType !== 3) && document.caretRangeFromPoint) {
+      var cr = document.caretRangeFromPoint(x, y);
+      if (cr) { node = cr.startContainer; offset = cr.startOffset; }
+    }
+    if (!node || node.nodeType !== 3) return null;
+    var anc = node.parentNode;
+    while (anc && !(anc.classList && anc.classList.contains('verse-text'))) anc = anc.parentNode;
+    if (!anc) return null;
+    var t = node.nodeValue, i = Math.min(offset, t.length);
+    if (!(i < t.length && GH_WORD_CH.test(t.charAt(i)))) {
+      if (i > 0 && GH_WORD_CH.test(t.charAt(i - 1))) i--;
+      else return null;
+    }
+    var s2 = i, e2 = i;
+    while (s2 > 0 && GH_WORD_CH.test(t.charAt(s2 - 1))) s2--;
+    while (e2 < t.length && GH_WORD_CH.test(t.charAt(e2))) e2++;
+    if (e2 - s2 < 2) return null;
+    return t.slice(s2, e2);
+  }
+
+  function openGharibPop(word, x, y) {
+    closeGharibPop();
+    var pop = document.createElement('div');
+    pop.className = 'gharib-pop';
+    pop.innerHTML =
+      '<div class="gharib-head">'
+      + '<span class="gharib-word">' + esc(word) + '</span>'
+      + '<span class="gharib-tier"></span>'
+      + '<button type="button" class="gharib-close" aria-label="إغلاق">&times;</button>'
+      + '</div>'
+      + '<div class="gharib-body"><div class="gharib-loading">جارٍ تحميل المعجم…</div></div>';
+    document.body.appendChild(pop);
+    gharibPop = pop;
+    pop.querySelector('.gharib-close').addEventListener('click', closeGharibPop);
+    positionGharibPop(pop, x, y);
+    ensureGharib().then(function () {
+      if (gharibPop !== pop) return;
+      gharibRender(pop, word);
+      positionGharibPop(pop, x, y);
+    }, function () {
+      if (gharibPop !== pop) return;
+      pop.querySelector('.gharib-body').innerHTML =
+        '<div class="gharib-empty">تعذّر تحميل المعجم — يُحمَّل مرة واحدة ثم يعمل دون اتصال.</div>';
+      positionGharibPop(pop, x, y);
+    });
+  }
+
+  function gharibRender(pop, word) {
+    var res = ghLookup(word, gharibIX, 3);
+    var keys = res.direct.length ? res.direct : (res.affix.length ? res.affix : res.root);
+    var tierEl = pop.querySelector('.gharib-tier');
+    if (res.direct.length) {
+      tierEl.textContent = 'مطابقة';
+    } else if (res.affix.length) {
+      tierEl.textContent = 'بعد الزوائد';
+    } else if (res.root.length && res.roots.length) {
+      tierEl.textContent = 'على الجذر (' + res.roots[0].split('').join(' ') + ')';
+    } else {
+      tierEl.textContent = '';
+    }
+    var body = pop.querySelector('.gharib-body');
+    if (!keys.length) {
+      body.innerHTML = '<div class="gharib-empty">هذه الكلمة غير واردة في المعجم.</div>';
+      return;
+    }
+    var html = '';
+    keys.forEach(function (k) {
+      var def = gharibData[k] || '';
+      html += '<div class="gharib-entry"><div class="gharib-key">' + esc(k) + '</div>'
+        + (def ? '<div class="gharib-def">' + esc(def) + '</div>' : '') + '</div>';
+    });
+    body.innerHTML = html;
+  }
+
+  function gharibOnReaderClick(e) {
+    var t = e.target;
+    if (t.closest && (t.closest('.ayah-num') || t.closest('.tag-btn') ||
+        t.closest('.verse-tag-chip') || t.closest('.ahzab-mark') || t.closest('.gharib-pop'))) return;
+    var sel = '';
+    try { sel = String(window.getSelection()); } catch (se) {}
+    if (sel) return;
+    var word = gharibWordAtPoint(e.clientX, e.clientY);
+    if (!word) return;
+    openGharibPop(word, e.clientX, e.clientY);
   }
 
   /* ---------- ahzab division markers (reader) ---------- */
@@ -3409,6 +3808,8 @@
           }
         }
       }
+      /* Gharib: a plain tap on a verse word opens its dictionary entry. */
+      if (!state.surahQuery) gharibOnReaderClick(e);
     });
 
     var ayahSearch = document.getElementById('surahAyahSearch');
@@ -5803,6 +6204,7 @@
 
   function render() {
     closeTagMenu();
+    closeGharibPop();
     closeAyahMenu();
     closeTagFilterMenu();
     closeTagContextPopup();

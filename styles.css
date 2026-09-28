@@ -2105,3 +2105,70 @@ a.plans-alert-link:hover { filter: brightness(0.98); }
   gap: 0.5rem;
   margin-top: 1rem;
 }
+
+
+/* ---------- gharib dictionary popup (word tap in the reader) ---------- */
+.gharib-pop {
+  position: absolute;
+  z-index: 1300;
+  width: min(92vw, 430px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  font-family: "Geeza Pro", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 0.95rem;
+}
+.gharib-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.gharib-word {
+  font-size: 1.15rem;
+  color: var(--text);
+  font-weight: 600;
+}
+.gharib-tier {
+  margin-inline-start: auto;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.gharib-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.gharib-close:hover { background: var(--border); color: var(--text); }
+.gharib-body {
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding: 0.7rem 0.8rem;
+}
+.gharib-entry + .gharib-entry { margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px dashed var(--border); }
+.gharib-key {
+  color: var(--gold);
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
+}
+.gharib-def { color: var(--text); line-height: 1.75; }
+.gharib-loading, .gharib-empty { color: var(--text-muted); }
+html.dark .gharib-key { color: #d8b45f; }
