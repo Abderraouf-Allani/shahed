@@ -57,6 +57,7 @@
   var LS = {
     theme: 'qaloon_theme',
     fontSize: 'qaloon_fontsize',
+    gharibFs: 'qaloon_gharib_fontsize',
     last: 'qaloon_last',
     lastAyah: 'qaloon_last_ayah',
     showTags: 'qaloon_show_tags_v2',
@@ -3232,6 +3233,20 @@
     pop.style.left = Math.round(left) + 'px';
   }
 
+  var GH_FS_MIN = 12, GH_FS_MAX = 30, GH_FS_STEP = 2;
+
+  function gharibApplyFs(body) {
+    var saved = parseInt(localStorage.getItem(LS.gharibFs), 10);
+    if (saved) body.style.fontSize = Math.min(GH_FS_MAX, Math.max(GH_FS_MIN, saved)) + 'px';
+  }
+
+  function gharibAdjustFs(body, delta) {
+    var cur = parseInt(window.getComputedStyle(body).fontSize, 10) || 15;
+    var next = Math.min(GH_FS_MAX, Math.max(GH_FS_MIN, cur + delta * GH_FS_STEP));
+    body.style.fontSize = next + 'px';
+    localStorage.setItem(LS.gharibFs, next);
+  }
+
   var GH_WORD_CH = /[\u0621-\u063A\u0641-\u064A\u066E-\u06D5\u06D6-\u06ED\u06FA-\u06FF\u064B-\u065F\u0670\u0640\u0610-\u061A\u08F0-\u08FF]/;
 
   function gharibWordAtPoint(x, y) {
@@ -3268,12 +3283,25 @@
       '<div class="gharib-head">'
       + '<span class="gharib-word">' + esc(word) + '</span>'
       + '<span class="gharib-tier"></span>'
+      + '<button type="button" class="gharib-fs" data-fs="-1" aria-label="تصغير خط المعجم" title="تصغير">&minus;</button>'
+      + '<button type="button" class="gharib-fs" data-fs="1" aria-label="تكبير خط المعجم" title="تكبير">+</button>'
       + '<button type="button" class="gharib-close" aria-label="إغلاق">&times;</button>'
       + '</div>'
       + '<div class="gharib-body"><div class="gharib-loading">جارٍ تحميل المعجم…</div></div>';
     document.body.appendChild(pop);
     gharibPop = pop;
     pop.querySelector('.gharib-close').addEventListener('click', closeGharibPop);
+    var ghBody = pop.querySelector('.gharib-body');
+    gharibApplyFs(ghBody);
+    var fsBtns = pop.querySelectorAll('.gharib-fs');
+    for (var fi = 0; fi < fsBtns.length; fi++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          gharibAdjustFs(ghBody, parseInt(btn.getAttribute('data-fs'), 10) || 0);
+          positionGharibPop(pop, x, y);
+        });
+      })(fsBtns[fi]);
+    }
     positionGharibPop(pop, x, y);
     ensureGharib().then(function () {
       if (gharibPop !== pop) return;

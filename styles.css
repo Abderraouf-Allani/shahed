@@ -2165,6 +2165,22 @@ a.plans-alert-link:hover { filter: brightness(0.98); }
   cursor: pointer;
 }
 .gharib-close:hover { background: var(--border); color: var(--text); }
+.gharib-fs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.gharib-fs:hover { background: var(--border); color: var(--text); }
 .gharib-body {
   max-height: min(52vh, 420px);
   overflow-y: auto;
