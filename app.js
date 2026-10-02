@@ -3329,7 +3329,7 @@
     }
     var body = pop.querySelector('.gharib-body');
     if (!keys.length) {
-      body.innerHTML = '<div class="gharib-empty">هذه الكلمة غير واردة في المعجم.</div>';
+      body.innerHTML = '<div class="gharib-empty">هذه الكلمة غير واردة في المفردات.</div>';
       positionGharibPop(pop, x, y);
       return;
     }
