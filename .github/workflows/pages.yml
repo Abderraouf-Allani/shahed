@@ -48,11 +48,36 @@ jobs:
           rsync -a --exclude='.DS_Store' \
             index.html app.js styles.css sw.js lab.js memhide.js plans.js \
             manifest.webmanifest loader-star.html USER_GUIDE.md \
+            fonts icons lib \
+            _site/
+          # data/*.json are FILE sources: rsync copies a file source into the
+          # destination directory by basename, dropping its data/ prefix — so
+          # they must target _site/data/ explicitly (this bug shipped every
+          # allowlisted data file at the site root; /data/*.json 404'd).
+          mkdir -p _site/data
+          rsync -a --exclude='.DS_Store' \
             data/adib.json data/ahzab.json data/asarar.json data/dawaa.json \
             data/hafs.json data/jam3.json data/numbering.json \
             data/ontology.json data/quran.json data/surahs.json \
-            fonts icons lib \
-            _site/
+            _site/data/
+
+      - name: Verify assembled site (every allowlisted path landed, no leaks)
+        run: |
+          missing=0
+          for f in index.html app.js styles.css sw.js lab.js memhide.js plans.js \
+                   manifest.webmanifest loader-star.html USER_GUIDE.md \
+                   data/adib.json data/ahzab.json data/asarar.json data/dawaa.json \
+                   data/hafs.json data/jam3.json data/numbering.json \
+                   data/ontology.json data/quran.json data/surahs.json \
+                   fonts icons lib; do
+            if [ -d "_site/$f" ]; then continue; fi
+            if [ ! -s "_site/$f" ]; then echo "MISSING _site/$f"; missing=1; fi
+          done
+          for f in data/gharib.json data/quran-new.json AGENTS.md; do
+            if [ -e "_site/$f" ]; then echo "LEAK _site/$f"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "allowlist OK: $(find _site -type f | wc -l) files"
 
       - name: Validate data/gharib.json and generate static resources
         run: |
