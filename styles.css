@@ -75,6 +75,15 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
+  /* scroll-direction auto-hide (app.js): transform/visibility only — the
+     box stays in layout, so offsetHeight (→ --header-h, .verse
+     scroll-margin, scrollspy thresholds) never changes while tucked away. */
+  transition: transform 0.25s ease, visibility 0s 0s;
+}
+.app-header.header-hidden {
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0s 0.25s;
 }
 
 .header-inner {
@@ -697,7 +706,12 @@ html[data-riwaya="hafs"] .mushaf-text {
 
 /* ---------- tagging ---------- */
 
-.verse { position: relative; scroll-margin-top: 70px; }
+.verse {
+  position: relative;
+  /* must clear the sticky .app-header (measured into --header-h at boot,
+     on resize and before every deep-link scroll) */
+  scroll-margin-top: calc(var(--header-h, 76px) + 10px);
+}
 
 .tag-btn {
   display: inline-flex;

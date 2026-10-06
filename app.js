@@ -2026,16 +2026,76 @@
   /* The topmost ayah with any part currently in the viewport below the
      sticky header — the "first ayah in the screen", used to keep the URL's
      ayah in sync with the reading position via history.replaceState. */
+  /* The sticky header's height varies by viewport, so it is mirrored into
+     the --header-h custom property: .verse scroll-margin-top uses it and
+     deep-linked ayahs always land below the header, never under it. */
+  function syncHeaderHVar() {
+    var h = document.querySelector('.app-header');
+    if (h) document.documentElement.style.setProperty('--header-h', h.offsetHeight + 'px');
+  }
+  window.addEventListener('resize', syncHeaderHVar);
+  syncHeaderHVar();
+
+  /* Scroll-direction auto-hide: scrolling down tucks the header away,
+     scrolling up brings it back. It animates transform + visibility only
+     (never display:none) so offsetHeight — feeding --header-h, .verse
+     scroll-margin and the scrollspy — stays constant. Programmatic scrolls
+     (deep-link placement, route jumps, search exit) hold a lock so they are
+     never mistaken for a user gesture; a real wheel/touch/arrow gesture
+     releases the lock right away. */
+  var headerAutohideLock = 0;
+  function lockHeaderAutohide() { headerAutohideLock = Date.now() + 3000; }
+  function showHeader() {
+    var h = document.querySelector('.app-header');
+    if (h) h.classList.remove('header-hidden');
+  }
+  var headerLastY = window.scrollY;
+  window.addEventListener('scroll', function () {
+    var h = document.querySelector('.app-header');
+    if (!h) return;
+    var y = window.scrollY;
+    var dy = y - headerLastY;
+    headerLastY = y;
+    if (Math.abs(dy) < 5 || Date.now() < headerAutohideLock) return;
+    if (y < 60) { h.classList.remove('header-hidden'); return; }
+    if (dy > 0) h.classList.add('header-hidden');
+    else h.classList.remove('header-hidden');
+  }, { passive: true });
+
+  /* Set when the reader scrolls by their own hand; a deep-link re-anchor
+     then backs off so it never fights real user input. Synthetic scrolls
+     (scrollIntoView / fonts swapping) do not fire wheel/touchmove. */
+  var deepLinkManualScroll = false;
+  function noteDeepLinkManualScroll() {
+    deepLinkManualScroll = true;
+    headerAutohideLock = 0;
+  }
+  window.addEventListener('wheel', noteDeepLinkManualScroll, { passive: true });
+  window.addEventListener('touchmove', noteDeepLinkManualScroll, { passive: true });
+  window.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'PageDown' || e.key === 'PageUp' ||
+        e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      noteDeepLinkManualScroll();
+    }
+  });
+
   function firstScreenAyah() {
     var header = document.querySelector('.app-header');
     var vt = header ? header.offsetHeight : 0;
     var vh = window.innerHeight;
+    var firstBelow = null;
+    var firstVisible = null;
     var verses = document.querySelectorAll('#mushaf .verse');
     for (var i = 0; i < verses.length; i++) {
       var r = verses[i].getBoundingClientRect();
-      if (r.height > 0 && r.bottom > vt && r.top < vh) return +verses[i].dataset.ayah;
+      if (r.height === 0 || r.bottom <= vt) continue;
+      if (firstVisible === null) firstVisible = +verses[i].dataset.ayah;
+      /* Prefer an ayah that starts below the header: the tail of the
+         previous ayah pokes below it while a deep-linked target sits at
+         its scroll-margin, and that sliver must not own the URL. */
+      if (firstBelow === null && r.top >= vt) firstBelow = +verses[i].dataset.ayah;
     }
-    return null;
+    return firstBelow !== null ? firstBelow : firstVisible;
   }
 
   function updateHeaderReading() {
@@ -3882,7 +3942,10 @@
               if (si) si.value = '';
               applySurahAyahFilter();
               var el = document.getElementById('ayah-' + n + '-' + ayah);
-              if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              if (el) {
+                lockHeaderAutohide();
+                el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              }
             } else {
               location.hash = target;
             }
@@ -3910,9 +3973,28 @@
     if (targetAyah && targetAyah >= 1 && targetAyah <= q.verses.length) {
       var el = document.getElementById('ayah-' + n + '-' + targetAyah);
       if (el) {
-        el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        var placeAyah = function (smooth) {
+          syncHeaderHVar();
+          lockHeaderAutohide();
+          try { el.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' }); }
+          catch (e2) { el.scrollIntoView(); }
+        };
+        deepLinkManualScroll = false;
+        placeAyah(true);
         el.classList.add('flash');
         setTimeout(function () { el.classList.remove('flash'); }, 2200);
+        /* font-display:swap rewraps the mushaf after the first scroll (the
+           target slid under the sticky header on cold loads) — re-anchor
+           once fonts and late layout settle, unless the user took over. */
+        var settleAyah = function () {
+          if (deepLinkManualScroll) return;
+          if (document.getElementById('ayah-' + n + '-' + targetAyah) !== el) return;
+          placeAyah(false);
+        };
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(function () { setTimeout(settleAyah, 0); });
+        }
+        setTimeout(settleAyah, 800);
       }
     } else {
       window.scrollTo(0, 0);
@@ -5682,6 +5764,7 @@
       || mushaf.querySelector('#ayah-' + item.surah + '-' + item.ayah);
     if (verse) {
       verse.classList.add('mem-playing');
+      lockHeaderAutohide();
       try { verse.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { verse.scrollIntoView(); }
     }
   }
@@ -5876,6 +5959,7 @@
     var verse = mushaf.querySelector('.verse[data-ayah="' + (rdrAudio.idx + 1) + '"]');
     if (verse) {
       verse.classList.add('rdr-playing');
+      lockHeaderAutohide();
       try { verse.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { verse.scrollIntoView(); }
     }
   }
@@ -6316,6 +6400,7 @@
       var el = document.getElementById(id);
       if (el) el.remove();
     });
+    showHeader();
     window.scrollTo(0, 0);
     var route = parseHash();
     if (!route.memorize) memStopAudio();
