@@ -2023,9 +2023,7 @@
     return firstFully !== null ? firstFully : firstVisible;
   }
 
-  /* The topmost ayah with any part currently in the viewport below the
-     sticky header — the "first ayah in the screen", used to keep the URL's
-     ayah in sync with the reading position via history.replaceState. */
+  /* ---------- header & scroll arbitration ---------- */
   /* The sticky header's height varies by viewport, so it is mirrored into
      the --header-h custom property: .verse scroll-margin-top uses it and
      deep-linked ayahs always land below the header, never under it. */
@@ -2036,39 +2034,28 @@
   window.addEventListener('resize', syncHeaderHVar);
   syncHeaderHVar();
 
-  /* Scroll-direction auto-hide: scrolling down tucks the header away,
-     scrolling up brings it back. It animates transform + visibility only
-     (never display:none) so offsetHeight — feeding --header-h, .verse
-     scroll-margin and the scrollspy — stays constant. Programmatic scrolls
-     (deep-link placement, route jumps, search exit) hold a lock so they are
-     never mistaken for a user gesture; a real wheel/touch/arrow gesture
-     releases the lock right away. */
-  var headerAutohideLock = 0;
-  function lockHeaderAutohide() { headerAutohideLock = Date.now() + 3000; }
-  function showHeader() {
-    var h = document.querySelector('.app-header');
-    if (h) h.classList.remove('header-hidden');
-  }
-  var headerLastY = window.scrollY;
-  window.addEventListener('scroll', function () {
-    var h = document.querySelector('.app-header');
-    if (!h) return;
-    var y = window.scrollY;
-    var dy = y - headerLastY;
-    headerLastY = y;
-    if (Math.abs(dy) < 5 || Date.now() < headerAutohideLock) return;
-    if (y < 60) { h.classList.remove('header-hidden'); return; }
-    if (dy > 0) h.classList.add('header-hidden');
-    else h.classList.remove('header-hidden');
-  }, { passive: true });
+  /* Three flags arbitrate the reader's scroll stream:
 
-  /* Set when the reader scrolls by their own hand; a deep-link re-anchor
-     then backs off so it never fights real user input. Synthetic scrolls
-     (scrollIntoView / fonts swapping) do not fire wheel/touchmove. */
+     deepLinkManualScroll — set by a real wheel/touch/arrow gesture; the
+       deep-link re-anchor then backs off so it never fights user input.
+       Synthetic scrolls (scrollIntoView / fonts swapping) fire none of
+       those events, so they leave it false.
+     autohideLockUntil — programmatic scrolls (deep-link placement, route
+       jumps, audio follow) hold this so they are never mistaken for a
+       gesture; a real gesture releases it right away.
+     spyHoldUntil — deep-link placement and search-exit jumps arm this so
+       the scrollspy keeps the requested ayah in the URL until it expires:
+       the verses are inline spans in one continuous line flow, so an
+       adjacent ayah can start just below the header the moment landing
+       finishes and would otherwise steal the URL immediately. Reading-
+       position persistence is never held — only the URL sync. */
   var deepLinkManualScroll = false;
+  var autohideLockUntil = 0;
+  var spyHoldUntil = 0;
+
   function noteDeepLinkManualScroll() {
     deepLinkManualScroll = true;
-    headerAutohideLock = 0;
+    autohideLockUntil = 0;
   }
   window.addEventListener('wheel', noteDeepLinkManualScroll, { passive: true });
   window.addEventListener('touchmove', noteDeepLinkManualScroll, { passive: true });
@@ -2079,24 +2066,42 @@
     }
   });
 
-  function firstScreenAyah() {
-    var header = document.querySelector('.app-header');
-    var vt = header ? header.offsetHeight : 0;
-    var vh = window.innerHeight;
-    var firstBelow = null;
-    var firstVisible = null;
-    var verses = document.querySelectorAll('#mushaf .verse');
-    for (var i = 0; i < verses.length; i++) {
-      var r = verses[i].getBoundingClientRect();
-      if (r.height === 0 || r.bottom <= vt) continue;
-      if (firstVisible === null) firstVisible = +verses[i].dataset.ayah;
-      /* Prefer an ayah that starts below the header: the tail of the
-         previous ayah pokes below it while a deep-linked target sits at
-         its scroll-margin, and that sliver must not own the URL. */
-      if (firstBelow === null && r.top >= vt) firstBelow = +verses[i].dataset.ayah;
-    }
-    return firstBelow !== null ? firstBelow : firstVisible;
+  function lockHeaderAutohide() { autohideLockUntil = Date.now() + 3000; }
+  function holdSpyForTarget() { spyHoldUntil = Date.now() + 1500; }
+  function showHeader() {
+    var h = document.querySelector('.app-header');
+    if (h) h.classList.remove('header-hidden');
   }
+
+  /* Scroll-direction auto-hide: scrolling down tucks the header away,
+     scrolling up brings it back. It animates transform + visibility only
+     (never display:none) so offsetHeight — feeding --header-h, .verse
+     scroll-margin and the scrollspy — stays constant. Keyboard scrolling
+     arrives as a stream of 1-4px scroll events (Chrome animates arrow-key
+     scrolls), which a per-event dead zone would swallow entirely while a
+     mouse wheel passes it in one shot, so direction is judged against an
+     anchor that only moves when a decision is taken: the small deltas
+     accumulate into one visible step. */
+  var HEADER_SCROLL_STEP = 30;
+  var headerAnchorY = window.scrollY;
+  window.addEventListener('scroll', function () {
+    var h = document.querySelector('.app-header');
+    if (!h) return;
+    var y = window.scrollY;
+    if (Date.now() < autohideLockUntil || y < 60) {
+      headerAnchorY = y;
+      if (y < 60) h.classList.remove('header-hidden');
+      return;
+    }
+    var dy = y - headerAnchorY;
+    if (dy >= HEADER_SCROLL_STEP) {
+      headerAnchorY = y;
+      h.classList.add('header-hidden');
+    } else if (dy <= -HEADER_SCROLL_STEP) {
+      headerAnchorY = y;
+      h.classList.remove('header-hidden');
+    }
+  }, { passive: true });
 
   function updateHeaderReading() {
     var el = document.getElementById('headerReading');
@@ -2593,14 +2598,29 @@
     }
   });
 
+  /* The topmost ayah with any part currently in the viewport below the
+     sticky header — the "first ayah in the screen", used to keep the URL's
+     ayah in sync with the reading position via history.replaceState. */
+  function firstScreenAyah() {
+    var header = document.querySelector('.app-header');
+    var vt = header ? header.offsetHeight : 0;
+    var vh = window.innerHeight;
+    var firstBelow = null;
+    var firstVisible = null;
+    var verses = document.querySelectorAll('#mushaf .verse');
+    for (var i = 0; i < verses.length; i++) {
+      var r = verses[i].getBoundingClientRect();
+      if (r.height === 0 || r.bottom <= vt) continue;
+      if (firstVisible === null) firstVisible = +verses[i].dataset.ayah;
+      /* Prefer an ayah that starts below the header: the tail of the
+         previous ayah pokes below it while a deep-linked target sits at
+         its scroll-margin, and that sliver must not own the URL. */
+      if (firstBelow === null && r.top >= vt) firstBelow = +verses[i].dataset.ayah;
+    }
+    return firstBelow !== null ? firstBelow : firstVisible;
+  }
+
   var readScrollTimer = null;
-  /* Deep-link placement and search-exit jumps arm a short hold so the
-     scrollspy keeps the requested ayah in the URL until the user's own
-     scroll: the verses are inline spans in one continuous line flow, so
-     an adjacent ayah can start just below the header the moment landing
-     finishes and would otherwise steal the URL immediately. Reading-
-     position persistence below is never held — only the URL sync. */
-  var spyHoldUntil = 0;
   window.addEventListener('scroll', function () {
     var route = parseHash();
     if (!route.surah || !document.getElementById('mushaf')) return;
@@ -3952,7 +3972,7 @@
               var el = document.getElementById('ayah-' + n + '-' + ayah);
               if (el) {
                 lockHeaderAutohide();
-                spyHoldUntil = Date.now() + 1500;
+                holdSpyForTarget();
                 el.scrollIntoView({ block: 'start', behavior: 'smooth' });
               }
             } else {
@@ -3985,7 +4005,7 @@
         var placeAyah = function (smooth) {
           syncHeaderHVar();
           lockHeaderAutohide();
-          spyHoldUntil = Date.now() + 1500;
+          holdSpyForTarget();
           try { el.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' }); }
           catch (e2) { el.scrollIntoView(); }
         };
