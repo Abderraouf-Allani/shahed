@@ -2594,6 +2594,13 @@
   });
 
   var readScrollTimer = null;
+  /* Deep-link placement and search-exit jumps arm a short hold so the
+     scrollspy keeps the requested ayah in the URL until the user's own
+     scroll: the verses are inline spans in one continuous line flow, so
+     an adjacent ayah can start just below the header the moment landing
+     finishes and would otherwise steal the URL immediately. Reading-
+     position persistence below is never held — only the URL sync. */
+  var spyHoldUntil = 0;
   window.addEventListener('scroll', function () {
     var route = parseHash();
     if (!route.surah || !document.getElementById('mushaf')) return;
@@ -2609,6 +2616,7 @@
       /* Keep the URL's ayah pointing at the first ayah in the screen.
          history.replaceState (not location.hash) so no hashchange → no
          re-render loop, and the back-stack is not polluted by scrolling. */
+      if (Date.now() < spyHoldUntil) return;
       var first = firstScreenAyah();
       if (first) {
         var target = '#/surah/' + r.surah + '/' + first;
@@ -3944,6 +3952,7 @@
               var el = document.getElementById('ayah-' + n + '-' + ayah);
               if (el) {
                 lockHeaderAutohide();
+                spyHoldUntil = Date.now() + 1500;
                 el.scrollIntoView({ block: 'start', behavior: 'smooth' });
               }
             } else {
@@ -3976,6 +3985,7 @@
         var placeAyah = function (smooth) {
           syncHeaderHVar();
           lockHeaderAutohide();
+          spyHoldUntil = Date.now() + 1500;
           try { el.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' }); }
           catch (e2) { el.scrollIntoView(); }
         };
