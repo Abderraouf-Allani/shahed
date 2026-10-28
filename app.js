@@ -5627,17 +5627,31 @@
   var QALOON_AUDIO_MAP;
   var qaloonAudioMapPromise;
 
+  var QALOON_AUDIO_MAP_TRIES = 3;
+
   function loadAudioQaloonMap() {
     if (QALOON_AUDIO_MAP) return Promise.resolve(QALOON_AUDIO_MAP);
     if (qaloonAudioMapPromise) return qaloonAudioMapPromise;
-    qaloonAudioMapPromise = fetch('data/audio-qaloon.json').then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    }).then(function (data) {
-      QALOON_AUDIO_MAP = (data && data.surahs) || {};
-      return QALOON_AUDIO_MAP;
-    }).catch(function () {
-      QALOON_AUDIO_MAP = {};
+    var attempt = 0;
+    function one() {
+      attempt++;
+      return fetch('data/audio-qaloon.json').then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (data) {
+        return (data && data.surahs) || {};
+      });
+    }
+    function retry() {
+      if (attempt >= QALOON_AUDIO_MAP_TRIES) return null;
+      return new Promise(function (res) {
+        setTimeout(res, attempt === 1 ? 1000 : 3000);
+      }).then(one).catch(retry);
+    }
+    qaloonAudioMapPromise = one().catch(retry).then(function (map) {
+      /* A transient 404 (e.g. mid-deploy) must not pin the whole session to
+         identity numbering: retry a couple of times, then fall back. */
+      QALOON_AUDIO_MAP = map || {};
       return QALOON_AUDIO_MAP;
     });
     return qaloonAudioMapPromise;
