@@ -1,4 +1,4 @@
-const CACHE = 'quran-tag-v140';
+const CACHE = 'quran-tag-v141';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const CORE_ASSETS = [
   './data/surahs.json',
   './data/quran.json',
   './data/numbering.json',
+  './data/audio-qaloon.json',
   './data/ahzab.json'
 ];
 

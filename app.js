@@ -1932,6 +1932,7 @@
   if (riwayaBtn) riwayaBtn.addEventListener('click', toggleRiwaya);
 
   applyRiwaya();
+  loadAudioQaloonMap();
 
   document.addEventListener('click', function (e) {
     var star = e.target.closest('.surah-star');
@@ -2238,14 +2239,28 @@
       } catch (e) {}
       return;
     }
+    if (!audioMapReady()) {
+      loadAudioQaloonMap().then(function () { playAyahPreview(surah, ayah); });
+      return;
+    }
     stopAyahPreview();
     rdrStopAudio();
     var el = new Audio();
     el.preload = 'auto';
-    el.src = riwayaAudioUrl(surah, ayah);
-    el.addEventListener('ended', stopAyahPreview);
+    var preview = { surah: surah, ayah: ayah, el: el, queue: null, qpos: 0 };
+    el.src = queueFor(preview, surah, ayah);
+    el.addEventListener('ended', function () {
+      if (queueAdvance(preview, el)) {
+        try {
+          var np = el.play();
+          if (np && typeof np.catch === 'function') np.catch(function () { stopAyahPreview(); });
+        } catch (e) { stopAyahPreview(); }
+        return;
+      }
+      stopAyahPreview();
+    });
     el.addEventListener('error', stopAyahPreview);
-    ayahPreview = { surah: surah, ayah: ayah, el: el };
+    ayahPreview = preview;
     try {
       var pr = el.play();
       if (pr && typeof pr.catch === 'function') pr.catch(function () { stopAyahPreview(); });
@@ -4903,6 +4918,8 @@
     active: false,
     playing: false,
     idx: 0,
+    queue: null,
+    qpos: 0,
     ayahRepLeft: 1,
     ayahRep: 1,
     ayahInf: false,
@@ -5607,8 +5624,61 @@
     return 'https://files.quranpedia.net/recitations/' + AUDIO_RECITATION_QALOON + '/' + pad3(surah) + pad3(ayah) + '.mp3';
   }
 
-  function memAudioUrl(surah, ayah) {
-    return riwayaAudioUrl(surah, ayah);
+  var QALOON_AUDIO_MAP;
+  var qaloonAudioMapPromise;
+
+  function loadAudioQaloonMap() {
+    if (QALOON_AUDIO_MAP) return Promise.resolve(QALOON_AUDIO_MAP);
+    if (qaloonAudioMapPromise) return qaloonAudioMapPromise;
+    qaloonAudioMapPromise = fetch('data/audio-qaloon.json').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (data) {
+      QALOON_AUDIO_MAP = (data && data.surahs) || {};
+      return QALOON_AUDIO_MAP;
+    }).catch(function () {
+      QALOON_AUDIO_MAP = {};
+      return QALOON_AUDIO_MAP;
+    });
+    return qaloonAudioMapPromise;
+  }
+
+  function audioMapReady() {
+    return currentRiwaya() !== 'qaloon' || !!QALOON_AUDIO_MAP;
+  }
+
+  function qaloonAudioTracks(surah, ayah) {
+    var byAyah = QALOON_AUDIO_MAP && QALOON_AUDIO_MAP[String(surah)];
+    var tracks = byAyah && byAyah[String(ayah)];
+    return (tracks && tracks.length) ? tracks : [ayah];
+  }
+
+  function audioQueueFor(surah, ayah) {
+    if (currentRiwaya() !== 'qaloon') return [riwayaAudioUrl(surah, ayah)];
+    var tracks = qaloonAudioTracks(surah, ayah);
+    var urls = [];
+    for (var i = 0; i < tracks.length; i++) urls.push(riwayaAudioUrl(surah, tracks[i]));
+    return urls;
+  }
+
+  function queueFor(st, surah, ayah) {
+    st.queue = audioQueueFor(surah, ayah);
+    st.qpos = 0;
+    return st.queue[0];
+  }
+
+  function queueRestart(st, el) {
+    if (!st.queue || st.qpos === 0) return false;
+    st.qpos = 0;
+    el.src = st.queue[0];
+    return true;
+  }
+
+  function queueAdvance(st, el) {
+    if (!st.queue || st.qpos >= st.queue.length - 1) return false;
+    st.qpos++;
+    el.src = st.queue[st.qpos];
+    return true;
   }
 
   function memAudioEl() {
@@ -5640,17 +5710,19 @@
     var flat = memFlatList();
     var item = flat[idx];
     if (!item) { memStopAudio(); return; }
+    if (!audioMapReady()) {
+      loadAudioQaloonMap().then(function () { memPlayAyah(idx, replay); });
+      return;
+    }
     var el = memAudioEl();
     memAudio.errorStreak = 0;
     if (replay && el.src) {
-      el.currentTime = 0;
-      memAudio.playing = true;
-      memSafePlay(function () { el.play(); });
+      if (!queueRestart(memAudio, el)) el.currentTime = 0;
     } else {
-      el.src = memAudioUrl(item.surah, item.ayah);
-      memAudio.playing = true;
-      memSafePlay(function () { el.play(); });
+      el.src = queueFor(memAudio, item.surah, item.ayah);
     }
+    memAudio.playing = true;
+    memSafePlay(function () { el.play(); });
     memUpdateAudioUI();
   }
 
@@ -5694,6 +5766,8 @@
   function memStopAudio() {
     memAudio.active = false;
     memAudio.playing = false;
+    memAudio.queue = null;
+    memAudio.qpos = 0;
     if (memAudio.el) {
       try { memAudio.el.pause(); } catch (e) {}
       try { memAudio.el.removeAttribute('src'); } catch (e) {}
@@ -5725,6 +5799,13 @@
 
   function memAyahEnded() {
     if (!memAudio.active) return;
+    var el = memAudioEl();
+    if (queueAdvance(memAudio, el)) {
+      memAudio.playing = true;
+      memSafePlay(function () { el.play(); });
+      memUpdateAudioUI();
+      return;
+    }
     if (memAudio.ayahInf) { memPlayAyah(memAudio.idx, true); return; }
     memAudio.ayahRepLeft--;
     if (memAudio.ayahRepLeft > 0) { memPlayAyah(memAudio.idx, true); return; }
@@ -5830,6 +5911,7 @@
   var rdrSurah = 0;
   var rdrAudio = {
     el: null, active: false, playing: false, docked: false, idx: 0,
+    queue: null, qpos: 0,
     ayahRepLeft: 1, ayahRep: 1, ayahInf: false,
     pass: 1, surahRep: 1, surahInf: false, errorStreak: 0
   };
@@ -5837,10 +5919,6 @@
   function rdrCount() {
     var q = state.quran && state.quran[rdrSurah - 1];
     return q ? q.verses.length : 0;
-  }
-
-  function rdrAudioUrl(surah, ayah) {
-    return riwayaAudioUrl(surah, ayah);
   }
 
   function rdrAudioEl() {
@@ -5873,17 +5951,19 @@
     var len = rdrCount();
     if (!len) { rdrStopAudio(); return; }
     if (idx < 0 || idx >= len) { rdrStopAudio(); return; }
+    if (!audioMapReady()) {
+      loadAudioQaloonMap().then(function () { rdrPlayAyah(idx, replay); });
+      return;
+    }
     var el = rdrAudioEl();
     rdrAudio.errorStreak = 0;
     if (replay && el.src) {
-      el.currentTime = 0;
-      rdrAudio.playing = true;
-      rdrSafePlay(function () { el.play(); });
+      if (!queueRestart(rdrAudio, el)) el.currentTime = 0;
     } else {
-      el.src = rdrAudioUrl(rdrSurah, idx + 1);
-      rdrAudio.playing = true;
-      rdrSafePlay(function () { el.play(); });
+      el.src = queueFor(rdrAudio, rdrSurah, idx + 1);
     }
+    rdrAudio.playing = true;
+    rdrSafePlay(function () { el.play(); });
     rdrUpdateUI();
   }
 
@@ -5926,6 +6006,8 @@
     rdrAudio.active = false;
     rdrAudio.playing = false;
     rdrAudio.docked = false;
+    rdrAudio.queue = null;
+    rdrAudio.qpos = 0;
     if (rdrAudio.el) {
       try { rdrAudio.el.pause(); } catch (e) {}
       try { rdrAudio.el.removeAttribute('src'); } catch (e) {}
@@ -5948,6 +6030,13 @@
 
   function rdrAyahEnded() {
     if (!rdrAudio.active) return;
+    var el = rdrAudioEl();
+    if (queueAdvance(rdrAudio, el)) {
+      rdrAudio.playing = true;
+      rdrSafePlay(function () { el.play(); });
+      rdrUpdateUI();
+      return;
+    }
     if (rdrAudio.ayahInf) { rdrPlayAyah(rdrAudio.idx, true); return; }
     rdrAudio.ayahRepLeft--;
     if (rdrAudio.ayahRepLeft > 0) { rdrPlayAyah(rdrAudio.idx, true); return; }
