@@ -56,8 +56,8 @@ jobs:
           # allowlisted data file at the site root; /data/*.json 404'd).
           mkdir -p _site/data
           rsync -a --exclude='.DS_Store' \
-            data/adib.json data/ahzab.json data/asarar.json data/dawaa.json \
-            data/hafs.json data/jam3.json data/numbering.json \
+            data/adib.json data/ahzab.json data/asarar.json data/audio-qaloon.json \
+            data/dawaa.json data/hafs.json data/jam3.json data/numbering.json \
             data/ontology.json data/quran.json data/surahs.json \
             _site/data/
 
@@ -66,8 +66,8 @@ jobs:
           missing=0
           for f in index.html app.js styles.css sw.js lab.js memhide.js plans.js \
                    manifest.webmanifest loader-star.html USER_GUIDE.md \
-                   data/adib.json data/ahzab.json data/asarar.json data/dawaa.json \
-                   data/hafs.json data/jam3.json data/numbering.json \
+                   data/adib.json data/ahzab.json data/asarar.json data/audio-qaloon.json \
+                   data/dawaa.json data/hafs.json data/jam3.json data/numbering.json \
                    data/ontology.json data/quran.json data/surahs.json \
                    fonts icons lib; do
             if [ -d "_site/$f" ]; then continue; fi
