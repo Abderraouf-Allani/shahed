@@ -4889,7 +4889,10 @@
   function memDecReps(n) {
     if (!memState || !memState.active || memState.reps === null || memState.reps <= 0) return;
     memState.reps = Math.max(0, memState.reps - n);
-    if (memState.reps === 0) plansNotifyMemorizeDone();
+    if (memState.reps === 0) {
+      memSyncPlanDoneBtn();
+      plansNotifyMemorizeDone();
+    }
     renderMemWords();
   }
 
@@ -5543,7 +5546,7 @@
       if (planDoneBtn) {
         planDoneBtn.style.display = '';
         planDoneBtn.innerHTML = MEM_ICON_DONE + ' أتممت الحفظ';
-        planDoneBtn.title = 'إنهاء المقطع المخطط';
+        memSyncPlanDoneBtn();
       }
       if (planGoodBtn) planGoodBtn.style.display = 'none';
       if (planBadBtn) planBadBtn.style.display = 'none';
@@ -6344,12 +6347,27 @@
   /* Memorize-page shortcut: mark the plan chunk the current session came from
      as done (revise/memorize likely), then redirect to the plans page so the
      user lands back on the plan they were performing. */
+  /* «أتممت الحفظ» unlocks only after BOTH memorize stages finish: every word
+     hidden (phase 1, reps leaves null) and the 50-recitation loop hits 0.
+     The chunk key is carried along so a chunk already auto-checked by
+     plansNotifyMemorizeDone (which fires at reps 0) is never advanced twice. */
+  function memSyncPlanDoneBtn() {
+    var btn = document.getElementById('memPlanDoneBtn');
+    if (!btn) return;
+    var ready = !!(memState && memState.active && memState.reps === 0);
+    btn.disabled = !ready;
+    btn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    btn.title = ready ? 'إنهاء المقطع المخطط'
+      : 'أكمل مرحلة الإخفاء ثم ترديد المقطع ' + toWest(50) + ' مرة';
+  }
+
   function memMarkPlanChunkDone() {
     var planId = memState && memState.fromPlan;
-    if (!planId) return;
+    if (!planId || !memState || memState.reps !== 0) return;
+    var key = memState.memKey;
     ensurePlansScript().then(function () {
       if (!window.QuranPlans || !window.QuranPlans.markPlanChunkDone) return;
-      if (window.QuranPlans.markPlanChunkDone(planId)) {
+      if (window.QuranPlans.markPlanChunkDone(planId, key)) {
         showAppToast(memState.planType === 'revise'
           ? 'أُتمّت المراجعة المخططة — وفّقك الله'
           : 'أُتمّ المقطع المخطط — وفّقك الله');

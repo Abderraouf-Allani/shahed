@@ -458,12 +458,32 @@
      of a SPECIFIC plan (the one whose id landed in memSession.fromPlan), same
      bookkeeping as the plans-page «أتممت» pill. Returns true when it checked
      something off. */
-  function plansMarkPlanChunkDone(planId) {
+  function plansMarkPlanChunkDone(planId, key) {
     var hit = plansFindMemPlan(planId);
-    if (!hit) return false;
-    var c = hit.p.chunks[hit.p.pointer || 0];
-    if (!c || c.done) return false;
-    plansScheduleReview(hit.p, c);
+    var p = hit ? hit.p : null;
+    if (!p && key) {
+      /* The plan may already be finished (the rep loop auto-checks the chunk
+         at 0 and advances the pointer): look it up by id so the session key
+         can still resolve to the chunk this session was created for. */
+      var all = plansLoad();
+      for (var i = 0; i < all.length; i++) {
+        var q = all[i];
+        if (q.id === planId && (q.type === 'memorize' || q.type === 'revise')) { p = q; break; }
+      }
+    }
+    if (!p) return false;
+    var ci = p.pointer || 0;
+    if (key) {
+      for (var j = 0; j < (p.chunks || []).length; j++) {
+        if ((p.chunks[j].from + '|' + p.chunks[j].to) === key) { ci = j; break; }
+      }
+    }
+    var c = p.chunks && p.chunks[ci];
+    if (!c) return false;
+    /* Already checked off (e.g. the rep loop auto-checked it): report success
+       without advancing, so a second tap can never mark the NEXT chunk. */
+    if (c.done) return true;
+    plansScheduleReview(p, c);
     return true;
   }
 

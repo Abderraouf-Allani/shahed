@@ -1,4 +1,4 @@
-const CACHE = 'quran-tag-v144';
+const CACHE = 'quran-tag-v145';
 const CORE_ASSETS = [
   './',
   './index.html',
