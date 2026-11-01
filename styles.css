@@ -1622,6 +1622,7 @@ html.dark .istiaadha-letter.lit {
   background: var(--surface-2); border-radius: 8px;
 }
 .mem-surah-head:first-child { margin-top: 0; }
+.mem-bismillah { margin: 0.1rem 0 1rem; }
 .mem-level {
   text-align: center; font-size: 0.8rem; font-weight: 600;
   color: var(--text-muted);
@@ -1865,6 +1866,21 @@ html.dark .plan-save-btn { color: #10241a; }
   padding: 1rem 1.2rem;
   margin-bottom: 1rem;
   box-shadow: var(--shadow);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.plan-card.plan-dragging {
+  position: relative;
+  z-index: 3;
+  opacity: 0.92;
+  transform: scale(1.01);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  cursor: grabbing;
+}
+
+body.plan-reordering {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .plan-head {
@@ -1874,6 +1890,36 @@ html.dark .plan-save-btn { color: #10241a; }
   gap: 0.6rem;
   margin-bottom: 0.6rem;
 }
+
+.plan-head-end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.plan-grip:hover,
+.plan-grip:focus-visible {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.plan-grip:active { cursor: grabbing; }
 
 .plan-type { font-weight: 700; font-size: 1.05rem; }
 .plan-target { color: var(--text-muted); font-size: 0.88rem; }

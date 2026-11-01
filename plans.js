@@ -25,6 +25,10 @@
   var LS = B.LS;
   var appEl = B.appEl;
 
+  var PLAN_GRIP_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">'
+    + '<path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" '
+    + 'stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
+
   var PLAN_TYPES = {
     read:    { label: 'قراءة',    icon: '📖' },
     listen:  { label: 'استماع',   icon: '🎧' },
@@ -649,9 +653,146 @@
     return html;
   }
 
+  /* ---------- reorder plan cards (drag the grip, or the card itself on desktop) ---------- */
+
+  var planDragArea = null;
+  var planDrag = null;
+  var planDragGuardUntil = 0;
+
+  function planCardsInOrder(area) {
+    return Array.prototype.slice.call(area.querySelectorAll('.plan-card[data-i]'));
+  }
+
+  function planReorderSave(area) {
+    var old = plansLoad();
+    var ordered = [];
+    planCardsInOrder(area).forEach(function (card) {
+      var p = old[+card.dataset.i];
+      if (p) ordered.push(p);
+    });
+    if (ordered.length === old.length) plansSave(ordered);
+  }
+
+  function planDragCleanup() {
+    document.removeEventListener('pointermove', planDragMove);
+    document.removeEventListener('pointerup', planDragEnd);
+    document.removeEventListener('pointercancel', planDragCancel);
+    window.removeEventListener('blur', planDragCancel);
+    if (planDrag && planDrag.card) planDrag.card.classList.remove('plan-dragging');
+    document.body.classList.remove('plan-reordering');
+    planDrag = null;
+  }
+
+  function planDragMove(e) {
+    var d = planDrag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    if (d.active && e.buttons === 0) { planDragEnd(e); return; }
+    if (!d.active) {
+      if (Math.abs(e.clientY - d.startY) < 6) return;
+      d.active = true;
+      d.card.classList.add('plan-dragging');
+      document.body.classList.add('plan-reordering');
+    }
+    e.preventDefault();
+    d.moved = true;
+    var area = d.card.parentNode;
+    if (!area) return;
+    var cards = planCardsInOrder(area);
+    var next = null;
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      if (c === d.card) continue;
+      var r = c.getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { next = c; break; }
+    }
+    if (next) {
+      if (next.previousElementSibling !== d.card) area.insertBefore(d.card, next);
+    } else if (d.card.nextElementSibling) {
+      area.appendChild(d.card);
+    }
+  }
+
+  function planDragEnd(e) {
+    var d = planDrag;
+    if (!d || (e && e.pointerId != null && e.pointerId !== d.pointerId)) return;
+    var area = d.card.parentNode;
+    var moved = d.active && d.moved;
+    planDragCleanup();
+    if (!moved || !area) return;
+    planDragGuardUntil = Date.now() + 400;
+    planReorderSave(area);
+    plansRefreshViews();
+  }
+
+  function planDragCancel(e) {
+    var d = planDrag;
+    if (!d || (e && e.pointerId != null && e.pointerId !== d.pointerId)) return;
+    var changed = d.active && d.moved;
+    planDragCleanup();
+    if (changed) plansRefreshViews();
+  }
+
+  function planPointerDown(e) {
+    if (e.button != null && e.button !== 0) return;
+    if (planDrag) return;
+    if (!e.target || !e.target.closest) return;
+    var card = e.target.closest('.plan-card[data-i]');
+    if (!card) return;
+    var grip = e.target.closest('[data-grip]');
+    if (!grip && e.target.closest('a,button,input,select,textarea,label')) return;
+    if (e.pointerType === 'touch' && !grip) return;
+    if (grip) e.preventDefault();
+    planDrag = {
+      card: card,
+      pointerId: e.pointerId,
+      startY: e.clientY,
+      active: !!grip,
+      moved: false
+    };
+    if (grip) {
+      card.classList.add('plan-dragging');
+      document.body.classList.add('plan-reordering');
+    }
+    document.addEventListener('pointermove', planDragMove);
+    document.addEventListener('pointerup', planDragEnd);
+    document.addEventListener('pointercancel', planDragCancel);
+    window.addEventListener('blur', planDragCancel);
+  }
+
+  function planReorderKeys(e) {
+    var grip = e.target.closest ? e.target.closest('[data-grip]') : null;
+    if (!grip) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    var card = grip.closest('.plan-card[data-i]');
+    if (!card) return;
+    var all = plansLoad();
+    var i = +card.dataset.i;
+    var j = e.key === 'ArrowUp' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= all.length) return;
+    var tmp = all[i];
+    all[i] = all[j];
+    all[j] = tmp;
+    plansSave(all);
+    plansRefreshViews();
+    var moved = planDragArea && planDragArea.querySelector('.plan-card[data-i="' + j + '"] [data-grip]');
+    if (moved) moved.focus();
+  }
+
+  function ensurePlanReorder(area) {
+    if (area === planDragArea) return;
+    planDragArea = area;
+    area.addEventListener('pointerdown', planPointerDown);
+    area.addEventListener('click', function (e) {
+      if (Date.now() < planDragGuardUntil) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+    area.addEventListener('keydown', planReorderKeys);
+  }
+
   function renderPlansArea() {
     var area = document.getElementById('plansArea');
     if (!area) return;
+    ensurePlanReorder(area);
     var plans = plansLoad();
     var struggleHtml = renderStruggleCard();
     if (!plans.length && !struggleHtml) {
@@ -669,7 +810,8 @@
       html += '<div class="plan-card" data-i="' + i + '">';
       html += '<div class="plan-head">';
       html += '<span class="plan-type">' + (T.icon || '') + ' ' + esc(T.label) + (p.autoReviseFor ? ' <span class="plan-auto">تلقائية</span>' : '') + (plansNum(p) === 'qaloon' ? ' <span class="plan-riwaya">قالون</span>' : '') + '</span>';
-      html += '<span class="plan-target">' + plansUnitLabel(p.unit, p.perDay) + '</span>';
+      html += '<span class="plan-head-end"><span class="plan-target">' + plansUnitLabel(p.unit, p.perDay) + '</span>';
+      html += '<button type="button" class="plan-grip" data-grip aria-label="تغيير ترتيب الخطة" title="اسحب لإعادة ترتيب الخطط (أو استخدم ↑ ↓)">' + PLAN_GRIP_SVG + '</button></span>';
       html += '</div>';
       html += '<div class="plan-progress"><div style="width:' + pct + '%"></div></div>';
       html += '<div class="plan-meta"><span>' + toWest(done) + ' / ' + toWest(total) + ' — ' + toWest(pct) + '%</span></div>';

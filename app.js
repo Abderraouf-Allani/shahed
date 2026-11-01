@@ -5163,6 +5163,10 @@
         if (multi) {
           var sname = surahByNumber(sec.surah);
           html += '<div class="mem-surah-head">' + esc(sname ? sname.nameAr : '') + ' — ' + toAr(sec.from) + '-' + toAr(sec.to) + '</div>';
+          var sq = state.quran && state.quran[sec.surah - 1];
+          if (sec.surah !== NO_BASMALA_SURAH && sq && sq.bismillah) {
+            html += '<div class="bismillah mem-bismillah">' + esc(sq.bismillah) + '</div>';
+          }
         }
         sec.ayahWords.forEach(function (aw) {
           var fullText = aw.words.total || aw.words.map(function (w) { return w.text + (w.trail || ''); }).join('');
