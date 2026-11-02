@@ -4888,6 +4888,7 @@
 
   function memDecReps(n) {
     if (!memState || !memState.active || memState.reps === null || memState.reps <= 0) return;
+    memState.repStarted = true;
     memState.reps = Math.max(0, memState.reps - n);
     if (memState.reps === 0) {
       memSyncPlanDoneBtn();
@@ -5223,10 +5224,18 @@
         repBtn.style.display = '';
         repBtn.disabled = memState.reps <= 0;
         if (memState.reps > 0) {
-          repBtn.innerHTML = '<span class="mem-rep-num">' + memState.reps + '</span><span class="mem-rep-label">اضغط بعد كل تلاوة للمقطع</span>';
+          /* The tap instruction only matters for the first recitation; once the
+             loop started it is hidden (visibility, so the button keeps its
+             size and the counter never jumps). */
+          repBtn.innerHTML = '<span class="mem-rep-num">' + toWest(memState.reps) + '</span>' +
+            '<span class="mem-rep-label">اضغط بعد كل تلاوة للمقطع</span>';
+          repBtn.classList.toggle('mem-rep-started', !!memState.repStarted);
+          repBtn.setAttribute('aria-label', 'تبقّى ' + memState.reps + ' تكرار — اضغط بعد كل تلاوة');
           repBtn.classList.remove('mem-rep-done');
         } else {
           repBtn.innerHTML = MEM_ICON_DONE + ' أتممتَ التكرار';
+          repBtn.classList.remove('mem-rep-started');
+          repBtn.removeAttribute('aria-label');
           repBtn.classList.add('mem-rep-done');
         }
       } else {
@@ -5297,7 +5306,7 @@
   function renderMemorize() {
     document.title = 'الحفظ — شاهد من القرآن';
     memStopAudio();
-    memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, busy: false };
+    memState = memState || { active: false, level: 0, sections: [], peeking: false, reps: null, repStarted: false, busy: false };
     memState.fromPlan = null;
     memState.planType = null;
     var saved = null;
@@ -5314,6 +5323,7 @@
            hides easy-first. The direction persists for the whole session. */
         memState.reverse = (saved.planType === 'revise');
         memState.reps = null;
+        memState.repStarted = false;
         memState.sections = planned;
         memState.fromPlan = saved.fromPlan || null;
         memState.planType = saved.planType || null;
@@ -5475,6 +5485,7 @@
       memState.level = 0;
       memState.reverse = false;
       memState.reps = null;
+      memState.repStarted = false;
       memState.sections = sections;
       memState.peeking = false;
       memState.featReady = false;
@@ -5566,6 +5577,7 @@
       memState.level = 0;
       memState.reverse = false;
       memState.reps = null;
+      memState.repStarted = false;
       memState.sections = [];
       memState.peeking = false;
       memState.featReady = false;
