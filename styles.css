@@ -1707,7 +1707,12 @@ html.dark .istiaadha-letter.lit {
 .mem-rep-btn:disabled {
   opacity: 0.9; cursor: default;
 }
-.mem-rep-btn.mem-rep-started .mem-rep-label { visibility: hidden; }
+.mem-rep-btn.mem-rep-started .mem-rep-label { display: none; }
+.mem-rep-btn.mem-rep-started {
+  min-width: 0;
+  padding-inline: 1rem !important;
+  transition: padding 0.15s ease;
+}
 .mem-rep-btn.mem-rep-done {
   background: var(--surface-2) !important;
   border-color: var(--accent) !important; color: var(--accent) !important;
